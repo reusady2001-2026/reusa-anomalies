@@ -438,11 +438,6 @@ input[type="file"] { display: none; }
   color: var(--blue-dark);
   padding: 8px 12px !important;
   text-align: left !important;
-  /* Sticky: always shows below the column-header row */
-  position: sticky;
-  top: calc(var(--app-header-h) + var(--thead-h));  /* 52px + 34px = 86px */
-  background: var(--blue-light);   /* must be set on td, not just tr, for sticky to paint */
-  z-index: 9;                      /* above data cells (z:auto) but below thead (z:10) */
 }
 
 /* Metric rows hover */

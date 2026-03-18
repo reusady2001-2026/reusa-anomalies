@@ -118,6 +118,8 @@ const UI = (() => {
     let lastSection = '';
     metrics.forEach(metric => {
       if (metric.type === 'all_zero') return;
+      if (metric.section === 'UNKNOWN') return;
+      if (/net\s*operating\s*income|^\s*noi\s*$/i.test(metric.name)) return;
       if (secFilter === 'income' && metric.section !== 'INCOME') return;
       if (secFilter === 'expenses' && metric.section !== 'EXPENSES') return;
       if (mFocus && (!metric.materialAnomalies || metric.materialAnomalies.length === 0)) return;
@@ -219,6 +221,8 @@ const UI = (() => {
 
     allNames.forEach(({ A, B }, name) => {
       const section = (A || B).section;
+      if (section === 'UNKNOWN') return;
+      if (/net\s*operating\s*income|^\s*noi\s*$/i.test(name)) return;
       if (secFilter === 'income' && section !== 'INCOME') return;
       if (secFilter === 'expenses' && section !== 'EXPENSES') return;
       if (mFocus) {
