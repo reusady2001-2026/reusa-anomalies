@@ -186,10 +186,9 @@ const App = (() => {
     state.fileNameA = null; state.fileNameB = null;
 
     // Reset upload button labels
-    ['upload-btn-a', 'upload-btn-a-comp', 'upload-btn-b-comp'].forEach(id => {
-      const e = document.getElementById(id);
-      if (e) e.textContent = id.includes('-b-') ? 'Upload File B' : (id.includes('-a-comp') ? 'Upload File A' : 'Upload File');
-    });
+    setUploadLabel('upload-btn-a', 'Upload File');
+    setUploadLabel('upload-btn-a-comp', 'Upload File A');
+    setUploadLabel('upload-btn-b-comp', 'Upload File B');
 
     // Reset price/name inputs
     ['price-a', 'price-a-comp', 'price-b-comp'].forEach(id => {
@@ -332,6 +331,13 @@ const App = (() => {
   function showMsg(msg, targetId) {
     const e = document.getElementById(targetId || 'status-msg');
     if (e) { e.textContent = msg; e.classList.remove('hidden'); }
+  }
+
+  function setUploadLabel(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const sp = el.querySelector('span');
+    if (sp) sp.textContent = text; else el.textContent = text;
   }
 
   // ── PRICE PARSING ─────────────────────────────────────
@@ -566,8 +572,9 @@ const App = (() => {
     // ── Analyzer file upload ──
     document.getElementById('file-a')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
+      e.target.value = ''; // reset so same file can be re-selected
       state.fileNameA = file.name;
-      document.getElementById('upload-btn-a').textContent = '📂 ' + file.name;
+      setUploadLabel('upload-btn-a', '📂 ' + file.name);
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
@@ -581,7 +588,7 @@ const App = (() => {
     document.getElementById('file-hist-btn-a')?.addEventListener('click', function() {
       showFileHistoryDropdown(this, (name, data) => {
         state.parsedA = data; state.fileNameA = name;
-        document.getElementById('upload-btn-a').textContent = '📂 ' + name;
+        setUploadLabel('upload-btn-a', '📂 ' + name);
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
       });
@@ -590,8 +597,9 @@ const App = (() => {
     // ── Comparison file uploads ──
     document.getElementById('file-a-comp')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
+      e.target.value = '';
       state.fileNameA = file.name;
-      document.getElementById('upload-btn-a-comp').textContent = '📂 ' + file.name;
+      setUploadLabel('upload-btn-a-comp', '📂 ' + file.name);
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
@@ -602,8 +610,9 @@ const App = (() => {
 
     document.getElementById('file-b-comp')?.addEventListener('change', async e => {
       const file = e.target.files[0]; if (!file) return;
+      e.target.value = '';
       state.fileNameB = file.name;
-      document.getElementById('upload-btn-b-comp').textContent = '📂 ' + file.name;
+      setUploadLabel('upload-btn-b-comp', '📂 ' + file.name);
       try {
         const rows = await readFileAsRows(file);
         state.parsedB = Engine.parseSheet(rows);
@@ -615,7 +624,7 @@ const App = (() => {
     document.getElementById('file-hist-btn-a-comp')?.addEventListener('click', function() {
       showFileHistoryDropdown(this, (name, data) => {
         state.parsedA = data; state.fileNameA = name;
-        document.getElementById('upload-btn-a-comp').textContent = '📂 ' + name;
+        setUploadLabel('upload-btn-a-comp', '📂 ' + name);
         showMsg('Asset A restored: ' + data.months.length + ' months', 'status-msg-comp');
       });
     });
@@ -623,7 +632,7 @@ const App = (() => {
     document.getElementById('file-hist-btn-b-comp')?.addEventListener('click', function() {
       showFileHistoryDropdown(this, (name, data) => {
         state.parsedB = data; state.fileNameB = name;
-        document.getElementById('upload-btn-b-comp').textContent = '📂 ' + name;
+        setUploadLabel('upload-btn-b-comp', '📂 ' + name);
         showMsg('Asset B restored: ' + data.months.length + ' months', 'status-msg-comp');
       });
     });

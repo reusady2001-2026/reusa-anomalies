@@ -114,7 +114,7 @@ body {
 }
 .btn-back:hover { background: rgba(255,255,255,0.25); }
 
-.app-body { padding: 24px; max-width: 100%; overflow-x: auto; }
+.app-body { padding: 24px; max-width: 100%; }
 
 /* ── CONTROL PANEL ── */
 .control-panel {
@@ -355,7 +355,7 @@ input[type="file"] { display: none; }
 .stat-seasonal { color: var(--orange); }
 
 /* ── TABLE ── */
-#table-container { overflow-x: auto; overflow-y: clip; }
+#table-container { overflow-x: auto; }
 
 .anomaly-table {
   width: 100%;
