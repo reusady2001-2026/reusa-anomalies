@@ -293,7 +293,6 @@ const App = (() => {
       dashEl.innerHTML =
         UI.renderDashboard(state.resultA, state.propertyNameA) +
         UI.renderDashboard(state.resultB, state.propertyNameB);
-      dashEl.style.display = 'flex';
       dashEl.classList.remove('hidden');
     }
 

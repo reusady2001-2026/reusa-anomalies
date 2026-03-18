@@ -40,7 +40,8 @@ body {
 .screen.active { display: block; }
 
 /* ── HOME SCREEN ── */
-#screen-home {
+/* Must use .active to avoid overriding .screen { display:none } */
+#screen-home.active {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -280,12 +281,15 @@ input[type="file"] { display: none; }
 }
 
 /* ── DASHBOARD ── */
-#dashboard-container {
+#dashboard-container,
+.dashboard-container-row {
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
+/* Hidden overrides flex so we must preserve it via class not inline style */
+.dashboard-container-row.hidden { display: none !important; }
 .dashboard-card {
   background: #fff;
   border-radius: var(--radius);
