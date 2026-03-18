@@ -114,11 +114,14 @@ const UI = (() => {
     // ── body rows ──
     html += '<tbody>';
 
+    let rowCount = 0;
     let lastSection = '';
     metrics.forEach(metric => {
       if (metric.type === 'all_zero') return;
       if (secFilter === 'income' && metric.section !== 'INCOME') return;
       if (secFilter === 'expenses' && metric.section !== 'EXPENSES') return;
+      if (mFocus && (!metric.materialAnomalies || metric.materialAnomalies.length === 0)) return;
+      rowCount++;
 
       // Section divider
       if (metric.section !== lastSection) {
@@ -173,7 +176,7 @@ const UI = (() => {
     });
 
     html += '</tbody></table>';
-    return html;
+    return { html, rowCount };
   }
 
   // ── COMPARISON TABLE ──────────────────────────────────
@@ -211,12 +214,19 @@ const UI = (() => {
       }
     });
 
+    let rowCount = 0;
     let lastSection = '';
 
     allNames.forEach(({ A, B }, name) => {
       const section = (A || B).section;
       if (secFilter === 'income' && section !== 'INCOME') return;
       if (secFilter === 'expenses' && section !== 'EXPENSES') return;
+      if (mFocus) {
+        const aMaterial = A && A.materialAnomalies && A.materialAnomalies.length > 0;
+        const bMaterial = B && B.materialAnomalies && B.materialAnomalies.length > 0;
+        if (!aMaterial && !bMaterial) return;
+      }
+      rowCount++;
 
       if (section !== lastSection) {
         lastSection = section;
@@ -258,7 +268,7 @@ const UI = (() => {
     });
 
     html += '</tbody></table>';
-    return html;
+    return { html, rowCount };
   }
 
   function renderComparisonRow(metric, result, sharedMonths, skippedRelIdxs, label, mFocus, soloClass) {

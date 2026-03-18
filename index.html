@@ -44,6 +44,7 @@
   <div class="app-header">
     <button class="btn-back">← Back</button>
     <span class="header-title">Analyzer Mode</span>
+    <button class="btn-theme-toggle" id="btn-theme-toggle" title="Toggle dark/light mode">☀️</button>
   </div>
 
   <div class="app-body">
@@ -89,6 +90,8 @@
     <!-- ── Controls bar (post-analysis) ── -->
     <div id="controls-bar" class="hidden">
 
+      <span id="row-count" class="row-count-badge">— rows</span>
+
       <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
         <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>
         <select id="section-filter">
@@ -117,6 +120,18 @@
 
     </div><!-- /controls-bar -->
 
+    <!-- Legend -->
+    <div id="legend" class="legend-panel hidden">
+      <div class="legend-item"><span class="legend-swatch sw-material-pos"></span><span class="legend-label">Material +</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-material-neg"></span><span class="legend-label">Material −</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-seasonal"></span><span class="legend-label">Seasonal</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-anomaly"></span><span class="legend-label">Anomaly</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-reversion"></span><span class="legend-label">Reversion</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-inactive"></span><span class="legend-label">No data</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-skipped"></span><span class="legend-label">Excluded</span></div>
+      <div class="legend-item"><span class="legend-icon">🔄</span><span class="legend-label">Recurring</span></div>
+    </div>
+
     <!-- Table -->
     <div id="table-container" class="hidden"></div>
 
@@ -137,6 +152,7 @@
   <div class="app-header">
     <button class="btn-back">← Back</button>
     <span class="header-title">Comparison Mode</span>
+    <button class="btn-theme-toggle" id="btn-theme-toggle-comp" title="Toggle dark/light mode">☀️</button>
   </div>
 
   <div class="app-body">
@@ -215,6 +231,8 @@
     <!-- ── Controls bar (post-analysis) ── -->
     <div id="controls-bar-comp" class="hidden">
 
+      <span id="row-count-comp" class="row-count-badge">— rows</span>
+
       <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
         <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>
         <select id="section-filter-comp">
@@ -251,6 +269,22 @@
       </div>
 
     </div><!-- /controls-bar-comp -->
+
+    <!-- Legend (comparison) -->
+    <div id="legend-comp" class="legend-panel hidden">
+      <div class="legend-item"><span class="legend-swatch sw-material-pos"></span><span class="legend-label">Material +</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-material-neg"></span><span class="legend-label">Material −</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-seasonal"></span><span class="legend-label">Seasonal</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-anomaly"></span><span class="legend-label">Anomaly</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-reversion"></span><span class="legend-label">Reversion</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-inactive"></span><span class="legend-label">No data</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-skipped"></span><span class="legend-label">Excluded</span></div>
+      <div class="legend-item"><span class="legend-icon">🔄</span><span class="legend-label">Recurring</span></div>
+      <div class="legend-sep"></div>
+      <div class="legend-item"><span class="legend-swatch sw-asset-a"></span><span class="legend-label">Asset A</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-asset-b"></span><span class="legend-label">Asset B</span></div>
+      <div class="legend-item"><span class="legend-swatch sw-delta"></span><span class="legend-label">Δ% row</span></div>
+    </div>
 
     <!-- Dashboard (side-by-side stats) -->
     <div id="dashboard-container-comp" class="hidden dashboard-container-row"></div>

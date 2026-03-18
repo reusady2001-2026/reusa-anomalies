@@ -270,12 +270,19 @@ const App = (() => {
   function renderAnalyzerTable() {
     const tableEl = document.getElementById('table-container');
     if (!tableEl || !state.resultA) return;
-    tableEl.innerHTML = UI.renderTable(state.resultA, {
+    const { html, rowCount } = UI.renderTable(state.resultA, {
       materialFocus: state.materialFocus,
       sectionFilter: state.sectionFilter,
     });
+    tableEl.innerHTML = html;
     attachCellClicks(tableEl, state.resultA);
     tableEl.classList.remove('hidden');
+
+    const total = state.resultA.metrics.filter(m => m.type !== 'all_zero').length;
+    const countEl = document.getElementById('row-count');
+    if (countEl) countEl.textContent = `${rowCount} of ${total} rows`;
+
+    document.getElementById('legend')?.classList.remove('hidden');
   }
 
   // ── COMPARISON: RUN ───────────────────────────────────
@@ -361,13 +368,22 @@ const App = (() => {
 
     const tableEl = document.getElementById('table-container-comp');
     if (tableEl) {
-      tableEl.innerHTML = UI.renderComparisonTable(
+      const { html, rowCount } = UI.renderComparisonTable(
         state.resultA, state.resultB, deltasMap, deltaAnomaliesMap,
         { materialFocus: state.materialFocus, sectionFilter: state.sectionFilter, viewFilter: state.viewFilter }
       );
+      tableEl.innerHTML = html;
       attachCellClicks(tableEl, state.resultA);
       attachCellClicks(tableEl, state.resultB);
       tableEl.classList.remove('hidden');
+
+      const totalA = state.resultA.metrics.filter(m => m.type !== 'all_zero').length;
+      const totalB = state.resultB.metrics.filter(m => m.type !== 'all_zero').length;
+      const total = Math.max(totalA, totalB);
+      const countEl = document.getElementById('row-count-comp');
+      if (countEl) countEl.textContent = `${rowCount} of ${total} metric groups`;
+
+      document.getElementById('legend-comp')?.classList.remove('hidden');
     }
   }
 
@@ -497,6 +513,19 @@ const App = (() => {
       state.sectionFilter = e.target.value;
       if (state.mode === 'analyzer') renderAnalyzerTable();
     });
+
+    // ── Dark / light mode toggle ──
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      const icon = dark ? '🌙' : '☀️';
+      document.querySelectorAll('.btn-theme-toggle').forEach(btn => btn.textContent = icon);
+      localStorage.setItem('oaas-theme', dark ? 'dark' : 'light');
+    }
+    function toggleTheme() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
+    document.getElementById('btn-theme-toggle')?.addEventListener('click', toggleTheme);
+    document.getElementById('btn-theme-toggle-comp')?.addEventListener('click', toggleTheme);
+    // Restore saved preference
+    applyTheme(localStorage.getItem('oaas-theme') === 'dark');
 
     // ── Comparison controls ──
     document.getElementById('btn-material-focus-comp')?.addEventListener('click', function() {
