@@ -380,14 +380,14 @@ input[type="file"] { display: none; }
   font-weight: 600;
   white-space: nowrap;
   position: sticky;
-  top: var(--app-header-h);   /* sticks below the app header */
+  top: 0;
   z-index: 10;
 }
 .anomaly-table th.metric-name-col {
   text-align: left;
   min-width: 200px;
   position: sticky;
-  top: var(--app-header-h);   /* explicit — top-left corner cell */
+  top: 0;
   left: 0;
   z-index: 30;                /* highest: sits above both row headers and col headers */
 }
