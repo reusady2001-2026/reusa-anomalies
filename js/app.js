@@ -57,8 +57,12 @@ const App = (() => {
     try {
       let hist = loadFileHistory().filter(f => f.name !== name);
       hist.unshift({ name, savedAt: Date.now(), data: parsedData });
-      localStorage.setItem(STORAGE_KEY_FILES, JSON.stringify(hist.slice(0, MAX_HISTORY)));
-    } catch (e) { console.warn('File history save failed:', e); }
+      const serialised = JSON.stringify(hist.slice(0, MAX_HISTORY));
+      localStorage.setItem(STORAGE_KEY_FILES, serialised);
+      console.log('[FileHistory] saved:', name, '— total in history:', hist.length);
+    } catch (e) {
+      console.error('[FileHistory] SAVE FAILED:', e);
+    }
   }
 
   function loadFileHistory() {
@@ -66,14 +70,20 @@ const App = (() => {
   }
 
   function showFileHistoryDropdown(btnEl, onSelect) {
-    const old = btnEl.parentElement.querySelector('.history-dropdown');
-    if (old) { old.remove(); return; }
+    // Close any existing dropdown
+    document.querySelectorAll('.history-dropdown').forEach(d => d.remove());
+
     const files = loadFileHistory();
+    console.log('[FileHistory] dropdown opened, files in storage:', files.length, files.map(f => f.name));
+
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
     drop.style.minWidth = '260px';
+    drop.style.position = 'fixed';
+    drop.style.zIndex = '9999';
+
     if (!files.length) {
-      drop.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files</div>';
+      drop.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files — upload a file first</div>';
     } else {
       drop.innerHTML = files.map((f, i) => {
         const d = new Date(f.savedAt).toLocaleDateString();
@@ -83,19 +93,31 @@ const App = (() => {
         </div>`;
       }).join('');
       drop.querySelectorAll('.history-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', e => {
+          e.stopPropagation();
           const rec = files[parseInt(item.dataset.idx)];
           if (rec) onSelect(rec.name, rec.data);
           drop.remove();
         });
       });
     }
-    btnEl.parentElement.appendChild(drop);
+
+    // Position using fixed coords so no parent overflow can clip it
+    document.body.appendChild(drop);
+    const rect = btnEl.getBoundingClientRect();
+    drop.style.top  = (rect.bottom + 4) + 'px';
+    drop.style.left = rect.left + 'px';
+
+    // Close on outside click
     setTimeout(() => {
-      document.addEventListener('click', function h(e) {
-        if (!drop.contains(e.target) && e.target !== btnEl) { drop.remove(); document.removeEventListener('click', h); }
-      });
-    }, 10);
+      function closeHandler(e) {
+        if (!drop.contains(e.target) && e.target !== btnEl) {
+          drop.remove();
+          document.removeEventListener('click', closeHandler);
+        }
+      }
+      document.addEventListener('click', closeHandler);
+    }, 50);
   }
 
   // ── ELEMENT RESOLUTION (mode-aware) ──────────────────
