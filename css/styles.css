@@ -355,7 +355,7 @@ input[type="file"] { display: none; }
 .stat-seasonal { color: var(--orange); }
 
 /* ── TABLE ── */
-#table-container { overflow-x: auto; }
+#table-container { overflow-x: auto; overflow-y: clip; }
 
 .anomaly-table {
   width: 100%;

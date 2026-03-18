@@ -628,17 +628,18 @@ const App = (() => {
       });
     });
 
-    // ── Price inputs: re-run analysis on Enter or blur ──
+    // ── Price inputs: re-run analysis on any value change ──
+    let _priceATimer, _priceCompTimer;
     const priceA = document.getElementById('price-a');
     if (priceA) {
-      priceA.addEventListener('change', rerunAnalysisWithPrice);
-      priceA.addEventListener('keydown', e => { if (e.key === 'Enter') rerunAnalysisWithPrice(); });
+      priceA.addEventListener('input', () => { clearTimeout(_priceATimer); _priceATimer = setTimeout(rerunAnalysisWithPrice, 500); });
+      priceA.addEventListener('blur', rerunAnalysisWithPrice);
     }
     ['price-a-comp', 'price-b-comp'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
-        el.addEventListener('change', rerunComparisonWithPrices);
-        el.addEventListener('keydown', e => { if (e.key === 'Enter') rerunComparisonWithPrices(); });
+        el.addEventListener('input', () => { clearTimeout(_priceCompTimer); _priceCompTimer = setTimeout(rerunComparisonWithPrices, 500); });
+        el.addEventListener('blur', rerunComparisonWithPrices);
       }
     });
 
