@@ -134,7 +134,14 @@ const UI = (() => {
       }
 
       html += '<tr class="metric-row" data-metric-id="' + escHtml(metric.id) + '">';
-      html += `<td class="metric-name">${escHtml(metric.name)}</td>`;
+      // Reason preview: first material (or first) anomaly's enriched primary
+      const _previewIdx = metric.materialAnomalies?.[0] ?? metric.anomalies?.[0];
+      const _previewText = (_previewIdx != null && metric.reasonData?.[_previewIdx]?.enrichedPrimary)
+        ? metric.reasonData[_previewIdx].enrichedPrimary : null;
+      const _previewShort = _previewText
+        ? escHtml(_previewText.length > 100 ? _previewText.slice(0, 97) + '…' : _previewText)
+        : null;
+      html += `<td class="metric-name">${escHtml(metric.name)}${_previewShort ? `<div class="reason-preview">${_previewShort}</div>` : ''}</td>`;
 
       dispLabels.forEach((_, ri) => {
         const skipped = skippedRelIdxs.includes(ri);
@@ -339,14 +346,30 @@ const UI = (() => {
 
   function renderAnomalyCard(reasonData, metric, monthLabel) {
     if (!reasonData) return '';
-    const { primary, alternatives, corroborating, firedRuleIds } = reasonData;
+    const { primary, alternatives, corroborating } = reasonData;
     const z = metric.zScores[reasonData.monthIdx];
     if (!z) return '';
+
+    // Enriched fields (present when dataContext was available)
+    const enrichedPrimary      = reasonData.enrichedPrimary      || null;
+    const enrichedAlternatives = reasonData.enrichedAlternatives  || null;
+    const adjustedConfidence   = reasonData.adjustedConfidence    ?? null;
+    const confidenceNotes      = reasonData.confidenceNotes       || [];
+    const dataSources          = reasonData.dataSources           || [];
+    const corroboratingNote    = reasonData.corroboratingNote     || null;
+
+    const baseConf    = Math.round((primary?.weight || 0) * 100);
+    const displayConf = adjustedConfidence !== null ? adjustedConfidence : baseConf;
+    const confDelta   = adjustedConfidence !== null ? adjustedConfidence - baseConf : 0;
+    const confDeltaStr = confDelta !== 0
+      ? ` <span class="conf-delta ${confDelta > 0 ? 'conf-boost' : 'conf-reduce'}">${confDelta > 0 ? '+' : ''}${confDelta}%</span>`
+      : '';
 
     const pnlColor = z.pnl === 'profit' ? '#2e7d32' : z.pnl === 'loss' ? '#b71c1c' : '#e65100';
     const pnlLabel = z.pnl ? z.pnl.toUpperCase() : '';
     const anomalyTypeLabel = z.anomalyType === 'change' ? 'Change Anomaly' : 'Value Anomaly';
-    const deviation = reasonData.effectiveZ ? (reasonData.effectiveZ > 0 ? '+' : '') + reasonData.effectiveZ.toFixed(2) + 'σ' : '';
+    const deviation = reasonData.effectiveZ
+      ? (reasonData.effectiveZ > 0 ? '+' : '') + reasonData.effectiveZ.toFixed(2) + 'σ' : '';
 
     let html = `<div class="anomaly-card">
       <div class="anomaly-card-header">
@@ -356,22 +379,56 @@ const UI = (() => {
         <span class="pnl-badge" style="color:${pnlColor}">${pnlLabel} (${metric.section})</span>
       </div>
       <div class="anomaly-primary">
-        <strong>Primary Reason</strong> <span class="confidence-badge">${Math.round((primary.weight || 0) * 100)}% confidence</span><br>
-        ${escHtml(primary.label || primary)}
+        <strong>Primary Reason</strong>
+        <span class="confidence-badge">${displayConf}% confidence${confDeltaStr}</span><br>
+        ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
       </div>`;
 
-    if (alternatives && alternatives.length > 0) {
+    // Confidence source notes
+    if (confidenceNotes.length > 0) {
+      html += '<div class="conf-notes">';
+      confidenceNotes.forEach(n => {
+        const cls = n.delta > 0 ? 'conf-note-boost' : 'conf-note-reduce';
+        html += `<div class="conf-note ${cls}"><span class="conf-note-delta">${n.delta > 0 ? '+' : ''}${n.delta}%</span> ${escHtml(n.text)}</div>`;
+      });
+      html += '</div>';
+    }
+
+    // Alternative explanations
+    const displayAlts = enrichedAlternatives || alternatives || [];
+    if (displayAlts.length > 0) {
       html += '<div class="anomaly-alternatives"><strong>Alternative Explanations</strong><ol>';
-      alternatives.forEach(alt => { html += `<li>${escHtml(alt)}</li>`; });
+      displayAlts.forEach(alt => { html += `<li>${escHtml(alt)}</li>`; });
       html += '</ol></div>';
     }
 
+    // Corroborating anomalies
     if (corroborating && corroborating.length > 0) {
       html += '<div class="anomaly-corroborating"><strong>Corroborating Anomalies</strong><ul>';
       corroborating.forEach(c => {
         html += `<li>${escHtml(c.metricName)} — ${c.monthLabel} <span class="sim-score">${c.similarity}% match</span></li>`;
       });
-      html += '</ul></div>';
+      html += '</ul>';
+      if (corroboratingNote) {
+        html += `<div class="corr-data-note">${escHtml(corroboratingNote)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    // Data Sources Used (collapsible)
+    if (dataSources.length > 0) {
+      html += `<details class="data-sources-section">
+        <summary>Data Sources Used (${dataSources.length})</summary>
+        <ul class="data-sources-list">`;
+      dataSources.forEach(s => {
+        html += `<li>
+          <span class="ds-label">${escHtml(s.label)}</span>
+          <span class="ds-value">${escHtml(String(s.value || ''))}</span>
+          ${s.period ? `<span class="ds-period">${escHtml(s.period)}</span>` : ''}
+          ${s.note   ? `<span class="ds-note">${escHtml(s.note)}</span>` : ''}
+        </li>`;
+      });
+      html += `</ul></details>`;
     }
 
     html += '</div>';

@@ -31,7 +31,22 @@ const App = (() => {
     assetTypeB: 'Multifamily',
     locationA: '',
     locationB: '',
+    // enrichment
+    selectedState: '',
+    selectedCity: '',
+    dataContext: null,
+    _fetchingContext: null, // Promise<void> while in flight
   };
+
+  // ── LOCATION STORAGE KEYS ─────────────────────────────
+  const STORAGE_KEY_LOCATION = 'oaas_location';
+
+  function saveLocation(stateAbbr, city) {
+    try { localStorage.setItem(STORAGE_KEY_LOCATION, JSON.stringify({ stateAbbr, city })); } catch {}
+  }
+  function loadLocation() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_LOCATION) || 'null'); } catch { return null; }
+  }
 
   // ── STORAGE ───────────────────────────────────────────
 
@@ -309,6 +324,64 @@ const App = (() => {
     if (sp) sp.textContent = text; else el.textContent = text;
   }
 
+  // ── LOCATION DROPDOWNS ────────────────────────────────
+
+  function populateStateDropdown(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    Context.STATES.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.abbr;
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  function populateCityDropdown(citySelectId, stateAbbr) {
+    const sel = document.getElementById(citySelectId);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Select City…</option>';
+    sel.disabled = !stateAbbr;
+    if (!stateAbbr) return;
+    const stateName = Object.entries(Context.STATE_ABBR || {}).find(([, a]) => a === stateAbbr)?.[0];
+    const cities = (Context.STATE_CITIES || {})[stateName] || [];
+    cities.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── CONTEXT FETCHING ──────────────────────────────────
+
+  async function fetchContextIfReady(msgTargetId) {
+    const months = state.parsedA?.months || state.parsedB?.months;
+    if (!months || !state.selectedState || !state.selectedCity) return;
+
+    state.dataContext = null;
+    const msgId = msgTargetId || (state.mode === 'comparison' ? 'status-msg-comp' : 'status-msg');
+
+    const promise = Context.fetchDataContext(
+      state.selectedState,
+      state.selectedCity,
+      months,
+      msg => showMsg(msg, msgId)
+    ).then(ctx => {
+      state.dataContext = ctx;
+      // Clear the fetch status if still showing
+      const e = document.getElementById(msgId);
+      if (e && e.textContent.startsWith('Fetching economic')) { e.textContent = ''; e.classList.add('hidden'); }
+    }).catch(() => {
+      state.dataContext = null;
+    }).finally(() => {
+      state._fetchingContext = null;
+    });
+
+    state._fetchingContext = promise;
+    return promise;
+  }
+
   // ── PRICE PARSING ─────────────────────────────────────
 
   function parsePrice(str) {
@@ -324,8 +397,15 @@ const App = (() => {
 
   // ── ANALYZER: RUN ANALYSIS ────────────────────────────
 
-  function runAnalysis() {
+  async function runAnalysis() {
     if (!state.parsedA) { alert('Please upload a file first.'); return; }
+
+    // Location is required
+    if (!state.selectedState || !state.selectedCity) {
+      showMsg('Please select a State and City before running analysis.', 'status-msg');
+      document.getElementById('state-select')?.focus();
+      return;
+    }
 
     const inStart = document.getElementById('period-start');
     const inEnd   = document.getElementById('period-end');
@@ -333,6 +413,12 @@ const App = (() => {
     const pEnd   = inputValueToIdx(inEnd?.value,   state.parsedA.months);
     state.periodStart = pStart >= 0 ? pStart : null;
     state.periodEnd   = pEnd   >= 0 ? pEnd   : null;
+
+    // Wait for any in-flight context fetch
+    if (state._fetchingContext) {
+      showMsg(`Fetching economic context for ${state.selectedCity}, ${state.selectedState}…`, 'status-msg');
+      try { await state._fetchingContext; } catch {}
+    }
 
     _runAnalysisCore();
     document.getElementById('controls-bar')?.classList.remove('hidden');
@@ -350,8 +436,10 @@ const App = (() => {
     state.purchasePriceA = price;
 
     try {
-      state.resultA = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
+      state.resultA  = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
+      // Enrich rule output with real-world data (no-op if context is null)
+      state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext);
       renderAnalyzerTable();
     } catch (err) {
       console.error(err);
@@ -379,8 +467,19 @@ const App = (() => {
 
   // ── COMPARISON: RUN ───────────────────────────────────
 
-  function runComparison() {
+  async function runComparison() {
     if (!state.parsedA || !state.parsedB) { alert('Please upload both files.'); return; }
+
+    if (!state.selectedState || !state.selectedCity) {
+      showMsg('Please select a Market Location before running comparison.', 'status-msg-comp');
+      document.getElementById('state-select-comp')?.focus();
+      return;
+    }
+
+    if (state._fetchingContext) {
+      showMsg(`Fetching economic context…`, 'status-msg-comp');
+      try { await state._fetchingContext; } catch {}
+    }
 
     const nameA = document.getElementById('prop-name-a')?.value.trim() || 'Asset A';
     const nameB = document.getElementById('prop-name-b')?.value.trim() || 'Asset B';
@@ -419,10 +518,12 @@ const App = (() => {
     state.purchasePriceA = priceA;
     state.purchasePriceB = priceB;
 
-    state.resultA = Engine.analyse(state.filteredA, priceA, null, null);
-    state.resultB = Engine.analyse(state.filteredB, priceB, null, null);
+    state.resultA  = Engine.analyse(state.filteredA, priceA, null, null);
+    state.resultB  = Engine.analyse(state.filteredB, priceB, null, null);
     state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
     state.reasonsB = RuleEngine.analyse(state.resultB.metrics, state.resultB.months, getAssetInfo('b'));
+    state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext);
+    state.reasonsB = Enrichment.enrichAll(state.resultB, state.reasonsB, state.dataContext);
     renderComparisonView();
   }
 
@@ -528,6 +629,76 @@ const App = (() => {
 
   function init() {
 
+    // ── Populate location dropdowns ──
+    populateStateDropdown('state-select');
+    populateStateDropdown('state-select-comp');
+
+    // Restore last-used location
+    const savedLoc = loadLocation();
+    if (savedLoc?.stateAbbr) {
+      const ss = document.getElementById('state-select');
+      if (ss) ss.value = savedLoc.stateAbbr;
+      populateCityDropdown('city-select', savedLoc.stateAbbr);
+      state.selectedState = savedLoc.stateAbbr;
+      if (savedLoc.city) {
+        const cs = document.getElementById('city-select');
+        if (cs) cs.value = savedLoc.city;
+        state.selectedCity = savedLoc.city;
+      }
+      // Comp dropdowns too
+      const ssc = document.getElementById('state-select-comp');
+      if (ssc) ssc.value = savedLoc.stateAbbr;
+      populateCityDropdown('city-select-comp', savedLoc.stateAbbr);
+      if (savedLoc.city) {
+        const csc = document.getElementById('city-select-comp');
+        if (csc) csc.value = savedLoc.city;
+      }
+    }
+
+    // State change → repopulate cities
+    document.getElementById('state-select')?.addEventListener('change', e => {
+      const abbr = e.target.value;
+      state.selectedState = abbr;
+      state.selectedCity  = '';
+      state.dataContext   = null;
+      populateCityDropdown('city-select', abbr);
+      // Mirror to comp
+      const ssc = document.getElementById('state-select-comp');
+      if (ssc) ssc.value = abbr;
+      populateCityDropdown('city-select-comp', abbr);
+    });
+    document.getElementById('city-select')?.addEventListener('change', e => {
+      state.selectedCity = e.target.value;
+      // Mirror to comp
+      const csc = document.getElementById('city-select-comp');
+      if (csc) csc.value = e.target.value;
+      if (state.selectedState && state.selectedCity) {
+        saveLocation(state.selectedState, state.selectedCity);
+        fetchContextIfReady();
+      }
+    });
+
+    // Comp dropdowns (allow independent selection too)
+    document.getElementById('state-select-comp')?.addEventListener('change', e => {
+      const abbr = e.target.value;
+      state.selectedState = abbr;
+      state.selectedCity  = '';
+      state.dataContext   = null;
+      populateCityDropdown('city-select-comp', abbr);
+      const ss = document.getElementById('state-select');
+      if (ss) ss.value = abbr;
+      populateCityDropdown('city-select', abbr);
+    });
+    document.getElementById('city-select-comp')?.addEventListener('change', e => {
+      state.selectedCity = e.target.value;
+      const cs = document.getElementById('city-select');
+      if (cs) cs.value = e.target.value;
+      if (state.selectedState && state.selectedCity) {
+        saveLocation(state.selectedState, state.selectedCity);
+        fetchContextIfReady('status-msg-comp');
+      }
+    });
+
     // Mode selection (onclick on the cards already handles this via
     // oaasSelectMode; these listeners are an additional layer)
     document.getElementById('btn-analyzer')?.addEventListener('click', () => selectMode('analyzer'));
@@ -550,6 +721,8 @@ const App = (() => {
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
+        // Auto-fetch context if location already selected
+        if (state.selectedState && state.selectedCity) fetchContextIfReady();
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
     });
 
@@ -574,6 +747,7 @@ const App = (() => {
         state.parsedA = Engine.parseSheet(rows);
         showMsg('Asset A loaded: ' + state.parsedA.months.length + ' months', 'status-msg-comp');
         saveFileToHistory(file.name, state.parsedA);
+        if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       } catch (err) { alert('Error reading File A: ' + err.message); }
     });
 
@@ -587,6 +761,7 @@ const App = (() => {
         state.parsedB = Engine.parseSheet(rows);
         showMsg('Asset B loaded: ' + state.parsedB.months.length + ' months', 'status-msg-comp');
         saveFileToHistory(file.name, state.parsedB);
+        if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       } catch (err) { alert('Error reading File B: ' + err.message); }
     });
 

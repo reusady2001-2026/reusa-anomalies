@@ -778,6 +778,136 @@ input[type="file"] { display: none; }
   .anomaly-table { font-size: 11px; }
 }
 
+/* ── LOCATION SELECTOR ── */
+.location-group .location-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.location-select {
+  flex: 1;
+  min-width: 120px;
+  padding: 6px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  background: #fff;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.location-select:disabled { background: #f5f5f5; color: #bdbdbd; cursor: default; }
+.location-select:focus { outline: none; border-color: var(--blue-mid); box-shadow: 0 0 0 2px rgba(63,81,181,0.15); }
+.req-star { color: var(--red-mid); font-weight: 700; margin-left: 2px; }
+
+/* ── REASON PREVIEW (metric name cell subtitle) ── */
+.reason-preview {
+  font-size: 0.68rem;
+  color: #757575;
+  font-weight: 400;
+  margin-top: 3px;
+  white-space: normal;
+  line-height: 1.3;
+  max-width: 240px;
+  font-style: italic;
+}
+[data-theme="dark"] .reason-preview { color: #777; }
+
+/* ── CONFIDENCE NOTES ── */
+.conf-notes {
+  margin: 8px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.conf-note {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.4;
+}
+.conf-note-boost   { background: #e8f5e9; color: #2e7d32; }
+.conf-note-reduce  { background: #fff3e0; color: #e65100; }
+.conf-note-delta   { font-weight: 700; min-width: 32px; }
+.conf-delta        { font-size: 0.75rem; font-weight: 700; }
+.conf-boost        { color: #2e7d32; }
+.conf-reduce       { color: #c62828; }
+
+/* ── CORROBORATING DATA NOTE ── */
+.corr-data-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--blue-light);
+  border-left: 3px solid var(--blue-mid);
+  border-radius: 0 4px 4px 0;
+  font-size: 0.8rem;
+  color: var(--blue-dark);
+  line-height: 1.5;
+}
+
+/* ── DATA SOURCES SECTION ── */
+.data-sources-section {
+  margin-top: 12px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 8px;
+}
+.data-sources-section summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #757575;
+  user-select: none;
+  padding: 4px 0;
+  list-style: none;
+}
+.data-sources-section summary::-webkit-details-marker { display: none; }
+.data-sources-section summary::before {
+  content: '▶ ';
+  font-size: 0.65rem;
+  transition: transform 0.15s;
+}
+.data-sources-section[open] summary::before { content: '▼ '; }
+.data-sources-list {
+  list-style: none;
+  padding: 6px 0 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.data-sources-list li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #fafafa;
+}
+.data-sources-list li:nth-child(even) { background: #f5f5f5; }
+.ds-label  { color: #757575; flex: 0 0 auto; }
+.ds-value  { font-weight: 600; color: var(--text-primary); flex: 0 0 auto; }
+.ds-period { color: #bdbdbd; font-size: 0.7rem; }
+.ds-note   { color: var(--blue-mid); font-size: 0.7rem; }
+
+/* dark mode enrichment styles */
+[data-theme="dark"] .location-select { background: #252540; color: #e0e0e0; border-color: #444; }
+[data-theme="dark"] .location-select:disabled { background: #1a1a28; color: #555; }
+[data-theme="dark"] .conf-note-boost  { background: rgba(46,125,50,0.15);  color: #a5d6a7; }
+[data-theme="dark"] .conf-note-reduce { background: rgba(230,81,0,0.15);   color: #ffcc80; }
+[data-theme="dark"] .corr-data-note   { background: rgba(26,35,126,0.25); color: #90caf9; border-left-color: #3949ab; }
+[data-theme="dark"] .data-sources-section { border-top-color: #333; }
+[data-theme="dark"] .data-sources-section summary { color: #777; }
+[data-theme="dark"] .data-sources-list li { background: #252540; }
+[data-theme="dark"] .data-sources-list li:nth-child(even) { background: #1e1e38; }
+[data-theme="dark"] .ds-label  { color: #888; }
+[data-theme="dark"] .ds-value  { color: #e0e0e0; }
+[data-theme="dark"] .ds-period { color: #555; }
+[data-theme="dark"] .ds-note   { color: #90caf9; }
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
