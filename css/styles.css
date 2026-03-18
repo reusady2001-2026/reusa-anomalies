@@ -25,6 +25,9 @@
   --font:         'Inter', 'Segoe UI', Arial, sans-serif;
   --radius:       8px;
   --shadow:       0 2px 8px rgba(0,0,0,0.12);
+  /* Sticky positioning offsets */
+  --app-header-h: 52px;   /* height of the sticky .app-header */
+  --thead-h:      34px;   /* height of the table header row */
 }
 
 body {
@@ -352,7 +355,8 @@ input[type="file"] { display: none; }
 .stat-seasonal { color: var(--orange); }
 
 /* ── TABLE ── */
-#table-container { overflow-x: auto; }
+#table-container,
+#table-container-comp { overflow-x: auto; overflow-y: clip; }
 
 .anomaly-table {
   width: 100%;
@@ -362,7 +366,9 @@ input[type="file"] { display: none; }
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   font-size: 12px;
-  overflow: hidden;
+  /* overflow:hidden removed — it created a scroll container that
+     trapped position:sticky inside the table and prevented the
+     thead and left column from sticking to the viewport/container */
 }
 
 .anomaly-table th {
@@ -374,15 +380,16 @@ input[type="file"] { display: none; }
   font-weight: 600;
   white-space: nowrap;
   position: sticky;
-  top: 52px;
+  top: var(--app-header-h);   /* sticks below the app header */
   z-index: 10;
 }
 .anomaly-table th.metric-name-col {
   text-align: left;
   min-width: 200px;
   position: sticky;
+  top: var(--app-header-h);   /* explicit — top-left corner cell */
   left: 0;
-  z-index: 20;          /* above regular th (z:10) and sticky td.metric-name (z:5) */
+  z-index: 30;                /* highest: sits above both row headers and col headers */
 }
 /* Comparison: asset-label header also stays pinned */
 .comparison-table th.asset-label-col {
@@ -431,6 +438,11 @@ input[type="file"] { display: none; }
   color: var(--blue-dark);
   padding: 8px 12px !important;
   text-align: left !important;
+  /* Sticky: always shows below the column-header row */
+  position: sticky;
+  top: calc(var(--app-header-h) + var(--thead-h));  /* 52px + 34px = 86px */
+  background: var(--blue-light);   /* must be set on td, not just tr, for sticky to paint */
+  z-index: 9;                      /* above data cells (z:auto) but below thead (z:10) */
 }
 
 /* Metric rows hover */
@@ -725,7 +737,7 @@ input[type="file"] { display: none; }
 [data-theme="dark"] .anomaly-table td { border-bottom-color: #2a2a40; color: #ddd; }
 [data-theme="dark"] .anomaly-table td.metric-name { background: #1a1a2e; color: #e0e0e0; }
 [data-theme="dark"] .section-header-row { background: #12122a; }
-[data-theme="dark"] .section-header { color: #90caf9; }
+[data-theme="dark"] .section-header { color: #90caf9; background: #12122a; }
 [data-theme="dark"] .metric-row:hover td { background: #252540 !important; }
 [data-theme="dark"] .metric-row:hover td.metric-name { background: #2a2a50 !important; }
 [data-theme="dark"] .cell-inactive { background: #252535; color: #555; }
