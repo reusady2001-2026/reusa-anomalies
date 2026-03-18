@@ -366,15 +366,10 @@ const App = (() => {
 
   function init() {
 
-    // Mode selection
-    document.getElementById('btn-analyzer')?.addEventListener('click', () => {
-      state.mode = 'analyzer';
-      showScreen('screen-analyzer');
-    });
-    document.getElementById('btn-comparison')?.addEventListener('click', () => {
-      state.mode = 'comparison';
-      showScreen('screen-comparison');
-    });
+    // Mode selection (onclick on the cards already handles this via
+    // oaasSelectMode; these listeners are an additional layer)
+    document.getElementById('btn-analyzer')?.addEventListener('click', () => selectMode('analyzer'));
+    document.getElementById('btn-comparison')?.addEventListener('click', () => selectMode('comparison'));
 
     // Back buttons
     document.querySelectorAll('.btn-back').forEach(btn => {
@@ -518,7 +513,23 @@ const App = (() => {
     });
   }
 
-  return { init };
+  // ── SELECT MODE ───────────────────────────────────────
+  // Also exposed globally via window.oaasSelectMode for onclick fallback
+
+  function selectMode(mode) {
+    state.mode = mode;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const s = document.getElementById('screen-' + mode);
+    if (s) s.classList.add('active');
+  }
+
+  return { init, selectMode };
 })();
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+// Global fallback — used by onclick attributes on mode cards (guarantees
+// navigation even if addEventListener wiring fails for any reason).
+window.oaasSelectMode = function(mode) { App.selectMode(mode); };
+
+// Scripts live at the bottom of <body> so the DOM is fully built.
+// Call init() directly — DOMContentLoaded may have already fired.
+try { App.init(); } catch (e) { console.error('OAAS init error:', e); }
