@@ -16,6 +16,10 @@ const App = (() => {
     resultB: null,
     reasonsB: null,
     purchasePriceB: 0,
+    filteredA: null,      // comparison: parsedA restricted to shared months
+    filteredB: null,
+    periodStart: null,    // last-used period indices (for price re-runs)
+    periodEnd: null,
     propertyNameA: 'Asset A',
     propertyNameB: 'Asset B',
     materialFocus: false,
@@ -45,6 +49,108 @@ const App = (() => {
     localStorage.setItem(key, JSON.stringify(hist.slice(0, MAX_HISTORY)));
   }
 
+  // ── INDEXEDDB FILE HISTORY ────────────────────────────
+
+  const IDB_DB   = 'oaas-files';
+  const IDB_STORE = 'recent';
+
+  function idbOpen() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(IDB_DB, 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE))
+          db.createObjectStore(IDB_STORE, { keyPath: 'id', autoIncrement: true });
+      };
+      req.onsuccess = e => res(e.target.result);
+      req.onerror   = e => rej(e.target.error);
+    });
+  }
+
+  async function idbSaveFile(name, parsedData) {
+    try {
+      const db = await idbOpen();
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      const all = await new Promise((res, rej) => {
+        const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = rej;
+      });
+      // Replace existing entry with same name
+      const dup = all.find(x => x.name === name);
+      if (dup) store.delete(dup.id);
+      store.add({ name, savedAt: Date.now(), data: parsedData });
+      // Trim to MAX_HISTORY oldest entries
+      const remaining = all.filter(x => x.name !== name);
+      if (remaining.length >= MAX_HISTORY) {
+        remaining.sort((a, b) => a.savedAt - b.savedAt)
+          .slice(0, remaining.length - MAX_HISTORY + 1)
+          .forEach(x => store.delete(x.id));
+      }
+    } catch (e) { console.warn('IDB save:', e); }
+  }
+
+  async function idbLoadFiles() {
+    try {
+      const db = await idbOpen();
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const all = await new Promise((res, rej) => {
+        const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = rej;
+      });
+      return all.sort((a, b) => b.savedAt - a.savedAt).slice(0, MAX_HISTORY);
+    } catch (e) { console.warn('IDB load:', e); return []; }
+  }
+
+  async function idbGetById(id) {
+    try {
+      const db = await idbOpen();
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      return await new Promise((res, rej) => {
+        const r = store.get(id); r.onsuccess = () => res(r.result); r.onerror = rej;
+      });
+    } catch (e) { return null; }
+  }
+
+  async function showFileHistoryDropdown(btnEl, onSelect) {
+    const old = btnEl.parentElement.querySelector('.history-dropdown');
+    if (old) { old.remove(); return; }
+    const files = await idbLoadFiles();
+    if (!files.length) {
+      const tip = document.createElement('div');
+      tip.className = 'history-dropdown';
+      tip.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files</div>';
+      btnEl.parentElement.appendChild(tip);
+      setTimeout(() => {
+        document.addEventListener('click', function h() { tip.remove(); document.removeEventListener('click', h); });
+      }, 10);
+      return;
+    }
+    const drop = document.createElement('div');
+    drop.className = 'history-dropdown';
+    drop.style.minWidth = '260px';
+    drop.innerHTML = files.map(f => {
+      const d = new Date(f.savedAt).toLocaleDateString();
+      return `<div class="history-item" data-id="${f.id}">
+        <div style="font-weight:600">${f.name}</div>
+        <div style="font-size:0.72rem;color:#9e9e9e">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
+      </div>`;
+    }).join('');
+    btnEl.parentElement.appendChild(drop);
+    drop.querySelectorAll('.history-item').forEach(item => {
+      item.addEventListener('click', async () => {
+        const rec = await idbGetById(parseInt(item.dataset.id));
+        if (rec) onSelect(rec.name, rec.data);
+        drop.remove();
+      });
+    });
+    setTimeout(() => {
+      document.addEventListener('click', function h(e) {
+        if (!drop.contains(e.target)) { drop.remove(); document.removeEventListener('click', h); }
+      });
+    }, 10);
+  }
+
   // ── ELEMENT RESOLUTION (mode-aware) ──────────────────
 
   /**
@@ -72,6 +178,8 @@ const App = (() => {
   function resetState() {
     state.parsedA = null; state.resultA = null; state.reasonsA = null;
     state.parsedB = null; state.resultB = null; state.reasonsB = null;
+    state.filteredA = null; state.filteredB = null;
+    state.periodStart = null; state.periodEnd = null;
     state.purchasePriceA = 0; state.purchasePriceB = 0;
     state.materialFocus = false; state.sectionFilter = 'all'; state.viewFilter = 'both';
     state.propertyNameA = 'Asset A'; state.propertyNameB = 'Asset B';
@@ -80,7 +188,7 @@ const App = (() => {
     // Reset upload button labels
     ['upload-btn-a', 'upload-btn-a-comp', 'upload-btn-b-comp'].forEach(id => {
       const e = document.getElementById(id);
-      if (e) e.textContent = id.includes('b') ? 'Upload File B' : 'Upload File';
+      if (e) e.textContent = id.includes('-b-') ? 'Upload File B' : (id.includes('-a-comp') ? 'Upload File A' : 'Upload File');
     });
 
     // Reset price/name inputs
@@ -91,9 +199,10 @@ const App = (() => {
       const e = document.getElementById(id); if (e) e.value = '';
     });
 
-    // Reset period selects
+    // Reset period pickers
     ['period-start', 'period-end'].forEach(id => {
-      const e = document.getElementById(id); if (e) e.innerHTML = '';
+      const e = document.getElementById(id);
+      if (e) { e.value = ''; e.min = ''; e.max = ''; e.disabled = true; e.title = 'Upload a file first'; }
     });
 
     // Clear output areas (both screens)
@@ -105,7 +214,7 @@ const App = (() => {
       if (e) { e.innerHTML = ''; e.classList.add('hidden'); }
     });
 
-    ['controls-bar', 'controls-bar-comp'].forEach(id => {
+    ['controls-bar', 'controls-bar-comp', 'legend', 'legend-comp'].forEach(id => {
       const e = document.getElementById(id);
       if (e) e.classList.add('hidden');
     });
@@ -243,24 +352,32 @@ const App = (() => {
   function runAnalysis() {
     if (!state.parsedA) { alert('Please upload a file first.'); return; }
 
-    const price = parsePrice(document.getElementById('price-a')?.value);
-    if (!price) { alert('Please enter a valid purchase price.'); return; }
-    state.purchasePriceA = price;
-    saveHistory(STORAGE_KEY_PRICES, price);
-
     const inStart = document.getElementById('period-start');
     const inEnd   = document.getElementById('period-end');
     const pStart = inputValueToIdx(inStart?.value, state.parsedA.months);
     const pEnd   = inputValueToIdx(inEnd?.value,   state.parsedA.months);
-    // Fall back to full range if picker values don't map to a known month
-    const resolvedStart = pStart >= 0 ? pStart : null;
-    const resolvedEnd   = pEnd   >= 0 ? pEnd   : null;
+    state.periodStart = pStart >= 0 ? pStart : null;
+    state.periodEnd   = pEnd   >= 0 ? pEnd   : null;
+
+    _runAnalysisCore();
+    document.getElementById('controls-bar')?.classList.remove('hidden');
+  }
+
+  /** Re-run analysis with the current price (called when price input changes). */
+  function rerunAnalysisWithPrice() {
+    if (!state.parsedA || !state.resultA) return;
+    _runAnalysisCore();
+  }
+
+  function _runAnalysisCore() {
+    const price = parsePrice(document.getElementById('price-a')?.value) || 0;
+    if (price) saveHistory(STORAGE_KEY_PRICES, price);
+    state.purchasePriceA = price;
 
     try {
-      state.resultA = Engine.analyse(state.parsedA, price, resolvedStart, resolvedEnd);
+      state.resultA = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
       renderAnalyzerTable();
-      document.getElementById('controls-bar')?.classList.remove('hidden');
     } catch (err) {
       console.error(err);
       alert('Analysis error: ' + err.message);
@@ -290,16 +407,6 @@ const App = (() => {
   function runComparison() {
     if (!state.parsedA || !state.parsedB) { alert('Please upload both files.'); return; }
 
-    const priceA = parsePrice(document.getElementById('price-a-comp')?.value);
-    const priceB = parsePrice(document.getElementById('price-b-comp')?.value);
-    if (!priceA) { alert('Enter a valid purchase price for Asset A.'); return; }
-    if (!priceB) { alert('Enter a valid purchase price for Asset B.'); return; }
-
-    state.purchasePriceA = priceA;
-    state.purchasePriceB = priceB;
-    saveHistory(STORAGE_KEY_PRICES, priceA);
-    saveHistory(STORAGE_KEY_PRICES, priceB);
-
     const nameA = document.getElementById('prop-name-a')?.value.trim() || 'Asset A';
     const nameB = document.getElementById('prop-name-b')?.value.trim() || 'Asset B';
     state.propertyNameA = nameA;
@@ -312,21 +419,36 @@ const App = (() => {
       if (sharedLabels.length < 3) {
         alert('Files share fewer than 3 months in common. Cannot compare.'); return;
       }
+      state.filteredA = filterToShared(state.parsedA, sharedLabels);
+      state.filteredB = filterToShared(state.parsedB, sharedLabels);
 
-      const filteredA = filterToShared(state.parsedA, sharedLabels);
-      const filteredB = filterToShared(state.parsedB, sharedLabels);
-
-      state.resultA = Engine.analyse(filteredA, priceA, null, null);
-      state.resultB = Engine.analyse(filteredB, priceB, null, null);
-      state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
-      state.reasonsB = RuleEngine.analyse(state.resultB.metrics, state.resultB.months, getAssetInfo('b'));
-
-      renderComparisonView();
+      _runComparisonCore();
       document.getElementById('controls-bar-comp')?.classList.remove('hidden');
     } catch (err) {
       console.error(err);
       alert('Comparison error: ' + err.message);
     }
+  }
+
+  /** Re-run comparison with the current prices (called when a price input changes). */
+  function rerunComparisonWithPrices() {
+    if (!state.filteredA || !state.filteredB) return;
+    _runComparisonCore();
+  }
+
+  function _runComparisonCore() {
+    const priceA = parsePrice(document.getElementById('price-a-comp')?.value) || 0;
+    const priceB = parsePrice(document.getElementById('price-b-comp')?.value) || 0;
+    if (priceA) saveHistory(STORAGE_KEY_PRICES, priceA);
+    if (priceB) saveHistory(STORAGE_KEY_PRICES, priceB);
+    state.purchasePriceA = priceA;
+    state.purchasePriceB = priceB;
+
+    state.resultA = Engine.analyse(state.filteredA, priceA, null, null);
+    state.resultB = Engine.analyse(state.filteredB, priceB, null, null);
+    state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
+    state.reasonsB = RuleEngine.analyse(state.resultB.metrics, state.resultB.months, getAssetInfo('b'));
+    renderComparisonView();
   }
 
   function filterToShared(parsed, sharedLabels) {
@@ -451,7 +573,18 @@ const App = (() => {
         state.parsedA = Engine.parseSheet(rows);
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
+        idbSaveFile(file.name, state.parsedA);
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
+    });
+
+    // ── Recent file buttons ──
+    document.getElementById('file-hist-btn-a')?.addEventListener('click', function() {
+      showFileHistoryDropdown(this, (name, data) => {
+        state.parsedA = data; state.fileNameA = name;
+        document.getElementById('upload-btn-a').textContent = '📂 ' + name;
+        populatePeriodSelects(data.months);
+        showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
+      });
     });
 
     // ── Comparison file uploads ──
@@ -463,6 +596,7 @@ const App = (() => {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
         showMsg('Asset A loaded: ' + state.parsedA.months.length + ' months', 'status-msg-comp');
+        idbSaveFile(file.name, state.parsedA);
       } catch (err) { alert('Error reading File A: ' + err.message); }
     });
 
@@ -474,7 +608,38 @@ const App = (() => {
         const rows = await readFileAsRows(file);
         state.parsedB = Engine.parseSheet(rows);
         showMsg('Asset B loaded: ' + state.parsedB.months.length + ' months', 'status-msg-comp');
+        idbSaveFile(file.name, state.parsedB);
       } catch (err) { alert('Error reading File B: ' + err.message); }
+    });
+
+    document.getElementById('file-hist-btn-a-comp')?.addEventListener('click', function() {
+      showFileHistoryDropdown(this, (name, data) => {
+        state.parsedA = data; state.fileNameA = name;
+        document.getElementById('upload-btn-a-comp').textContent = '📂 ' + name;
+        showMsg('Asset A restored: ' + data.months.length + ' months', 'status-msg-comp');
+      });
+    });
+
+    document.getElementById('file-hist-btn-b-comp')?.addEventListener('click', function() {
+      showFileHistoryDropdown(this, (name, data) => {
+        state.parsedB = data; state.fileNameB = name;
+        document.getElementById('upload-btn-b-comp').textContent = '📂 ' + name;
+        showMsg('Asset B restored: ' + data.months.length + ' months', 'status-msg-comp');
+      });
+    });
+
+    // ── Price inputs: re-run analysis on Enter or blur ──
+    const priceA = document.getElementById('price-a');
+    if (priceA) {
+      priceA.addEventListener('change', rerunAnalysisWithPrice);
+      priceA.addEventListener('keydown', e => { if (e.key === 'Enter') rerunAnalysisWithPrice(); });
+    }
+    ['price-a-comp', 'price-b-comp'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('change', rerunComparisonWithPrices);
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') rerunComparisonWithPrices(); });
+      }
     });
 
     // ── Price history buttons ──

@@ -54,17 +54,12 @@
 
       <div class="control-group">
         <label>Data File (Excel / CSV / HTML)</label>
-        <label class="upload-btn" id="upload-btn-a">
-          Upload File
-          <input type="file" id="file-a" accept=".xlsx,.xls,.csv,.html,.htm"/>
-        </label>
-      </div>
-
-      <div class="control-group">
-        <label>Purchase Price ($)</label>
-        <div class="price-wrap">
-          <input type="text" id="price-a" placeholder="e.g. 12,500,000"/>
-          <button class="hist-btn" id="price-hist-btn-a" title="Price history">▾</button>
+        <div class="upload-wrap">
+          <label class="upload-btn" id="upload-btn-a">
+            Upload File
+            <input type="file" id="file-a" accept=".xlsx,.xls,.csv,.html,.htm"/>
+          </label>
+          <button class="hist-btn" id="file-hist-btn-a" title="Recent files">📁</button>
         </div>
       </div>
 
@@ -91,6 +86,11 @@
     <div id="controls-bar" class="hidden">
 
       <span id="row-count" class="row-count-badge">— rows</span>
+
+      <div class="price-wrap controls-price">
+        <input type="text" id="price-a" placeholder="$ Purchase Price" title="Enter to enable materiality"/>
+        <button class="hist-btn" id="price-hist-btn-a" title="Price history">▾</button>
+      </div>
 
       <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
         <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>
@@ -174,17 +174,12 @@
 
         <div class="control-group">
           <label>Data File</label>
-          <label class="upload-btn" id="upload-btn-a-comp">
-            Upload File A
-            <input type="file" id="file-a-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
-          </label>
-        </div>
-
-        <div class="control-group">
-          <label>Purchase Price ($)</label>
-          <div class="price-wrap">
-            <input type="text" id="price-a-comp" placeholder="e.g. 12,500,000"/>
-            <button class="hist-btn" id="price-hist-btn-a-comp" title="Price history">▾</button>
+          <div class="upload-wrap">
+            <label class="upload-btn" id="upload-btn-a-comp">
+              Upload File A
+              <input type="file" id="file-a-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
+            </label>
+            <button class="hist-btn" id="file-hist-btn-a-comp" title="Recent files">📁</button>
           </div>
         </div>
       </div><!-- /Asset A -->
@@ -203,17 +198,12 @@
 
         <div class="control-group">
           <label>Data File</label>
-          <label class="upload-btn" id="upload-btn-b-comp">
-            Upload File B
-            <input type="file" id="file-b-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
-          </label>
-        </div>
-
-        <div class="control-group">
-          <label>Purchase Price ($)</label>
-          <div class="price-wrap">
-            <input type="text" id="price-b-comp" placeholder="e.g. 9,800,000"/>
-            <button class="hist-btn" id="price-hist-btn-b-comp" title="Price history">▾</button>
+          <div class="upload-wrap">
+            <label class="upload-btn" id="upload-btn-b-comp">
+              Upload File B
+              <input type="file" id="file-b-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
+            </label>
+            <button class="hist-btn" id="file-hist-btn-b-comp" title="Recent files">📁</button>
           </div>
         </div>
       </div><!-- /Asset B -->
@@ -232,6 +222,16 @@
     <div id="controls-bar-comp" class="hidden">
 
       <span id="row-count-comp" class="row-count-badge">— rows</span>
+
+      <div class="price-wrap controls-price">
+        <input type="text" id="price-a-comp" placeholder="$ Price A" title="Enter to enable materiality for Asset A"/>
+        <button class="hist-btn" id="price-hist-btn-a-comp" title="Price history">▾</button>
+      </div>
+
+      <div class="price-wrap controls-price">
+        <input type="text" id="price-b-comp" placeholder="$ Price B" title="Enter to enable materiality for Asset B"/>
+        <button class="hist-btn" id="price-hist-btn-b-comp" title="Price history">▾</button>
+      </div>
 
       <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
         <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>

@@ -167,8 +167,31 @@ body {
 .upload-btn:hover { background: #c5cae9; }
 input[type="file"] { display: none; }
 
+/* Upload button with recent-files btn */
+.upload-wrap { display: flex; gap: 4px; align-items: center; }
+.upload-wrap .upload-btn { flex: 1; min-width: 0; }
+
 /* Price input with history btn */
 .price-wrap { position: relative; display: flex; gap: 4px; }
+
+/* Inline price input inside the controls bar */
+.controls-price { min-width: 170px; }
+.controls-price input {
+  border: 1px solid var(--grey-border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  background: #fff;
+  color: var(--text-primary);
+  width: 100%;
+}
+.controls-price input:focus { outline: none; border-color: var(--blue-dark); }
+[data-theme="dark"] .controls-price input {
+  background: #252540;
+  color: #e0e0e0;
+  border-color: #444;
+}
+[data-theme="dark"] .controls-price input:focus { border-color: #90caf9; }
 .price-wrap input { flex: 1; }
 .hist-btn {
   background: var(--grey-bg);
@@ -357,7 +380,27 @@ input[type="file"] { display: none; }
   top: 52px;
   z-index: 10;
 }
-.anomaly-table th.metric-name-col { text-align: left; min-width: 200px; }
+.anomaly-table th.metric-name-col {
+  text-align: left;
+  min-width: 200px;
+  position: sticky;
+  left: 0;
+  z-index: 20;          /* above regular th (z:10) and sticky td.metric-name (z:5) */
+}
+/* Comparison: asset-label header also stays pinned */
+.comparison-table th.asset-label-col {
+  position: sticky;
+  left: 200px;
+  z-index: 20;
+  background: var(--blue-dark);
+}
+.comparison-table td.asset-label {
+  position: sticky;
+  left: 200px;
+  z-index: 4;
+  background: inherit;
+}
+[data-theme="dark"] .comparison-table th.asset-label-col { background: #09091a; }
 .anomaly-table th.col-skipped { background: #9e9e9e; }
 
 .anomaly-table td {
