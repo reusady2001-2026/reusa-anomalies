@@ -168,7 +168,7 @@ body {
 input[type="file"] { display: none; }
 
 /* Upload button with recent-files btn */
-.upload-wrap { display: flex; gap: 4px; align-items: center; }
+.upload-wrap { position: relative; display: flex; gap: 4px; align-items: center; }
 .upload-wrap .upload-btn { flex: 1; min-width: 0; }
 
 /* Price input with history btn */
