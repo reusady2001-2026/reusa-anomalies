@@ -697,10 +697,55 @@ const Engine = (() => {
     return monthsA.filter(m => setB.has(m));
   }
 
+  // ── HTML → ROWS PARSER ───────────────────────────────
+
+  /**
+   * Parse an HTML string (exported from Excel or any financial system)
+   * into the same 2-D array format that SheetJS produces, so the
+   * existing parseSheet() pipeline can consume it unchanged.
+   *
+   * Strategy:
+   *  1. Use DOMParser to build a document from the HTML string.
+   *  2. Find the largest <table> in the document (most data columns).
+   *  3. Walk every <tr>; for each <td>/<th> honour colspan by repeating
+   *     the cell value that many times, so column alignment is preserved.
+   *  4. Return the resulting 2-D array of string | null values.
+   */
+  function parseHTMLToRows(htmlString) {
+    const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+
+    // Pick the table with the most columns (widest = data table)
+    const tables = Array.from(doc.querySelectorAll('table'));
+    if (tables.length === 0) throw new Error('No <table> found in the HTML file.');
+
+    const table = tables.reduce((best, t) => {
+      const cols = Math.max(...Array.from(t.querySelectorAll('tr'))
+        .map(tr => Array.from(tr.querySelectorAll('td,th'))
+          .reduce((s, td) => s + (parseInt(td.getAttribute('colspan') || '1')), 0)));
+      return cols > best.cols ? { t, cols } : best;
+    }, { t: tables[0], cols: 0 }).t;
+
+    const rows = [];
+    table.querySelectorAll('tr').forEach(tr => {
+      const row = [];
+      tr.querySelectorAll('td, th').forEach(td => {
+        const span = parseInt(td.getAttribute('colspan') || '1');
+        const text = td.innerText !== undefined ? td.innerText.trim() : td.textContent.trim();
+        const val  = text === '' ? null : text;
+        for (let i = 0; i < span; i++) row.push(i === 0 ? val : null);
+      });
+      if (row.some(c => c !== null)) rows.push(row);
+    });
+
+    if (rows.length === 0) throw new Error('The HTML table appears to be empty.');
+    return rows;
+  }
+
   // ── PUBLIC API ────────────────────────────────────────
 
   return {
     parseSheet,
+    parseHTMLToRows,
     normalizeMonthLabel,
     classifyMetric,
     mean,
