@@ -149,18 +149,47 @@ const App = (() => {
 
   // ── PERIOD FILTER UI ──────────────────────────────────
 
-  function populatePeriodSelects(months) {
-    // In analyzer mode, last 2 months are skipped — user can only select from valid range
-    const validEnd = months.length - 3; // index of last selectable month
-    const selStart = document.getElementById('period-start');
-    const selEnd   = document.getElementById('period-end');
-    if (!selStart || !selEnd) return;
+  const MONTH_ABBR_TO_NUM = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+    Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const MONTH_NUM_TO_ABBR = Object.fromEntries(Object.entries(MONTH_ABBR_TO_NUM).map(([k,v])=>[v,k]));
 
-    const valid = months.slice(0, validEnd + 1);
-    selStart.innerHTML = valid.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-    selEnd.innerHTML   = valid.map((m, i) => `<option value="${i}">${m}</option>`).join('');
-    selEnd.selectedIndex = valid.length - 1;
-    selStart.selectedIndex = 0;
+  /** "Jan 2024" → "2024-01" */
+  function monthLabelToInput(label) {
+    const [abbr, yr] = label.split(' ');
+    return `${yr}-${MONTH_ABBR_TO_NUM[abbr] || '01'}`;
+  }
+
+  /** "2024-01" → index in months[], or -1 */
+  function inputValueToIdx(value, months) {
+    if (!value) return -1;
+    const [yr, mo] = value.split('-');
+    const label = `${MONTH_NUM_TO_ABBR[mo]} ${yr}`;
+    return months.indexOf(label);
+  }
+
+  function populatePeriodSelects(months) {
+    // Last 2 months are always skipped; user cannot select them
+    const validEnd = months.length - 3;
+    if (validEnd < 0) return;
+
+    const inStart = document.getElementById('period-start');
+    const inEnd   = document.getElementById('period-end');
+    if (!inStart || !inEnd) return;
+
+    const minVal = monthLabelToInput(months[0]);
+    const maxVal = monthLabelToInput(months[validEnd]);
+
+    inStart.min   = minVal;
+    inStart.max   = maxVal;
+    inStart.value = minVal;
+    inStart.disabled = false;
+    inStart.title = '';
+
+    inEnd.min   = minVal;
+    inEnd.max   = maxVal;
+    inEnd.value = maxVal;
+    inEnd.disabled = false;
+    inEnd.title = '';
   }
 
   // ── HISTORY DROPDOWN ──────────────────────────────────
@@ -219,13 +248,16 @@ const App = (() => {
     state.purchasePriceA = price;
     saveHistory(STORAGE_KEY_PRICES, price);
 
-    const selStart = document.getElementById('period-start');
-    const selEnd   = document.getElementById('period-end');
-    const pStart = selStart?.value !== '' ? parseInt(selStart.value) : null;
-    const pEnd   = selEnd?.value   !== '' ? parseInt(selEnd.value)   : null;
+    const inStart = document.getElementById('period-start');
+    const inEnd   = document.getElementById('period-end');
+    const pStart = inputValueToIdx(inStart?.value, state.parsedA.months);
+    const pEnd   = inputValueToIdx(inEnd?.value,   state.parsedA.months);
+    // Fall back to full range if picker values don't map to a known month
+    const resolvedStart = pStart >= 0 ? pStart : null;
+    const resolvedEnd   = pEnd   >= 0 ? pEnd   : null;
 
     try {
-      state.resultA = Engine.analyse(state.parsedA, price, pStart, pEnd);
+      state.resultA = Engine.analyse(state.parsedA, price, resolvedStart, resolvedEnd);
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
       renderAnalyzerTable();
       document.getElementById('controls-bar')?.classList.remove('hidden');

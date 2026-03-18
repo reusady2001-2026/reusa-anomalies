@@ -130,7 +130,8 @@ body {
 }
 .control-group { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
 .control-group label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.control-group input, .control-group select {
+.control-group input, .control-group select,
+.control-group input[type="month"] {
   border: 1px solid var(--grey-border);
   border-radius: 6px;
   padding: 8px 10px;
@@ -140,6 +141,7 @@ body {
   transition: border 0.15s;
   width: 100%;
 }
+.control-group input[disabled] { background: #f5f5f5; color: #bdbdbd; cursor: not-allowed; }
 .control-group input:focus, .control-group select:focus {
   outline: none;
   border-color: var(--blue-dark);
