@@ -49,104 +49,51 @@ const App = (() => {
     localStorage.setItem(key, JSON.stringify(hist.slice(0, MAX_HISTORY)));
   }
 
-  // ── INDEXEDDB FILE HISTORY ────────────────────────────
+  // ── FILE HISTORY (localStorage) ──────────────────────
 
-  const IDB_DB   = 'oaas-files';
-  const IDB_STORE = 'recent';
+  const STORAGE_KEY_FILES = 'oaas_file_history';
 
-  function idbOpen() {
-    return new Promise((res, rej) => {
-      const req = indexedDB.open(IDB_DB, 1);
-      req.onupgradeneeded = e => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(IDB_STORE))
-          db.createObjectStore(IDB_STORE, { keyPath: 'id', autoIncrement: true });
-      };
-      req.onsuccess = e => res(e.target.result);
-      req.onerror   = e => rej(e.target.error);
-    });
-  }
-
-  async function idbSaveFile(name, parsedData) {
+  function saveFileToHistory(name, parsedData) {
     try {
-      const db = await idbOpen();
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      const store = tx.objectStore(IDB_STORE);
-      const all = await new Promise((res, rej) => {
-        const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = rej;
-      });
-      // Replace existing entry with same name
-      const dup = all.find(x => x.name === name);
-      if (dup) store.delete(dup.id);
-      store.add({ name, savedAt: Date.now(), data: parsedData });
-      // Trim to MAX_HISTORY oldest entries
-      const remaining = all.filter(x => x.name !== name);
-      if (remaining.length >= MAX_HISTORY) {
-        remaining.sort((a, b) => a.savedAt - b.savedAt)
-          .slice(0, remaining.length - MAX_HISTORY + 1)
-          .forEach(x => store.delete(x.id));
-      }
-    } catch (e) { console.warn('IDB save:', e); }
+      let hist = loadFileHistory().filter(f => f.name !== name);
+      hist.unshift({ name, savedAt: Date.now(), data: parsedData });
+      localStorage.setItem(STORAGE_KEY_FILES, JSON.stringify(hist.slice(0, MAX_HISTORY)));
+    } catch (e) { console.warn('File history save failed:', e); }
   }
 
-  async function idbLoadFiles() {
-    try {
-      const db = await idbOpen();
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const store = tx.objectStore(IDB_STORE);
-      const all = await new Promise((res, rej) => {
-        const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = rej;
-      });
-      return all.sort((a, b) => b.savedAt - a.savedAt).slice(0, MAX_HISTORY);
-    } catch (e) { console.warn('IDB load:', e); return []; }
+  function loadFileHistory() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FILES) || '[]'); } catch { return []; }
   }
 
-  async function idbGetById(id) {
-    try {
-      const db = await idbOpen();
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const store = tx.objectStore(IDB_STORE);
-      return await new Promise((res, rej) => {
-        const r = store.get(id); r.onsuccess = () => res(r.result); r.onerror = rej;
-      });
-    } catch (e) { return null; }
-  }
-
-  async function showFileHistoryDropdown(btnEl, onSelect) {
+  function showFileHistoryDropdown(btnEl, onSelect) {
     const old = btnEl.parentElement.querySelector('.history-dropdown');
     if (old) { old.remove(); return; }
-    const files = await idbLoadFiles();
-    if (!files.length) {
-      const tip = document.createElement('div');
-      tip.className = 'history-dropdown';
-      tip.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files</div>';
-      btnEl.parentElement.appendChild(tip);
-      setTimeout(() => {
-        document.addEventListener('click', function h() { tip.remove(); document.removeEventListener('click', h); });
-      }, 10);
-      return;
-    }
+    const files = loadFileHistory();
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
     drop.style.minWidth = '260px';
-    drop.innerHTML = files.map(f => {
-      const d = new Date(f.savedAt).toLocaleDateString();
-      return `<div class="history-item" data-id="${f.id}">
-        <div style="font-weight:600">${f.name}</div>
-        <div style="font-size:0.72rem;color:#9e9e9e">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
-      </div>`;
-    }).join('');
-    btnEl.parentElement.appendChild(drop);
-    drop.querySelectorAll('.history-item').forEach(item => {
-      item.addEventListener('click', async () => {
-        const rec = await idbGetById(parseInt(item.dataset.id));
-        if (rec) onSelect(rec.name, rec.data);
-        drop.remove();
+    if (!files.length) {
+      drop.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files</div>';
+    } else {
+      drop.innerHTML = files.map((f, i) => {
+        const d = new Date(f.savedAt).toLocaleDateString();
+        return `<div class="history-item" data-idx="${i}">
+          <div style="font-weight:600">${f.name}</div>
+          <div style="font-size:0.72rem;color:#9e9e9e">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
+        </div>`;
+      }).join('');
+      drop.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const rec = files[parseInt(item.dataset.idx)];
+          if (rec) onSelect(rec.name, rec.data);
+          drop.remove();
+        });
       });
-    });
+    }
+    btnEl.parentElement.appendChild(drop);
     setTimeout(() => {
       document.addEventListener('click', function h(e) {
-        if (!drop.contains(e.target)) { drop.remove(); document.removeEventListener('click', h); }
+        if (!drop.contains(e.target) && e.target !== btnEl) { drop.remove(); document.removeEventListener('click', h); }
       });
     }, 10);
   }
@@ -580,7 +527,7 @@ const App = (() => {
         state.parsedA = Engine.parseSheet(rows);
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
-        idbSaveFile(file.name, state.parsedA);
+        saveFileToHistory(file.name, state.parsedA);
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
     });
 
@@ -604,7 +551,7 @@ const App = (() => {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
         showMsg('Asset A loaded: ' + state.parsedA.months.length + ' months', 'status-msg-comp');
-        idbSaveFile(file.name, state.parsedA);
+        saveFileToHistory(file.name, state.parsedA);
       } catch (err) { alert('Error reading File A: ' + err.message); }
     });
 
@@ -617,7 +564,7 @@ const App = (() => {
         const rows = await readFileAsRows(file);
         state.parsedB = Engine.parseSheet(rows);
         showMsg('Asset B loaded: ' + state.parsedB.months.length + ' months', 'status-msg-comp');
-        idbSaveFile(file.name, state.parsedB);
+        saveFileToHistory(file.name, state.parsedB);
       } catch (err) { alert('Error reading File B: ' + err.message); }
     });
 
