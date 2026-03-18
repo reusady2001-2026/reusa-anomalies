@@ -256,17 +256,21 @@ const RuleEngine = (() => {
       id: 'MKT_PORTFOLIO_INCOME',
       category: 'market',
       label: 'Market-wide signal — macro cycle turning or regulatory change affecting all comparable assets',
-      weight: 0.80,
+      weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
-        // 3+ metrics of same type / section show same-direction anomaly in same month
-        const sameDir = ctx.allMetrics.filter(m =>
-          m.id !== ctx.metric.id &&
-          m.section === ctx.metric.section &&
-          (m.anomalies || []).includes(ctx.monthIdx) &&
-          m.zScores[ctx.monthIdx] &&
-          Math.sign(m.zScores[ctx.monthIdx].effectiveZ) === Math.sign(ctx.anomaly.effectiveZ)
-        );
-        return sameDir.length >= 2; // 2 more = 3 total including current
+        // Requires ALL THREE: same section, same direction AND within ±1-month window
+        // AND at least 3 other qualifying metrics (4 total including current)
+        const qualifying = ctx.allMetrics.filter(m => {
+          if (m.id === ctx.metric.id) return false;
+          if (m.section !== ctx.metric.section) return false;
+          // Must have an anomaly within ±1 month of this one
+          return (m.anomalies || []).some(ai => {
+            if (Math.abs(ai - ctx.monthIdx) > 1) return false;
+            const mZ = m.zScores[ai];
+            return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
+          });
+        });
+        return qualifying.length >= 3; // 3 others + current = 4 total
       },
       alternatives: [
         'Systemic projection error in budget model',
@@ -279,16 +283,21 @@ const RuleEngine = (() => {
       id: 'MKT_PORTFOLIO_EXPENSE',
       category: 'market',
       label: 'Macro inflation or repricing signal — portfolio-wide insurance renewal or compliance cost',
-      weight: 0.78,
+      weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
-        const sameDir = ctx.allMetrics.filter(m =>
-          m.id !== ctx.metric.id &&
-          m.section === 'EXPENSES' &&
-          (m.anomalies || []).includes(ctx.monthIdx) &&
-          m.zScores[ctx.monthIdx] &&
-          Math.sign(m.zScores[ctx.monthIdx].effectiveZ) === Math.sign(ctx.anomaly.effectiveZ)
-        );
-        return ctx.metric.section === 'EXPENSES' && sameDir.length >= 3;
+        if (ctx.metric.section !== 'EXPENSES') return false;
+        // Requires ALL THREE: same section, same direction AND within ±1-month window
+        // AND at least 3 other qualifying metrics (4 total including current)
+        const qualifying = ctx.allMetrics.filter(m => {
+          if (m.id === ctx.metric.id) return false;
+          if (m.section !== 'EXPENSES') return false;
+          return (m.anomalies || []).some(ai => {
+            if (Math.abs(ai - ctx.monthIdx) > 1) return false;
+            const mZ = m.zScores[ai];
+            return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
+          });
+        });
+        return qualifying.length >= 3; // 3 others + current = 4 total
       },
       alternatives: [
         'Service charge reconciliation quarter',
@@ -430,6 +439,17 @@ const RuleEngine = (() => {
     },
   ];
 
+  // ── CATEGORY PRIORITY ─────────────────────────────────
+  // Lower number = more specific = ranks higher when selecting primary reason.
+  const CATEGORY_PRIORITY = {
+    asset_type:  1,
+    location:    2,
+    seasonality: 3,
+    political:   3,
+    operational: 4,
+    market:      5,
+  };
+
   // ── JACCARD SIMILARITY ────────────────────────────────
 
   function jaccard(setA, setB) {
@@ -446,12 +466,44 @@ const RuleEngine = (() => {
     const fired = [];
     RULES.forEach(rule => {
       try {
-        if (rule.condition(ctx)) {
-          fired.push({ ...rule });
-        }
+        if (rule.condition(ctx)) fired.push({ ...rule });
       } catch (_) {}
     });
-    return fired.sort((a, b) => b.weight - a.weight);
+    // Sort: specific categories first, then weight descending within the same category.
+    fired.sort((a, b) => {
+      const pa = CATEGORY_PRIORITY[a.category] ?? 99;
+      const pb = CATEGORY_PRIORITY[b.category] ?? 99;
+      if (pa !== pb) return pa - pb;   // more specific category wins
+      return b.weight - a.weight;      // higher weight wins within same category
+    });
+    return fired;
+  }
+
+  // ── PRIMARY RULE SELECTION ────────────────────────────
+  // Rules:
+  //   1. Any non-market rule with weight > 0.60 takes priority over market rules.
+  //      Among qualifying non-market rules, category priority then weight decides.
+  //   2. If no non-market rule clears 0.60, a market rule may become primary
+  //      (its condition already enforces the minimum-data requirement).
+  //   3. Fall back to the highest-weight non-market rule if no market rule fired.
+
+  const MARKET_CATS = new Set(['market']);
+
+  function selectPrimary(fired) {
+    // fired is already sorted by (category priority asc, weight desc)
+
+    // Pass 1: first non-market rule with weight > 0.60
+    for (const r of fired) {
+      if (!MARKET_CATS.has(r.category) && r.weight > 0.60) return r;
+    }
+
+    // Pass 2: market rule (condition already validates minimum peer count)
+    for (const r of fired) {
+      if (MARKET_CATS.has(r.category)) return r;
+    }
+
+    // Pass 3: any fired rule (handles weak specific rules ≤ 0.60 weight)
+    return fired[0] || null;
   }
 
   // ── CLUSTER ANOMALIES ─────────────────────────────────
@@ -536,7 +588,7 @@ const RuleEngine = (() => {
         const fired = scoreRules(ctx);
         const firedRuleIds = fired.map(r => r.id);
 
-        const primary = fired[0] || {
+        const primary = selectPrimary(fired) || {
           label: 'Unclassified anomaly — insufficient context to determine primary cause',
           weight: 0,
           alternatives: [
@@ -546,8 +598,10 @@ const RuleEngine = (() => {
           ],
         };
 
-        const alternatives = fired.length > 1
-          ? fired.slice(1, 4).map(r => r.label)
+        // Alternatives: all other fired rules except the primary, in priority order
+        const altRules = fired.filter(r => r.id !== primary.id);
+        const alternatives = altRules.length > 0
+          ? altRules.slice(0, 3).map(r => r.label)
           : primary.alternatives.slice(0, 3);
 
         // Pad alternatives to minimum 3
