@@ -600,6 +600,7 @@ const Enrichment = (() => {
 
     // snap: full object when ctx available; minimal stub when not (signals 1–4 still work)
     const snap    = ctx ? monthSnapshot(ctx, result.monthLabel) : { label: result.monthLabel };
+    console.log('[DEBUG enrichOne] monthLabel:', result.monthLabel, '| ctx fred keys:', Object.keys(ctx?.fred || {}), '| snap.fedfunds:', snap.fedfunds, '| snap.cpiYoY:', snap.cpiYoY, '| snap.stateUR:', snap.stateUR);
     const hasData = ctx != null && (snap.fedfunds != null || snap.cpiYoY != null ||
                     snap.stateUR != null || (snap.femaRecent?.length || 0) > 0);
 
@@ -655,6 +656,8 @@ const Enrichment = (() => {
    */
   function enrichAll(engineResult, ruleResults, dataContext) {
     if (!ruleResults || !ruleResults.results) return ruleResults;
+    console.log('[DEBUG enrichAll] dataContext received:', dataContext);
+    console.log('[DEBUG enrichAll] fred.fedfunds keys count:', Object.keys(dataContext?.fred?.fedfunds || {}).length);
     const enriched = ruleResults.results.map(r => enrichOne(r, dataContext));
 
     // Update metric.reasonData in-place

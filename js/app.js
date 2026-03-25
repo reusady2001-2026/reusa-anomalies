@@ -447,6 +447,10 @@ const App = (() => {
     try {
       state.resultA  = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
+      // DEBUG
+      console.log('[DEBUG _runAnalysisCore] state.dataContext:', state.dataContext);
+      console.log('[DEBUG _runAnalysisCore] fred keys:', Object.keys(state.dataContext?.fred || {}));
+      console.log('[DEBUG _runAnalysisCore] fedfunds sample:', Object.entries(state.dataContext?.fred?.fedfunds || {}).slice(0,3));
       // Enrich rule output with real-world data (no-op if context is null)
       state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext);
       renderAnalyzerTable();
