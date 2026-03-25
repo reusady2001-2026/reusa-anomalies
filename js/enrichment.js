@@ -54,6 +54,12 @@ const Enrichment = (() => {
 
     // Federal Funds Rate
     const fedfunds     = safeGet(fred.fedfunds,     label);
+    // DEBUG: show label vs what keys exist in the FRED map
+    console.log('[DEBUG monthSnapshot] label:', JSON.stringify(label),
+      '| fedfunds map size:', Object.keys(fred.fedfunds || {}).length,
+      '| sample keys:', Object.keys(fred.fedfunds || {}).slice(0,3),
+      '| direct hit:', (fred.fedfunds || {})[label],
+      '| cpi map size:', Object.keys(fred.cpi || {}).length);
     const fedfundsPrev = safeGet(fred.fedfunds,     prevLabel(label));
     const fedChangeBps = (fedfunds != null && fedfundsPrev != null)
       ? Math.round((fedfunds - fedfundsPrev) * 100) : null;
@@ -323,10 +329,15 @@ const Enrichment = (() => {
       (snap.femaRecent?.length || 0) > 0 || (snap.femaQuarter?.length || 0) > 0 ||
       (snap.stateBillsYear?.length || 0) > 0 || (snap.billsYear?.length || 0) > 0);
 
-    if (!hasAnyData) return {
-      score: 0, icon: '➖', name: 'External Data',
-      value: 'No data loaded', explanation: 'No real-world data available for this location/period',
-    };
+    if (!hasAnyData) {
+      console.log('[DEBUG signal5] hasAnyData=false — snap keys:', Object.keys(snap),
+        '| snap.fedfunds:', snap.fedfunds, '| snap.cpiYoY:', snap.cpiYoY,
+        '| snap.stateUR:', snap.stateUR, '| full snap:', JSON.stringify(snap));
+      return {
+        score: 0, icon: '➖', name: 'External Data',
+        value: 'No data loaded', explanation: 'No real-world data available for this location/period',
+      };
+    }
 
     const rule     = candidate.rule;
     const label    = (rule?.label || candidate.label || '').toLowerCase();
