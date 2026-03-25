@@ -116,7 +116,7 @@ const Context = (() => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // ── CACHE ─────────────────────────────────────────────
-  const CACHE_KEY = 'oaas_context_v2';
+  const CACHE_KEY = 'oaas_context_v3'; // bumped to bust stale empty-FRED caches from pre-proxy era
   const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
   function _cacheKey(stateAbbr, city, months) {
@@ -130,6 +130,10 @@ const Context = (() => {
       const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
       const entry = all[key];
       if (!entry || Date.now() - entry.ts > CACHE_TTL) return null;
+      // Reject entries where FRED is entirely empty — cached during CORS failures
+      const fred = entry.data?.fred || {};
+      const hasFredData = Object.values(fred).some(map => Object.keys(map || {}).length > 0);
+      if (!hasFredData) return null;
       return entry.data;
     } catch { return null; }
   }
