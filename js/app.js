@@ -427,8 +427,6 @@ const App = (() => {
       console.error('fetchDataContext failed:', e);
       state.dataContext = null;
     }
-    console.log('dataContext:', state.dataContext);
-
     _runAnalysisCore();
     document.getElementById('controls-bar')?.classList.remove('hidden');
   }
@@ -499,8 +497,6 @@ const App = (() => {
       console.error('fetchDataContext failed:', e);
       state.dataContext = null;
     }
-    console.log('dataContext:', state.dataContext);
-
     const nameA = document.getElementById('prop-name-a')?.value.trim() || 'Asset A';
     const nameB = document.getElementById('prop-name-b')?.value.trim() || 'Asset B';
     state.propertyNameA = nameA;
