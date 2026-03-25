@@ -268,9 +268,9 @@ const Enrichment = (() => {
     const isMarket = rule.category === 'market';
     if (isMarket) {
       if (peerCount >= 3) return {
-        score: 1, icon: '✅', name: 'Peer Corroboration',
+        score: 0, icon: '➖', name: 'Peer Corroboration',
         value: `${peerCount} peers`,
-        explanation: `${peerCount} peer metrics show same pattern — consistent with market-wide signal`,
+        explanation: 'Peer corroboration is expected by definition for a market rule — it is a condition of firing, not independent evidence.',
       };
       if (peerCount > 0) return {
         score: 0, icon: '➖', name: 'Peer Corroboration',

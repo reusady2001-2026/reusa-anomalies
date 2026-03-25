@@ -258,20 +258,25 @@ const RuleEngine = (() => {
       label: 'Market-wide signal — macro cycle turning or regulatory change affecting all comparable assets',
       weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
-        // Requires ALL THREE: same section, same direction AND within ±1-month window
-        // AND at least 3 other qualifying metrics (4 total including current)
+        // ALL THREE conditions must hold:
+        // A — at least 3 peer metrics (4 total) with anomaly within ±1 month, same direction
+        // B — peers span both INCOME and EXPENSES sections (true market-wide signal)
+        // C — every qualifying peer must have |effectiveZ| > 1.5
         const qualifying = ctx.allMetrics.filter(m => {
           if (m.id === ctx.metric.id) return false;
-          if (m.section !== ctx.metric.section) return false;
-          // Must have an anomaly within ±1 month of this one
           return (m.anomalies || []).some(ai => {
             if (Math.abs(ai - ctx.monthIdx) > 1) return false;
             const mZ = m.zScores[ai];
-            return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
+            return mZ &&
+              Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ) &&
+              Math.abs(mZ.effectiveZ) > 1.5;  // C: minimum Z threshold
           });
         });
         ctx.peerCount = qualifying.length;
-        return qualifying.length >= 3; // 3 others + current = 4 total
+        if (qualifying.length < 3) return false;  // A
+        const hasIncome   = qualifying.some(m => m.section === 'INCOME');
+        const hasExpenses = qualifying.some(m => m.section === 'EXPENSES');
+        return hasIncome && hasExpenses;  // B
       },
       alternatives: [
         'Systemic projection error in budget model',
@@ -287,19 +292,25 @@ const RuleEngine = (() => {
       weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
         if (ctx.metric.section !== 'EXPENSES') return false;
-        // Requires ALL THREE: same section, same direction AND within ±1-month window
-        // AND at least 3 other qualifying metrics (4 total including current)
+        // ALL THREE conditions must hold:
+        // A — at least 3 peer metrics (4 total) with anomaly within ±1 month, same direction
+        // B — peers span both INCOME and EXPENSES sections (true market-wide signal)
+        // C — every qualifying peer must have |effectiveZ| > 1.5
         const qualifying = ctx.allMetrics.filter(m => {
           if (m.id === ctx.metric.id) return false;
-          if (m.section !== 'EXPENSES') return false;
           return (m.anomalies || []).some(ai => {
             if (Math.abs(ai - ctx.monthIdx) > 1) return false;
             const mZ = m.zScores[ai];
-            return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
+            return mZ &&
+              Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ) &&
+              Math.abs(mZ.effectiveZ) > 1.5;  // C: minimum Z threshold
           });
         });
         ctx.peerCount = qualifying.length;
-        return qualifying.length >= 3; // 3 others + current = 4 total
+        if (qualifying.length < 3) return false;  // A
+        const hasIncome   = qualifying.some(m => m.section === 'INCOME');
+        const hasExpenses = qualifying.some(m => m.section === 'EXPENSES');
+        return hasIncome && hasExpenses;  // B
       },
       alternatives: [
         'Service charge reconciliation quarter',
@@ -487,6 +498,18 @@ const RuleEngine = (() => {
   // which is overridden by evidence-based ranking in enrichment.
 
   function selectPrimary(fired) {
+    if (!fired || fired.length === 0) return null;
+
+    // PASS 1 — Any non-market rule is preferred over the market rule.
+    // fired is already sorted by category priority + weight (from scoreRules).
+    const nonMarket = fired.filter(r => r.category !== 'market');
+    if (nonMarket.length > 0) return nonMarket[0];
+
+    // PASS 2 — Market rule only when no specific rule fired.
+    const market = fired.filter(r => r.category === 'market');
+    if (market.length > 0) return market[0];
+
+    // PASS 3 — Fallback: no rules classified (shouldn't normally reach here).
     return fired[0] || null;
   }
 
