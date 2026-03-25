@@ -596,6 +596,10 @@ const RuleEngine = (() => {
         const fired = scoreRules(ctx);
         const firedRuleIds = fired.map(r => r.id);
 
+        console.log('=== ANOMALY:', metric.name, monthLabel);
+        console.log('Rules fired:', fired.map(r => r.id + ' (cat:' + r.category + ' w:' + r.weight + ')'));
+        console.log('Primary selected:', selectPrimary(fired)?.id);
+
         const primary = selectPrimary(fired) || {
           label: 'Unclassified anomaly — insufficient context to determine primary cause',
           weight: 0,
