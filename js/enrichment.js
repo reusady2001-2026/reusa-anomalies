@@ -597,7 +597,7 @@ const Enrichment = (() => {
 
   // ── ENRICH ONE RESULT ─────────────────────────────────
 
-  function enrichOne(result, ctx) {
+  function enrichOne(result, ctx, allMetrics, months) {
     if (!result) return result;
 
     // snap: full object when ctx available; minimal stub when not (signals 1–4 still work)
@@ -605,30 +605,64 @@ const Enrichment = (() => {
     const hasData = ctx != null && (snap.fedfunds != null || snap.cpiYoY != null ||
                     snap.stateUR != null || (snap.femaRecent?.length || 0) > 0);
 
+    // ── Reasoner: data-driven reasoning runs first ───────────────────────────
+    const metric = (allMetrics || []).find(m => m.id === result.metricId) || null;
+    const reasonerResult = (typeof Reasoner !== 'undefined' && metric)
+      ? Reasoner.analyse(metric, result.monthIdx, allMetrics, months, snap)
+      : null;
+
     // ── Pass 1: Score every fired rule candidate and sort by evidence ──────
     // Uses allFiredRules (full objects from rules.js) when available.
     const allFiredRules = result.allFiredRules || [];
     const oldPrimaryId  = result.primary?.id;
 
     let sortedScored = [];
-    let newPrimary   = result.primary;
-    let newAlts      = result.alternatives || [];
+    let rulePrimary  = result.primary;
+    let ruleAlts     = result.alternatives || [];
 
     if (allFiredRules.length > 0) {
       sortedScored = _evidenceSort(allFiredRules.map(rule => _scoreCandidate(result, rule, snap)));
-      newPrimary   = sortedScored[0].rule;
+      rulePrimary  = sortedScored[0].rule;
       const altRules = sortedScored.slice(1);
       if (altRules.length > 0) {
-        newAlts = altRules.map(c => c.rule.label);
+        ruleAlts = altRules.map(c => c.rule.label);
       } else {
-        newAlts = (newPrimary.alternatives || []).slice(0, 3);
+        ruleAlts = (rulePrimary.alternatives || []).slice(0, 3);
       }
-      while (newAlts.length < 3) newAlts.push('Insufficient data for additional hypothesis');
-      newAlts = newAlts.slice(0, 3);
+      while (ruleAlts.length < 3) ruleAlts.push('Insufficient data for additional hypothesis');
+      ruleAlts = ruleAlts.slice(0, 3);
     }
 
-    // ── Pass 2: Build enriched text using evidence-ranked primary ───────────
-    const updatedResult = { ...result, primary: newPrimary, alternatives: newAlts };
+    // ── Reasoner integration: merge reasoner result with rule engine ─────────
+    let finalPrimary = rulePrimary;
+    let finalAlts    = ruleAlts;
+    let generatedBy  = 'fallback';
+    let reasonerEvidenceProfile = null;
+
+    if (reasonerResult) {
+      const rGenBy = reasonerResult.primary.generatedBy;
+      reasonerEvidenceProfile = reasonerResult.evidenceProfile;
+
+      if (rGenBy === 'data_pattern' || rGenBy === 'external_data') {
+        // Reasoner wins — use its primary and alternatives
+        finalPrimary = reasonerResult.primary;
+        finalAlts    = reasonerResult.alternatives.map(a => a.label || a).slice(0, 2);
+        // Slot 3: old rule engine primary (unless it's a market-wide signal)
+        const ruleLabel = rulePrimary?.label || '';
+        finalAlts.push(ruleLabel);
+        finalAlts = finalAlts.slice(0, 3);
+        generatedBy = rGenBy;
+      } else {
+        // Rule engine wins — keep its primary, insert reasoner as first alternative
+        finalPrimary = rulePrimary;
+        const reasonerLabel = reasonerResult.primary.label || '';
+        finalAlts = [reasonerLabel, ...ruleAlts].slice(0, 3);
+        generatedBy = rGenBy;
+      }
+    }
+
+    // ── Pass 2: Build enriched text using final primary ──────────────────────
+    const updatedResult = { ...result, primary: finalPrimary, alternatives: finalAlts };
 
     const enrichedPrimary      = hasData ? buildEnrichedPrimary(updatedResult, snap, ctx)      : null;
     const enrichedAlternatives = hasData ? buildEnrichedAlternatives(updatedResult, snap, ctx) : null;
@@ -641,9 +675,12 @@ const Enrichment = (() => {
       enrichedAlternatives,
       dataSources,
       corroboratingNote,
+      generatedBy,
+      reasonerResult,
     };
 
     // ── Pass 3: Assemble display evidence profile with enriched labels ───────
+    // Use rule-engine evidence profile (the existing 5-signal system)
     const evidenceProfile = _buildDisplayProfile(sortedScored, enrichedResult, oldPrimaryId);
 
     return { ...enrichedResult, evidenceProfile };
@@ -657,7 +694,9 @@ const Enrichment = (() => {
    */
   function enrichAll(engineResult, ruleResults, dataContext) {
     if (!ruleResults || !ruleResults.results) return ruleResults;
-    const enriched = ruleResults.results.map(r => enrichOne(r, dataContext));
+    const allMetrics = engineResult?.metrics || [];
+    const months     = engineResult?.months  || [];
+    const enriched   = ruleResults.results.map(r => enrichOne(r, dataContext, allMetrics, months));
 
     // Update metric.reasonData in-place
     if (engineResult) {
