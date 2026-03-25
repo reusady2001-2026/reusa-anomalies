@@ -396,8 +396,77 @@ const Reasoner = (() => {
       });
     });
 
-    // Steps 3-6 not yet implemented — placeholder return
-    return { coMovers, triggeredGroups };
+    // ── STEP 3: Rank triggeredGroups[] ───────────────────
+    triggeredGroups.sort((a, b) => {
+      // 1. matchCount descending
+      if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+
+      // 2. Coverage ratio descending (matchCount / total metrics in group)
+      const covA = a.matchCount / a.group.metrics.length;
+      const covB = b.matchCount / b.group.metrics.length;
+      if (Math.abs(covB - covA) > 1e-9) return covB - covA;
+
+      // 3. Average |Z| of matchedMetrics descending
+      const avgZ = tg => tg.matchedMetrics.reduce((s, cm) => s + Math.abs(cm.effectiveZ), 0)
+                         / (tg.matchedMetrics.length || 1);
+      return avgZ(b) - avgZ(a);
+    });
+
+    // ── STEP 4: Single-metric reason lookup ──────────────
+    // Keys: "NORMALISED NAME|dir" where dir is 'up' or 'down'.
+    // Lookup is applied after normalising the metric name to uppercase + trimmed.
+    const SINGLE_METRIC_REASONS = {
+      // Income DOWN
+      'MARKET RENT|down':                    'Market rent fell — possible rent reduction, pricing correction, or unit mix change',
+      '(LOSS)/GAIN TO LEASE|down':           'Loss-to-lease widened — units are leasing below market rent, suggesting concession pressure or below-market renewals',
+      'LESS: VACANCY|down':                  'Vacancy loss increased — more units are empty than in prior months',
+      'RESIDENTIAL RENT|down':               'Residential rent collected dropped — possible delinquency, vacant unit, or lease adjustment',
+      'DELINQUENCY|down':                    'Delinquency increased — tenants are not paying on time or at all',
+      'SECTION 8|down':                      'Section 8 income changed — subsidy payment timing, unit count, or voucher status changed',
+      'DOWN UNITS|down':                     'Down units increased — units taken offline for repairs or compliance',
+      'SELLER ARREARS|down':                 'Seller arrears balance changed — acquisition adjustment or prior owner balance movement',
+      // Income UP
+      'MARKET RENT|up':                      'Market rent increased — rent growth, new lease pricing uplift, or unit mix improvement',
+      '(LOSS)/GAIN TO LEASE|up':             'Gain-to-lease improved — units leasing above market rent or prior loss-to-lease recovered',
+      'LESS: VACANCY|up':                    'Vacancy loss decreased — occupancy improved, more units leased',
+      // Expense UP
+      'BAD DEBTS EXPENSE|up':                'Bad debt write-off — one or more tenant balances written off as uncollectable',
+      'BAD DEBT RECOVERIES|up':              'Bad debt recovery reversed — previously recovered amount was clawed back or reclassified',
+      'REAL ESTATE TAXES|up':                'Real estate tax increased — annual reassessment, new tax rate, or supplemental bill',
+      'PROPERTY & LIABILITY INSURANCE|up':   'Insurance premium increased — annual renewal at higher rate, new coverage requirement, or claims history surcharge',
+      'MANAGEMENT FEES|up':                  'Management fee increased — tied to gross revenue increase or fee structure change',
+      'LEGAL L & T|up':                      'Legal costs increased — eviction proceedings, lease disputes, or tenant litigation',
+      'SNOW REMOVAL CONTRACT|up':            'Snow removal costs spiked — heavy snowfall event requiring emergency or extra service',
+      'PROPERTY INSPECTION|up':              'Property inspection cost — scheduled or unscheduled inspection occurred',
+      'VIOLATION PENALTY|up':                'Violation penalty charged — regulatory or municipal violation issued against the property',
+    };
+
+    function getSingleMetricReason(m, section, ez) {
+      const nameKey = (m.name || '').trim().toUpperCase();
+      const dir     = (ez == null ? 0 : ez) >= 0 ? 'up' : 'down';
+      const key     = `${nameKey}|${dir}`;
+
+      if (SINGLE_METRIC_REASONS[key]) return SINGLE_METRIC_REASONS[key];
+
+      // Dynamic fallback
+      const name = m.name || 'This metric';
+      if (section === 'EXPENSES') {
+        return dir === 'up'
+          ? `${name} increased — one-time charge, vendor invoice, or service cost above normal monthly level`
+          : `${name} decreased — below-normal spend, possible delayed invoice, credit, or service reduction`;
+      }
+      return dir === 'down'
+        ? `${name} fell below normal — revenue shortfall, possible timing issue or operational change`
+        : `${name} exceeded normal — above-average revenue, possible catch-up payment, new income source, or favorable timing`;
+    }
+
+    // Steps 5-6 not yet implemented — placeholder return
+    const selfEz = selfZ ? selfZ.effectiveZ : null;
+    return {
+      triggeredGroups,
+      topGroup:           triggeredGroups[0] || null,
+      singleMetricReason: getSingleMetricReason(metric, metric.section, selfEz),
+    };
   }
 
   return { analyse };
