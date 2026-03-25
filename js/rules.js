@@ -258,6 +258,7 @@ const RuleEngine = (() => {
       label: 'Market-wide signal — macro cycle turning or regulatory change affecting all comparable assets',
       weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
+        if (ctx.metric.section === 'EXPENSES') return false;  // MKT_PORTFOLIO_EXPENSE handles EXPENSES
         // Mutual exclusion: if no same-section peer is anomalous at this exact month,
         // the metric is isolated in its section — contradicts a portfolio-wide claim.
         const hasSectionPeer = ctx.allMetrics.some(m =>
