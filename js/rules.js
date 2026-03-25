@@ -258,6 +258,14 @@ const RuleEngine = (() => {
       label: 'Market-wide signal — macro cycle turning or regulatory change affecting all comparable assets',
       weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
+        // Mutual exclusion: if no same-section peer is anomalous at this exact month,
+        // the metric is isolated in its section — contradicts a portfolio-wide claim.
+        const hasSectionPeer = ctx.allMetrics.some(m =>
+          m.id !== ctx.metric.id &&
+          m.section === ctx.metric.section &&
+          (m.anomalies || []).includes(ctx.monthIdx));
+        if (!hasSectionPeer) return false;
+
         // ALL THREE conditions must hold:
         // A — at least 3 peer metrics (4 total) with anomaly within ±1 month, same direction
         // B — peers span both INCOME and EXPENSES sections (true market-wide signal)
@@ -292,6 +300,14 @@ const RuleEngine = (() => {
       weight: 0.65,  // reduced: supporting rule, not dominant
       condition: ctx => {
         if (ctx.metric.section !== 'EXPENSES') return false;
+        // Mutual exclusion: if no same-section peer is anomalous at this exact month,
+        // the metric is isolated in its section — contradicts a portfolio-wide claim.
+        const hasSectionPeer = ctx.allMetrics.some(m =>
+          m.id !== ctx.metric.id &&
+          m.section === ctx.metric.section &&
+          (m.anomalies || []).includes(ctx.monthIdx));
+        if (!hasSectionPeer) return false;
+
         // ALL THREE conditions must hold:
         // A — at least 3 peer metrics (4 total) with anomaly within ±1 month, same direction
         // B — peers span both INCOME and EXPENSES sections (true market-wide signal)
@@ -595,10 +611,6 @@ const RuleEngine = (() => {
 
         const fired = scoreRules(ctx);
         const firedRuleIds = fired.map(r => r.id);
-
-        console.log('=== ANOMALY:', metric.name, monthLabel);
-        console.log('Rules fired:', fired.map(r => r.id + ' (cat:' + r.category + ' w:' + r.weight + ')'));
-        console.log('Primary selected:', selectPrimary(fired)?.id);
 
         const primary = selectPrimary(fired) || {
           label: 'Unclassified anomaly — insufficient context to determine primary cause',
