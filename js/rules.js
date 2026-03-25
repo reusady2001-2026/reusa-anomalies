@@ -270,6 +270,7 @@ const RuleEngine = (() => {
             return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
           });
         });
+        ctx.peerCount = qualifying.length;
         return qualifying.length >= 3; // 3 others + current = 4 total
       },
       alternatives: [
@@ -297,6 +298,7 @@ const RuleEngine = (() => {
             return mZ && Math.sign(mZ.effectiveZ) === Math.sign(ctx.anomaly.effectiveZ);
           });
         });
+        ctx.peerCount = qualifying.length;
         return qualifying.length >= 3; // 3 others + current = 4 total
       },
       alternatives: [
@@ -583,6 +585,7 @@ const RuleEngine = (() => {
           assetInfo,
           monthIdx: relIdx,
           monthLabel,
+          peerCount: 0,
         };
 
         const fired = scoreRules(ctx);
@@ -621,6 +624,8 @@ const RuleEngine = (() => {
           pnl: z.pnl,
           primary,
           alternatives,
+          peerCount: ctx.peerCount || 0,
+          anomalyCount: (metric.anomalies || []).length,
         };
 
         allResults.push(result);

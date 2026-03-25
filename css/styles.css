@@ -908,6 +908,97 @@ input[type="file"] { display: none; }
 [data-theme="dark"] .ds-period { color: #555; }
 [data-theme="dark"] .ds-note   { color: #90caf9; }
 
+/* ── EVIDENCE PROFILE ── */
+.ev-panel {
+  margin-top: 12px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 10px;
+}
+.ev-warning {
+  background: #fff8e1;
+  border-left: 3px solid #f9a825;
+  color: #5d4037;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+.ev-score-line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+}
+.ev-score-count { color: #1a237e; }
+.ev-score-sep   { color: #bdbdbd; }
+.ev-score-share { color: #2e7d32; }
+.ev-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.ev-signal {
+  display: grid;
+  grid-template-columns: 1.4em 7em 1fr;
+  align-items: baseline;
+  font-size: 0.78rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  gap: 4px;
+}
+.ev-signal-supports   { background: rgba(46,125,50,0.07); }
+.ev-signal-contradicts{ background: rgba(183,28,28,0.07); }
+.ev-signal-neutral    { background: transparent; }
+.ev-signal-icon { font-size: 0.85em; }
+.ev-signal-name { color: #555; font-size: 0.75rem; }
+.ev-signal-value { color: #1a237e; font-weight: 600; font-size: 0.75rem; }
+.ev-signal-explanation { color: #666; font-size: 0.74rem; grid-column: 2 / span 2; padding-left: 0; }
+.ev-alt {
+  margin-top: 4px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  padding: 0;
+  font-size: 0.78rem;
+}
+.ev-alt-header {
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  list-style: none;
+  font-size: 0.78rem;
+}
+.ev-alt-header::-webkit-details-marker { display: none; }
+.ev-alt-header::before { content: '▶ '; font-size: 0.65rem; }
+.ev-alt[open] > .ev-alt-header::before { content: '▼ '; }
+.ev-alt > .ev-score-line,
+.ev-alt > .ev-signals { padding: 0 8px 6px; }
+.ev-disclaimer {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: #999;
+  font-style: italic;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 6px;
+}
+
+/* dark mode evidence profile */
+[data-theme="dark"] .ev-panel { border-top-color: #333; }
+[data-theme="dark"] .ev-warning { background: rgba(249,168,37,0.1); color: #ffcc80; border-left-color: #f9a825; }
+[data-theme="dark"] .ev-score-count { color: #90caf9; }
+[data-theme="dark"] .ev-score-share { color: #a5d6a7; }
+[data-theme="dark"] .ev-signal-supports    { background: rgba(46,125,50,0.15); }
+[data-theme="dark"] .ev-signal-contradicts { background: rgba(183,28,28,0.15); }
+[data-theme="dark"] .ev-signal-name  { color: #888; }
+[data-theme="dark"] .ev-signal-value { color: #90caf9; }
+[data-theme="dark"] .ev-signal-explanation { color: #aaa; }
+[data-theme="dark"] .ev-alt { border-color: #333; }
+[data-theme="dark"] .ev-disclaimer { color: #666; border-top-color: #333; }
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }

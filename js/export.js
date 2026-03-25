@@ -48,7 +48,7 @@ const Exporter = (() => {
    * Export using SheetJS with inline styles.
    * Requires XLSX global from CDN.
    */
-  function exportExcel(result, title, purchasePrice, materialFocusActive) {
+  function exportExcel(result, title, purchasePrice, materialFocusActive, ruleResults) {
     if (typeof XLSX === 'undefined') {
       alert('Excel export requires the SheetJS library. Please check your connection and try again.');
       return;
@@ -90,6 +90,70 @@ const Exporter = (() => {
     ws['!cols'] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, 'Analysis');
+
+    // ── Evidence Audit sheet (when ruleResults with evidenceProfile are present) ──
+    const evRows = ruleResults && ruleResults.results
+      ? ruleResults.results.filter(r => r.evidenceProfile)
+      : [];
+
+    if (evRows.length > 0) {
+      const evHeader = [
+        'Metric', 'Month', 'Section', 'Direction', '|Z|',
+        'Primary Reason',
+        'Primary — Evidence Signals', 'Primary — Relative Support',
+        'Primary — Signal Detail',
+        'Alt 1', 'Alt 1 — Evidence Signals', 'Alt 1 — Relative Support',
+        'Alt 2', 'Alt 2 — Evidence Signals', 'Alt 2 — Relative Support',
+        'Alt 3', 'Alt 3 — Evidence Signals', 'Alt 3 — Relative Support',
+        'Warning', 'Evidence Disclaimer',
+      ];
+      const evData = [evHeader];
+
+      evRows.forEach(r => {
+        const ep = r.evidenceProfile;
+        const pri = ep.primary;
+
+        // Build signal detail string: "✅ Anomaly Strength: |Z|=3.12 — extreme anomaly | ➖ ..."
+        const sigDetail = (pri.signals || [])
+          .map(s => `${s.icon} ${s.name}: ${s.value} — ${s.explanation}`)
+          .join(' | ');
+
+        const alts = ep.alternatives || [];
+        const altCols = [];
+        for (let i = 0; i < 3; i++) {
+          const a = alts[i];
+          if (a) {
+            altCols.push(a.label.slice(0, 200), `${a.evidenceSignals}/5`, `${a.relativeSupport}%`);
+          } else {
+            altCols.push('', '', '');
+          }
+        }
+
+        evData.push([
+          r.metricName, r.monthLabel, r.section,
+          r.pnl === 'profit' ? 'Surplus' : 'Shortfall/Overspend',
+          Math.abs(r.effectiveZ || 0).toFixed(2),
+          (r.enrichedPrimary || r.primary?.label || '').slice(0, 250),
+          `${pri.evidenceSignals}/5`, `${pri.relativeSupport}%`,
+          sigDetail,
+          ...altCols,
+          ep.warning || '',
+          ep.disclaimer || '',
+        ]);
+      });
+
+      const wsEv = XLSX.utils.aoa_to_sheet(evData);
+      wsEv['!cols'] = [
+        { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 6 },
+        { wch: 60 }, { wch: 20 }, { wch: 18 }, { wch: 100 },
+        { wch: 50 }, { wch: 18 }, { wch: 16 },
+        { wch: 50 }, { wch: 18 }, { wch: 16 },
+        { wch: 50 }, { wch: 18 }, { wch: 16 },
+        { wch: 60 }, { wch: 80 },
+      ];
+      XLSX.utils.book_append_sheet(wb, wsEv, 'Evidence Audit');
+    }
+
     XLSX.writeFile(wb, `${(title || 'anomaly-report').replace(/\s+/g, '-')}.xlsx`);
   }
 

@@ -344,26 +344,35 @@ const UI = (() => {
 
   // ── ANOMALY DETAIL CARD ───────────────────────────────
 
+  /** Render a single evidence-signal row */
+  function _renderSignalRow(sig) {
+    return `<div class="ev-signal ev-signal-${sig.score > 0 ? 'supports' : sig.score < 0 ? 'contradicts' : 'neutral'}">
+      <span class="ev-signal-icon">${sig.icon}</span>
+      <span class="ev-signal-name">${escHtml(sig.name)}</span>
+      <span class="ev-signal-value">${escHtml(sig.value)}</span>
+      <span class="ev-signal-explanation">${escHtml(sig.explanation)}</span>
+    </div>`;
+  }
+
+  /** Render the score line: "Evidence signals: X / 5 · Relative support: X%" */
+  function _renderScoreLine(candidate) {
+    return `<div class="ev-score-line">
+      <span class="ev-score-count">Evidence signals: <strong>${candidate.evidenceSignals} / 5</strong></span>
+      <span class="ev-score-sep">·</span>
+      <span class="ev-score-share">Relative support: <strong>${candidate.relativeSupport}%</strong></span>
+    </div>`;
+  }
+
   function renderAnomalyCard(reasonData, metric, monthLabel) {
     if (!reasonData) return '';
     const { primary, alternatives, corroborating } = reasonData;
     const z = metric.zScores[reasonData.monthIdx];
     if (!z) return '';
 
-    // Enriched fields (present when dataContext was available)
-    const enrichedPrimary      = reasonData.enrichedPrimary      || null;
-    const enrichedAlternatives = reasonData.enrichedAlternatives  || null;
-    const adjustedConfidence   = reasonData.adjustedConfidence    ?? null;
-    const confidenceNotes      = reasonData.confidenceNotes       || [];
-    const dataSources          = reasonData.dataSources           || [];
-    const corroboratingNote    = reasonData.corroboratingNote     || null;
-
-    const baseConf    = Math.round((primary?.weight || 0) * 100);
-    const displayConf = adjustedConfidence !== null ? adjustedConfidence : baseConf;
-    const confDelta   = adjustedConfidence !== null ? adjustedConfidence - baseConf : 0;
-    const confDeltaStr = confDelta !== 0
-      ? ` <span class="conf-delta ${confDelta > 0 ? 'conf-boost' : 'conf-reduce'}">${confDelta > 0 ? '+' : ''}${confDelta}%</span>`
-      : '';
+    const enrichedPrimary   = reasonData.enrichedPrimary   || null;
+    const dataSources       = reasonData.dataSources       || [];
+    const corroboratingNote = reasonData.corroboratingNote || null;
+    const evidenceProfile   = reasonData.evidenceProfile   || null;
 
     const pnlColor = z.pnl === 'profit' ? '#2e7d32' : z.pnl === 'loss' ? '#b71c1c' : '#e65100';
     const pnlLabel = z.pnl ? z.pnl.toUpperCase() : '';
@@ -379,27 +388,58 @@ const UI = (() => {
         <span class="pnl-badge" style="color:${pnlColor}">${pnlLabel} (${metric.section})</span>
       </div>
       <div class="anomaly-primary">
-        <strong>Primary Reason</strong>
-        <span class="confidence-badge">${displayConf}% confidence${confDeltaStr}</span><br>
+        <strong>Primary Reason</strong><br>
         ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
       </div>`;
 
-    // Confidence source notes
-    if (confidenceNotes.length > 0) {
-      html += '<div class="conf-notes">';
-      confidenceNotes.forEach(n => {
-        const cls = n.delta > 0 ? 'conf-note-boost' : 'conf-note-reduce';
-        html += `<div class="conf-note ${cls}"><span class="conf-note-delta">${n.delta > 0 ? '+' : ''}${n.delta}%</span> ${escHtml(n.text)}</div>`;
-      });
-      html += '</div>';
-    }
+    // ── Evidence profile ──
+    if (evidenceProfile) {
+      const ep = evidenceProfile;
+      const pri = ep.primary;
 
-    // Alternative explanations
-    const displayAlts = enrichedAlternatives || alternatives || [];
-    if (displayAlts.length > 0) {
-      html += '<div class="anomaly-alternatives"><strong>Alternative Explanations</strong><ol>';
-      displayAlts.forEach(alt => { html += `<li>${escHtml(alt)}</li>`; });
-      html += '</ol></div>';
+      html += `<div class="ev-panel">`;
+
+      // Warning if an alternative outscores primary
+      if (ep.warning) {
+        html += `<div class="ev-warning">⚠ ${escHtml(ep.warning)}</div>`;
+      }
+
+      // Primary evidence signals (always expanded)
+      html += `<div class="ev-primary">`;
+      html += _renderScoreLine(pri);
+      html += `<div class="ev-signals">`;
+      (pri.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
+      html += `</div></div>`;
+
+      // Alternative evidence panels (collapsible)
+      if (ep.alternatives && ep.alternatives.length > 0) {
+        html += `<div class="ev-alternatives">`;
+        ep.alternatives.forEach((alt, i) => {
+          html += `<details class="ev-alt">
+            <summary class="ev-alt-header">
+              Alt ${i + 1}: ${escHtml(alt.label.length > 70 ? alt.label.slice(0, 67) + '…' : alt.label)}
+              <span class="ev-score-count">${alt.evidenceSignals}/5</span>
+              <span class="ev-score-share">${alt.relativeSupport}%</span>
+            </summary>
+            ${_renderScoreLine(alt)}
+            <div class="ev-signals">`;
+          (alt.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
+          html += `</div></details>`;
+        });
+        html += `</div>`;
+      }
+
+      // Disclaimer
+      html += `<div class="ev-disclaimer">${escHtml(ep.disclaimer)}</div>`;
+      html += `</div>`;  // .ev-panel
+    } else {
+      // No evidence profile (no data context loaded) — fall back to plain alternatives list
+      const displayAlts = reasonData.enrichedAlternatives || (alternatives || []);
+      if (displayAlts.length > 0) {
+        html += '<div class="anomaly-alternatives"><strong>Alternative Explanations</strong><ol>';
+        displayAlts.forEach(alt => { html += `<li>${escHtml(alt)}</li>`; });
+        html += '</ol></div>';
+      }
     }
 
     // Corroborating anomalies

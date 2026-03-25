@@ -882,7 +882,7 @@ const App = (() => {
       });
       document.getElementById(excelId)?.addEventListener('click', () => {
         document.getElementById(menuId)?.classList.add('hidden');
-        if (state.resultA) Exporter.exportExcel(state.resultA, state.fileNameA || 'report', state.purchasePriceA, state.materialFocus);
+        if (state.resultA) Exporter.exportExcel(state.resultA, state.fileNameA || 'report', state.purchasePriceA, state.materialFocus, state.reasonsA);
       });
     }
 

@@ -213,65 +213,257 @@ const Enrichment = (() => {
     });
   }
 
-  // ── CONFIDENCE ADJUSTMENT ─────────────────────────────
+  // ── 5-SIGNAL EVIDENCE PROFILE ─────────────────────────
 
-  function adjustConfidence(result, snap) {
-    const baseWeight = result.primary?.weight || 0;
-    let conf  = Math.round(baseWeight * 100);
-    const notes = [];
-    const ruleId = result.primary?.id || (result.firedRuleIds || [])[0] || '';
+  const CATEGORY_TIER = {
+    asset_type: 1, location: 2, seasonality: 3, political: 3, operational: 4, market: 5,
+  };
 
-    // ── Boosts ──
+  /**
+   * Build ordered list of explanation candidates:
+   * index 0 = primary (rule object available), 1–3 = alternatives (rule object if fired rule, null if text hypothesis)
+   */
+  function buildCandidates(result) {
+    const candidates = [];
 
-    // Economic indicator corroborates expense rule
-    if (result.section === 'EXPENSES' && snap.cpiYoY != null && snap.cpiYoY > 4) {
-      conf = Math.min(95, conf + 15);
-      notes.push({ delta: +15, text: `CPI ${pct(snap.cpiYoY)} YoY in ${snap.label} corroborates cost-side pressure` });
+    // Primary
+    candidates.push({
+      label: result.enrichedPrimary || result.primary?.label || 'Primary',
+      rule: result.primary,
+      isPrimary: true,
+      index: 0,
+    });
+
+    // Alt rule IDs = fired rules excluding primary
+    const primaryId = result.primary?.id;
+    const altRuleIds = (result.firedRuleIds || []).filter(id => id !== primaryId);
+    const altLabels  = result.enrichedAlternatives || result.alternatives || [];
+
+    for (let i = 0; i < Math.min(3, altLabels.length); i++) {
+      const label = altLabels[i];
+      if (!label || label === 'Insufficient data for additional hypothesis') continue;
+      const ruleId = altRuleIds[i] || null;
+      const rule   = ruleId ? (RuleEngine.RULES || []).find(r => r.id === ruleId) : null;
+      candidates.push({ label, rule, isPrimary: false, index: i + 1 });
     }
 
-    // Fed rate hike corroborates financing cost rule
-    if (snap.fedChangeBps != null && snap.fedChangeBps >= 50) {
-      conf = Math.min(95, conf + 15);
-      notes.push({ delta: +15, text: `Fed rate hike of ${bps(snap.fedChangeBps)} in ${snap.label} corroborates financing cost impact` });
+    return candidates;
+  }
+
+  /** Signal 1 — Anomaly Strength (Z-score magnitude) */
+  function signal1_AnomalyStrength(result /*, candidate */) {
+    const z = Math.abs(result.effectiveZ || 0);
+    if (z >= 3.0) return {
+      score: 1, icon: '✅', name: 'Anomaly Strength',
+      value: `|Z| = ${z.toFixed(2)}`,
+      explanation: 'Extreme anomaly (|Z| ≥ 3.0) — strong statistical signal',
+    };
+    return {
+      score: 0, icon: '➖', name: 'Anomaly Strength',
+      value: `|Z| = ${z.toFixed(2)}`,
+      explanation: 'Moderate anomaly (2 ≤ |Z| < 3.0) — confirmed but not extreme',
+    };
+  }
+
+  /** Signal 2 — Rule Specificity (category tier) */
+  function signal2_RuleSpecificity(_result, candidate) {
+    const rule = candidate.rule;
+    if (!rule) return {
+      score: 0, icon: '➖', name: 'Rule Specificity',
+      value: 'Unknown', explanation: 'No rule metadata available for this candidate',
+    };
+    const tier = CATEGORY_TIER[rule.category] ?? 99;
+    const catLabel = rule.category.replace(/_/g, ' ');
+    if (tier <= 3) return {
+      score: 1, icon: '✅', name: 'Rule Specificity',
+      value: catLabel, explanation: `Tier ${tier} rule (${catLabel}) — highly specific explanation`,
+    };
+    if (tier === 4) return {
+      score: 0, icon: '➖', name: 'Rule Specificity',
+      value: catLabel, explanation: 'Tier 4 rule (operational) — moderately specific',
+    };
+    return {
+      score: 0, icon: '➖', name: 'Rule Specificity',
+      value: catLabel, explanation: 'Tier 5 rule (market-wide) — least specific category',
+    };
+  }
+
+  /** Signal 3 — Peer Corroboration (peerCount vs candidate type) */
+  function signal3_PeerCorroboration(result, candidate) {
+    const peerCount = result.peerCount || 0;
+    const rule = candidate.rule;
+    if (!rule) return {
+      score: 0, icon: '➖', name: 'Peer Corroboration',
+      value: `${peerCount} peers`, explanation: 'No rule metadata to interpret peer pattern',
+    };
+    const isMarket = rule.category === 'market';
+    if (isMarket) {
+      if (peerCount >= 3) return {
+        score: 1, icon: '✅', name: 'Peer Corroboration',
+        value: `${peerCount} peers`,
+        explanation: `${peerCount} peer metrics show same pattern — consistent with market-wide signal`,
+      };
+      if (peerCount > 0) return {
+        score: 0, icon: '➖', name: 'Peer Corroboration',
+        value: `${peerCount} peers`,
+        explanation: `Only ${peerCount} peer(s) — insufficient for strong market signal`,
+      };
+      return {
+        score: -1, icon: '❌', name: 'Peer Corroboration',
+        value: 'No peers', explanation: 'No peer corroboration — contradicts market-wide explanation',
+      };
+    } else {
+      if (peerCount === 0) return {
+        score: 1, icon: '✅', name: 'Peer Corroboration',
+        value: 'Isolated', explanation: 'No peer metrics show same pattern — consistent with asset-specific cause',
+      };
+      if (peerCount >= 3) return {
+        score: -1, icon: '❌', name: 'Peer Corroboration',
+        value: `${peerCount} peers`,
+        explanation: `${peerCount} peers show same pattern — suggests market-wide, not asset-specific cause`,
+      };
+      return {
+        score: 0, icon: '➖', name: 'Peer Corroboration',
+        value: `${peerCount} peers`, explanation: `${peerCount} peer(s) — ambiguous pattern`,
+      };
+    }
+  }
+
+  /** Signal 4 — Persistence (anomalyCount + label keywords) */
+  function signal4_Persistence(result, candidate) {
+    const anomalyCount = result.anomalyCount || 1;
+    const label = (candidate.rule?.label || candidate.label || '').toLowerCase();
+    const hasStructural = /structural|recurring|pattern|seasonal|chronic|systemic|long.?term/.test(label);
+
+    if (anomalyCount >= 3 || hasStructural) {
+      const reason = anomalyCount >= 3
+        ? `${anomalyCount} anomalies detected — recurring pattern supports structural explanation`
+        : 'Label indicates a structural or recurring pattern';
+      return { score: 1, icon: '✅', name: 'Persistence', value: `${anomalyCount} anomaly${anomalyCount !== 1 ? 's' : ''}`, explanation: reason };
+    }
+    return {
+      score: 0, icon: '➖', name: 'Persistence',
+      value: `${anomalyCount} anomaly${anomalyCount !== 1 ? 's' : ''}`,
+      explanation: `${anomalyCount} occurrence(s) — insufficient pattern to distinguish structural vs one-off`,
+    };
+  }
+
+  /** Signal 5 — External Data Direction (CPI/Fed/FEMA/StateUR/Legislation alignment) */
+  function signal5_ExternalData(result, candidate, snap) {
+    const hasAnyData = snap && (snap.cpiYoY != null || snap.fedfunds != null || snap.stateUR != null ||
+      (snap.femaRecent?.length || 0) > 0 || (snap.femaQuarter?.length || 0) > 0 ||
+      (snap.stateBillsYear?.length || 0) > 0 || (snap.billsYear?.length || 0) > 0);
+
+    if (!hasAnyData) return {
+      score: 0, icon: '➖', name: 'External Data',
+      value: 'No data loaded', explanation: 'No real-world data available for this location/period',
+    };
+
+    const rule     = candidate.rule;
+    const label    = (rule?.label || candidate.label || '').toLowerCase();
+    const category = rule?.category || '';
+    const section  = result.section;
+    const pnl      = result.pnl;
+
+    let score = 0;
+    const evidenceItems = [];
+
+    // CPI alignment
+    if (snap.cpiYoY != null) {
+      if (section === 'EXPENSES' && pnl === 'loss') {
+        if (snap.cpiYoY > 4)  { score += 1; evidenceItems.push(`CPI ${snap.cpiYoY.toFixed(1)}% YoY↑`); }
+        else if (snap.cpiYoY < 1.5) { score -= 1; evidenceItems.push(`CPI ${snap.cpiYoY.toFixed(1)}% YoY (low)`); }
+      }
     }
 
-    // Active legislation corroborates regulatory/political rule
-    const hasLeg = (snap.stateBillsYear?.length || 0) + (snap.billsYear?.length || 0) > 0;
-    if (hasLeg && (ruleId.includes('POL') || ruleId.includes('REGULATORY') || ruleId.includes('EXPENSE'))) {
-      conf = Math.min(95, conf + 20);
-      notes.push({ delta: +20, text: `Active housing/regulatory legislation in ${snap.year} corroborates rule` });
+    // Fed rate change
+    if (snap.fedChangeBps != null && Math.abs(snap.fedChangeBps) >= 50) {
+      if (section === 'EXPENSES' && snap.fedChangeBps > 0) { score += 1; evidenceItems.push(`Fed +${snap.fedChangeBps}bps`); }
+      else if (section === 'INCOME' && pnl === 'loss' && snap.fedChangeBps > 0) { score += 1; evidenceItems.push(`Fed +${snap.fedChangeBps}bps`); }
     }
 
-    // FEMA disaster corroborates residential income shortfall
+    // Rent CPI for income
+    if (snap.rentYoY != null && section === 'INCOME') {
+      if (pnl === 'loss' && snap.rentYoY < 0)  { score += 1; evidenceItems.push(`Rent CPI ${snap.rentYoY.toFixed(1)}%↓`); }
+      if (pnl === 'profit' && snap.rentYoY > 4) { score += 1; evidenceItems.push(`Rent CPI +${snap.rentYoY.toFixed(1)}%↑`); }
+      if (pnl === 'loss' && snap.rentYoY > 4)  { score -= 1; evidenceItems.push(`Rent CPI +${snap.rentYoY.toFixed(1)}%↑ (contradicts income loss)`); }
+    }
+
+    // State unemployment
+    if (snap.stateUR != null && section === 'INCOME') {
+      if (pnl === 'loss' && snap.stateUR > 6)   { score += 1; evidenceItems.push(`UR ${snap.stateUR.toFixed(1)}%↑`); }
+      if (pnl === 'loss' && snap.stateUR < 3.5) { score -= 1; evidenceItems.push(`UR ${snap.stateUR.toFixed(1)}% (very low, contradicts demand weakness)`); }
+    }
+
+    // FEMA disaster
     const hasFema = (snap.femaRecent?.length || 0) + (snap.femaQuarter?.length || 0) > 0;
-    if (hasFema && result.section === 'INCOME') {
-      conf = Math.min(95, conf + 25);
-      notes.push({ delta: +25, text: `FEMA disaster declaration in state near this period corroborates income disruption` });
+    if (hasFema && section === 'INCOME' && pnl === 'loss') { score += 1; evidenceItems.push('FEMA declaration'); }
+
+    // Legislation
+    const hasLeg = (snap.stateBillsYear?.length || 0) + (snap.billsYear?.length || 0) > 0;
+    if (hasLeg && (category === 'political' || /regulatory|compliance|legislat/.test(label))) {
+      score += 1; evidenceItems.push('Active legislation');
     }
 
-    // Multiple independent sources agree
-    const boostCount = notes.filter(n => n.delta > 0).length;
-    if (boostCount >= 2) {
-      conf = Math.min(95, conf + 5);
-      notes.push({ delta: +5, text: `${boostCount} independent data sources point to the same cause` });
-    }
+    // Clamp to [-1, +1]
+    score = Math.max(-1, Math.min(1, score));
 
-    // ── Reductions ──
+    const icon    = score > 0 ? '✅' : score < 0 ? '❌' : '➖';
+    const valStr  = evidenceItems.length > 0 ? evidenceItems.join(', ') : 'Available but neutral';
+    const expStr  = score > 0 ? 'External data direction supports this explanation'
+                  : score < 0 ? 'External data direction contradicts this explanation'
+                  : 'External data does not strongly support or contradict';
 
-    // CPI low but expense spike — inflation not the driver
-    if (result.section === 'EXPENSES' && snap.cpiYoY != null && snap.cpiYoY < 1.5 && snap.cpiYoY >= 0) {
-      conf = Math.max(5, conf - 10);
-      notes.push({ delta: -10, text: `CPI was only ${pct(snap.cpiYoY)} YoY — inflation unlikely to be the primary driver` });
-    }
+    return { score, icon, name: 'External Data', value: valStr, explanation: expStr };
+  }
 
-    // Unemployment very low but vacancy rule fired
-    if (ruleId.includes('RESIDENTIAL') && snap.stateUR != null && snap.stateUR < 3.5 && result.pnl === 'loss') {
-      // Contradicts demand-driven vacancy theory
-      conf = Math.max(5, conf - 5);
-      notes.push({ delta: -5, text: `Very low unemployment (${snap.stateUR.toFixed(1)}%) contradicts market-wide demand weakness — likely asset-specific` });
-    }
+  /**
+   * Compute the full 5-signal evidence profile for primary + all alternative candidates.
+   * Returns { primary, alternatives, warning, disclaimer }
+   */
+  function computeEvidenceProfile(result, snap, ctx) {
+    const candidates = buildCandidates(result);
 
-    return { adjustedConfidence: conf, confidenceNotes: notes };
+    const scored = candidates.map(c => {
+      const signals = [
+        signal1_AnomalyStrength(result, c),
+        signal2_RuleSpecificity(result, c),
+        signal3_PeerCorroboration(result, c),
+        signal4_Persistence(result, c),
+        signal5_ExternalData(result, c, snap),
+      ];
+      const rawScore    = signals.reduce((sum, s) => sum + s.score, 0);
+      const signalCount = signals.filter(s => s.score > 0).length;
+      return { ...c, signals, rawScore, signalCount };
+    });
+
+    // Relative support: share of max(0, rawScore) across all candidates
+    const clamped    = scored.map(c => Math.max(0, c.rawScore));
+    const totalClamped = clamped.reduce((a, b) => a + b, 0);
+
+    const profileCandidates = scored.map((c, i) => ({
+      label:           c.label,
+      isPrimary:       c.isPrimary,
+      signals:         c.signals,
+      evidenceSignals: c.signalCount,                                             // count of +1 signals
+      rawScore:        c.rawScore,
+      relativeSupport: totalClamped > 0 ? Math.round((clamped[i] / totalClamped) * 100) : 0,
+    }));
+
+    const primary      = profileCandidates[0];
+    const alternatives = profileCandidates.slice(1);
+
+    // Warning if any alternative raw score exceeds primary
+    const altWinner = alternatives.find(a => a.rawScore > primary.rawScore);
+
+    return {
+      primary,
+      alternatives,
+      warning: altWinner
+        ? `An alternative explanation has a stronger evidence profile than the primary — consider reviewing.`
+        : null,
+      disclaimer: 'Evidence signals reflect statistical patterns and available public data only. They do not establish probability, likelihood, or certainty of cause.',
+    };
   }
 
   // ── DATA SOURCES LIST ─────────────────────────────────
@@ -401,19 +593,21 @@ const Enrichment = (() => {
 
     const enrichedPrimary      = hasData ? buildEnrichedPrimary(result, snap, ctx)      : null;
     const enrichedAlternatives = hasData ? buildEnrichedAlternatives(result, snap, ctx) : null;
-    const { adjustedConfidence, confidenceNotes } = adjustConfidence(result, snap);
-    const dataSources      = buildDataSources(snap, ctx);
-    const corroboratingNote = buildCorroboratingNote(result.corroborating, snap);
+    const dataSources           = buildDataSources(snap, ctx);
+    const corroboratingNote     = buildCorroboratingNote(result.corroborating, snap);
 
-    return {
+    // Build enriched result first so computeEvidenceProfile can use enrichedPrimary/Alternatives
+    const enrichedResult = {
       ...result,
       enrichedPrimary,
       enrichedAlternatives,
-      adjustedConfidence,
-      confidenceNotes,
       dataSources,
       corroboratingNote,
     };
+
+    const evidenceProfile = computeEvidenceProfile(enrichedResult, snap, ctx);
+
+    return { ...enrichedResult, evidenceProfile };
   }
 
   // ── ENRICH ALL (batch) ────────────────────────────────
