@@ -414,14 +414,20 @@ const App = (() => {
     state.periodStart = pStart >= 0 ? pStart : null;
     state.periodEnd   = pEnd   >= 0 ? pEnd   : null;
 
-    // Ensure context is fetched before analysis
-    if (state._fetchingContext) {
-      showMsg(`Fetching economic context for ${state.selectedCity}, ${state.selectedState}…`, 'status-msg');
-      try { await state._fetchingContext; } catch {}
-    } else if (!state.dataContext) {
-      // No context yet and nothing in-flight — trigger now and await before proceeding
-      try { await fetchContextIfReady('status-msg'); } catch {}
+    // Fetch external data FIRST, directly — do not go through fetchContextIfReady()
+    showMsg(`Fetching market data for ${state.selectedCity}, ${state.selectedState}…`, 'status-msg');
+    try {
+      state.dataContext = await Context.fetchDataContext(
+        state.selectedState,
+        state.selectedCity,
+        state.parsedA.months,
+        msg => showMsg(msg, 'status-msg')
+      );
+    } catch (e) {
+      console.error('fetchDataContext failed:', e);
+      state.dataContext = null;
     }
+    console.log('dataContext:', state.dataContext);
 
     _runAnalysisCore();
     document.getElementById('controls-bar')?.classList.remove('hidden');
@@ -479,12 +485,21 @@ const App = (() => {
       return;
     }
 
-    if (state._fetchingContext) {
-      showMsg(`Fetching economic context…`, 'status-msg-comp');
-      try { await state._fetchingContext; } catch {}
-    } else if (!state.dataContext) {
-      try { await fetchContextIfReady('status-msg-comp'); } catch {}
+    // Fetch external data FIRST, directly — do not go through fetchContextIfReady()
+    showMsg(`Fetching market data for ${state.selectedCity}, ${state.selectedState}…`, 'status-msg-comp');
+    try {
+      const months = state.parsedA?.months || state.parsedB?.months;
+      state.dataContext = await Context.fetchDataContext(
+        state.selectedState,
+        state.selectedCity,
+        months,
+        msg => showMsg(msg, 'status-msg-comp')
+      );
+    } catch (e) {
+      console.error('fetchDataContext failed:', e);
+      state.dataContext = null;
     }
+    console.log('dataContext:', state.dataContext);
 
     const nameA = document.getElementById('prop-name-a')?.value.trim() || 'Asset A';
     const nameB = document.getElementById('prop-name-b')?.value.trim() || 'Asset B';
