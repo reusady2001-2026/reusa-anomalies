@@ -460,13 +460,163 @@ const Reasoner = (() => {
         : `${name} exceeded normal — above-average revenue, possible catch-up payment, new income source, or favorable timing`;
     }
 
-    // Steps 5-6 not yet implemented — placeholder return
-    const selfEz = selfZ ? selfZ.effectiveZ : null;
-    return {
-      triggeredGroups,
-      topGroup:           triggeredGroups[0] || null,
-      singleMetricReason: getSingleMetricReason(metric, metric.section, selfEz),
+    const selfEz   = selfZ ? selfZ.effectiveZ : null;
+    const topGroup = triggeredGroups[0] || null;
+    const smReason = getSingleMetricReason(metric, metric.section, selfEz);
+
+    // ── STEP 5: External data overlay ────────────────────
+    const EXPENSE_GROUPS = new Set([
+      'UTILITY_SPIKE', 'TURNOVER_WAVE', 'PAYROLL_INCREASE', 'MAINTENANCE_SURGE',
+      'SEASONAL_WINTER', 'SEASONAL_SUMMER', 'LEASING_MARKETING_PUSH',
+      'INSURANCE_TAX_RESET', 'BAD_DEBT_EVENT', 'CONTRACT_REPRICING',
+    ]);
+
+    // Base label: group signature if data_pattern, else single-metric reason
+    let primaryLabel   = topGroup && topGroup.matchCount >= 2
+      ? topGroup.group.signature
+      : smReason;
+    let overlayApplied = false;
+
+    if (snap) {
+      const groupId = topGroup?.group.id || null;
+
+      // A. Elevated CPI + expense group
+      if (snap.cpiYoY != null && snap.cpiYoY > 4 && groupId && EXPENSE_GROUPS.has(groupId)) {
+        primaryLabel   += ` — corroborated by elevated national CPI (${snap.cpiYoY.toFixed(1)}% YoY)`;
+        overlayApplied = true;
+      }
+
+      // B. Fed rate hike + insurance/tax or G&A group
+      if (snap.fedChangeBps != null && snap.fedChangeBps >= 50 &&
+          groupId === 'INSURANCE_TAX_RESET') {
+        primaryLabel   += ` — Fed rate hike of ${snap.fedChangeBps}bps in this period adds financing cost pressure`;
+        overlayApplied = true;
+      }
+
+      // C. FEMA disaster + maintenance/winter groups
+      if ((snap.femaRecent?.length || 0) > 0 &&
+          (groupId === 'MAINTENANCE_SURGE' || groupId === 'SEASONAL_WINTER')) {
+        primaryLabel   += ' — FEMA disaster declaration near this period corroborates weather-related damage';
+        overlayApplied = true;
+      }
+
+      // D. Very low unemployment + vacancy
+      if (snap.stateUR != null && snap.stateUR < 3.5 && groupId === 'VACANCY_EVENT') {
+        primaryLabel   += ` — note: very low unemployment (${snap.stateUR.toFixed(1)}%) suggests this is asset-specific, not market-wide demand weakness`;
+        overlayApplied = true;
+      }
+
+      // E. High unemployment + vacancy
+      if (snap.stateUR != null && snap.stateUR > 6 && groupId === 'VACANCY_EVENT') {
+        primaryLabel   += ` — elevated unemployment (${snap.stateUR.toFixed(1)}%) corroborates demand-side pressure in this market`;
+        overlayApplied = true;
+      }
+
+      // F. Month-based seasonal prepend
+      // Derive month number (0 = Jan) from months[monthIdx] label "Mon YYYY"
+      const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const rawLabel  = (months && months[monthIdx]) || '';
+      const monthNum  = MO.indexOf(rawLabel.slice(0, 3));
+      const isWinter  = [11, 0, 1, 2].includes(monthNum);
+      const isSummer  = [5, 6, 7, 8].includes(monthNum);
+      const hasWinter = triggeredGroups.some(tg => tg.group.id === 'SEASONAL_WINTER');
+      const hasSummer = triggeredGroups.some(tg => tg.group.id === 'SEASONAL_SUMMER');
+      const hasUtility   = triggeredGroups.some(tg => tg.group.id === 'UTILITY_SPIKE');
+      const hasMaintenance = triggeredGroups.some(tg => tg.group.id === 'MAINTENANCE_SURGE');
+
+      if (isWinter && (hasUtility || hasMaintenance) && !hasWinter) {
+        primaryLabel   = 'Winter season — ' + primaryLabel;
+        overlayApplied = true;
+      } else if (isSummer && hasUtility && !hasSummer) {
+        primaryLabel   = 'Summer season — ' + primaryLabel;
+        overlayApplied = true;
+      }
+    }
+
+    // ── STEP 6: Build final return object ────────────────
+
+    // generatedBy
+    let generatedBy;
+    if (overlayApplied) {
+      generatedBy = 'external_data';
+    } else if (topGroup && topGroup.matchCount >= 2) {
+      generatedBy = 'data_pattern';
+    } else if (topGroup && topGroup.matchCount === 1) {
+      generatedBy = 'single_metric';
+    } else {
+      generatedBy = triggeredGroups.length > 0 ? 'single_metric' : (selfEz != null ? 'single_metric' : 'fallback');
+    }
+
+    // Primary
+    const primary = {
+      label:          primaryLabel,
+      groupId:        topGroup?.group.id   || null,
+      groupName:      topGroup?.group.name || null,
+      matchedMetrics: (topGroup?.matchedMetrics || [])
+        .filter(cm => !cm.isSelf)
+        .map(cm => ({ name: cm.name, section: cm.section, effectiveZ: cm.effectiveZ })),
+      signalCount:    topGroup?.matchCount || 1,
+      rawScore:       topGroup
+        ? topGroup.matchCount / (topGroup.group.metrics.length || 1)
+        : 0,
+      relativeShare:  null,
+      generatedBy,
     };
+
+    // Alternatives — always exactly 3
+    const FALLBACK_LABEL = 'One-time charge or timing difference — no corroborating co-movement detected';
+    const altCandidates = [];
+
+    // Slot 1-2: next triggered groups
+    triggeredGroups.slice(1, 3).forEach(tg => {
+      altCandidates.push({
+        label:          tg.group.signature,
+        groupId:        tg.group.id,
+        groupName:      tg.group.name,
+        matchedMetrics: tg.matchedMetrics
+          .filter(cm => !cm.isSelf)
+          .map(cm => ({ name: cm.name, section: cm.section, effectiveZ: cm.effectiveZ })),
+        signalCount:    tg.matchCount,
+        rawScore:       tg.matchCount / (tg.group.metrics.length || 1),
+        relativeShare:  null,
+        generatedBy:    tg.matchCount >= 2 ? 'data_pattern' : 'single_metric',
+      });
+    });
+
+    // Slot: single-metric reason for current metric (if not already primary)
+    if (altCandidates.length < 3 && smReason !== primaryLabel) {
+      altCandidates.push({
+        label:          smReason,
+        groupId:        null,
+        groupName:      null,
+        matchedMetrics: [],
+        signalCount:    1,
+        rawScore:       0,
+        relativeShare:  null,
+        generatedBy:    'single_metric',
+      });
+    }
+
+    // Fill remaining slots with fallback
+    while (altCandidates.length < 3) {
+      altCandidates.push({
+        label:          FALLBACK_LABEL,
+        groupId:        null,
+        groupName:      null,
+        matchedMetrics: [],
+        signalCount:    0,
+        rawScore:       0,
+        relativeShare:  null,
+        generatedBy:    'fallback',
+      });
+    }
+
+    const alternatives = altCandidates.slice(0, 3);
+
+    // evidenceProfile — placeholder; filled by enrichment.js after integration
+    const evidenceProfile = null;
+
+    return { primary, alternatives, evidenceProfile };
   }
 
   return { analyse };
