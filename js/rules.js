@@ -482,29 +482,11 @@ const RuleEngine = (() => {
   }
 
   // ── PRIMARY RULE SELECTION ────────────────────────────
-  // Rules:
-  //   1. Any non-market rule with weight > 0.60 takes priority over market rules.
-  //      Among qualifying non-market rules, category priority then weight decides.
-  //   2. If no non-market rule clears 0.60, a market rule may become primary
-  //      (its condition already enforces the minimum-data requirement).
-  //   3. Fall back to the highest-weight non-market rule if no market rule fired.
-
-  const MARKET_CATS = new Set(['market']);
+  // Preliminary selection only — enrichment.js re-ranks by evidence score.
+  // The initial primary is the highest category-priority / weight rule,
+  // which is overridden by evidence-based ranking in enrichment.
 
   function selectPrimary(fired) {
-    // fired is already sorted by (category priority asc, weight desc)
-
-    // Pass 1: first non-market rule with weight > 0.60
-    for (const r of fired) {
-      if (!MARKET_CATS.has(r.category) && r.weight > 0.60) return r;
-    }
-
-    // Pass 2: market rule (condition already validates minimum peer count)
-    for (const r of fired) {
-      if (MARKET_CATS.has(r.category)) return r;
-    }
-
-    // Pass 3: any fired rule (handles weak specific rules ≤ 0.60 weight)
     return fired[0] || null;
   }
 
@@ -624,6 +606,7 @@ const RuleEngine = (() => {
           pnl: z.pnl,
           primary,
           alternatives,
+          allFiredRules: fired,        // full rule objects for evidence scoring in enrichment
           peerCount: ctx.peerCount || 0,
           anomalyCount: (metric.anomalies || []).length,
         };

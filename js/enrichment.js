@@ -219,37 +219,6 @@ const Enrichment = (() => {
     asset_type: 1, location: 2, seasonality: 3, political: 3, operational: 4, market: 5,
   };
 
-  /**
-   * Build ordered list of explanation candidates:
-   * index 0 = primary (rule object available), 1–3 = alternatives (rule object if fired rule, null if text hypothesis)
-   */
-  function buildCandidates(result) {
-    const candidates = [];
-
-    // Primary
-    candidates.push({
-      label: result.enrichedPrimary || result.primary?.label || 'Primary',
-      rule: result.primary,
-      isPrimary: true,
-      index: 0,
-    });
-
-    // Alt rule IDs = fired rules excluding primary
-    const primaryId = result.primary?.id;
-    const altRuleIds = (result.firedRuleIds || []).filter(id => id !== primaryId);
-    const altLabels  = result.enrichedAlternatives || result.alternatives || [];
-
-    for (let i = 0; i < Math.min(3, altLabels.length); i++) {
-      const label = altLabels[i];
-      if (!label || label === 'Insufficient data for additional hypothesis') continue;
-      const ruleId = altRuleIds[i] || null;
-      const rule   = ruleId ? (RuleEngine.RULES || []).find(r => r.id === ruleId) : null;
-      candidates.push({ label, rule, isPrimary: false, index: i + 1 });
-    }
-
-    return candidates;
-  }
-
   /** Signal 1 — Anomaly Strength (Z-score magnitude) */
   function signal1_AnomalyStrength(result /*, candidate */) {
     const z = Math.abs(result.effectiveZ || 0);
@@ -417,52 +386,94 @@ const Enrichment = (() => {
     return { score, icon, name: 'External Data', value: valStr, explanation: expStr };
   }
 
-  /**
-   * Compute the full 5-signal evidence profile for primary + all alternative candidates.
-   * Returns { primary, alternatives, warning, disclaimer }
-   */
-  function computeEvidenceProfile(result, snap, ctx) {
-    const candidates = buildCandidates(result);
+  /** Score one rule as a candidate against this anomaly result + snap. */
+  function _scoreCandidate(result, rule, snap) {
+    const c = { rule, label: rule.label };
+    const signals = [
+      signal1_AnomalyStrength(result, c),
+      signal2_RuleSpecificity(result, c),
+      signal3_PeerCorroboration(result, c),
+      signal4_Persistence(result, c),
+      signal5_ExternalData(result, c, snap),
+    ];
+    const rawScore    = signals.reduce((sum, s) => sum + s.score, 0);
+    const signalCount = signals.filter(s => s.score > 0).length;
+    return { rule, label: rule.label, signals, rawScore, signalCount };
+  }
 
-    const scored = candidates.map(c => {
-      const signals = [
-        signal1_AnomalyStrength(result, c),
-        signal2_RuleSpecificity(result, c),
-        signal3_PeerCorroboration(result, c),
-        signal4_Persistence(result, c),
-        signal5_ExternalData(result, c, snap),
-      ];
-      const rawScore    = signals.reduce((sum, s) => sum + s.score, 0);
-      const signalCount = signals.filter(s => s.score > 0).length;
-      return { ...c, signals, rawScore, signalCount };
+  /** Sort scored candidates: rawScore desc → signalCount desc → category tier asc. */
+  function _evidenceSort(scored) {
+    return [...scored].sort((a, b) => {
+      if (b.rawScore !== a.rawScore)     return b.rawScore - a.rawScore;
+      if (b.signalCount !== a.signalCount) return b.signalCount - a.signalCount;
+      const ta = CATEGORY_TIER[a.rule?.category] ?? 99;
+      const tb = CATEGORY_TIER[b.rule?.category] ?? 99;
+      return ta - tb;
     });
+  }
 
-    // Relative support: share of max(0, rawScore) across all candidates
-    const clamped    = scored.map(c => Math.max(0, c.rawScore));
+  /**
+   * Assemble the display evidence profile from an already-sorted scored candidate list.
+   * Labels are replaced with enriched text where available.
+   * oldPrimaryId is used to set the warning when evidence re-ranked the original selection.
+   */
+  function _buildDisplayProfile(sortedScored, enrichedResult, oldPrimaryId) {
+    if (!sortedScored || sortedScored.length === 0) {
+      // Fallback: single unclassified candidate
+      const fallback = {
+        label: enrichedResult.enrichedPrimary || enrichedResult.primary?.label || 'Unclassified anomaly',
+        isPrimary: true,
+        signals: [
+          signal1_AnomalyStrength(enrichedResult, {}),
+          { score: 0, icon: '➖', name: 'Rule Specificity', value: 'Unknown', explanation: 'No rules fired for this anomaly' },
+          { score: 0, icon: '➖', name: 'Peer Corroboration', value: '—', explanation: 'No rule data available' },
+          { score: 0, icon: '➖', name: 'Persistence', value: '—', explanation: 'No rule data available' },
+          { score: 0, icon: '➖', name: 'External Data', value: 'No data loaded', explanation: 'No real-world data available' },
+        ],
+        evidenceSignals: 0,
+        rawScore: 0,
+        relativeSupport: 100,
+      };
+      return {
+        primary: fallback, alternatives: [],
+        warning: null,
+        disclaimer: 'Relative support reflects share of available evidence, not probability of being the true cause.',
+      };
+    }
+
+    const altLabels = enrichedResult.enrichedAlternatives || enrichedResult.alternatives || [];
+
+    const clamped      = sortedScored.map(c => Math.max(0, c.rawScore));
     const totalClamped = clamped.reduce((a, b) => a + b, 0);
 
-    const profileCandidates = scored.map((c, i) => ({
-      label:           c.label,
-      isPrimary:       c.isPrimary,
-      signals:         c.signals,
-      evidenceSignals: c.signalCount,                                             // count of +1 signals
-      rawScore:        c.rawScore,
-      relativeSupport: totalClamped > 0 ? Math.round((clamped[i] / totalClamped) * 100) : 0,
-    }));
+    const profileCandidates = sortedScored.map((c, i) => {
+      const displayLabel = i === 0
+        ? (enrichedResult.enrichedPrimary || c.rule.label)
+        : (altLabels[i - 1] || c.rule.label);
+      return {
+        label:           displayLabel,
+        isPrimary:       i === 0,
+        signals:         c.signals,
+        evidenceSignals: c.signalCount,
+        rawScore:        c.rawScore,
+        relativeSupport: totalClamped > 0 ? Math.round((clamped[i] / totalClamped) * 100) : 0,
+      };
+    });
 
     const primary      = profileCandidates[0];
     const alternatives = profileCandidates.slice(1);
 
-    // Warning if any alternative raw score exceeds primary
-    const altWinner = alternatives.find(a => a.rawScore > primary.rawScore);
+    // Warning when evidence ranking overrode the original rule-engine selection
+    const evidencePrimaryId = sortedScored[0]?.rule?.id;
+    const wasReranked = !!(oldPrimaryId && evidencePrimaryId && oldPrimaryId !== evidencePrimaryId);
 
     return {
       primary,
       alternatives,
-      warning: altWinner
-        ? `An alternative explanation has a stronger evidence profile than the primary — consider reviewing.`
+      warning: wasReranked
+        ? `Evidence profile re-ranked this anomaly's primary reason — the original rule-engine selection was overridden by evidence scoring.`
         : null,
-      disclaimer: 'Evidence signals reflect statistical patterns and available public data only. They do not establish probability, likelihood, or certainty of cause.',
+      disclaimer: 'Relative support reflects share of available evidence, not probability of being the true cause.',
     };
   }
 
@@ -587,28 +598,51 @@ const Enrichment = (() => {
   function enrichOne(result, ctx) {
     if (!result) return result;
 
-    // snap: full when ctx available; minimal stub when not (signals 1-4 still work)
-    const snap = ctx ? monthSnapshot(ctx, result.monthLabel) : { label: result.monthLabel };
+    // snap: full object when ctx available; minimal stub when not (signals 1–4 still work)
+    const snap    = ctx ? monthSnapshot(ctx, result.monthLabel) : { label: result.monthLabel };
     const hasData = ctx != null && (snap.fedfunds != null || snap.cpiYoY != null ||
                     snap.stateUR != null || (snap.femaRecent?.length || 0) > 0);
 
-    const enrichedPrimary      = hasData ? buildEnrichedPrimary(result, snap, ctx)      : null;
-    const enrichedAlternatives = hasData ? buildEnrichedAlternatives(result, snap, ctx) : null;
-    // Only build data sources list when ctx is present (avoids "undefined" state entries)
-    const dataSources       = ctx ? buildDataSources(snap, ctx) : [];
-    const corroboratingNote = ctx ? buildCorroboratingNote(result.corroborating, snap) : null;
+    // ── Pass 1: Score every fired rule candidate and sort by evidence ──────
+    // Uses allFiredRules (full objects from rules.js) when available.
+    const allFiredRules = result.allFiredRules || [];
+    const oldPrimaryId  = result.primary?.id;
 
-    // Build enriched result first so computeEvidenceProfile can use enrichedPrimary/Alternatives
+    let sortedScored = [];
+    let newPrimary   = result.primary;
+    let newAlts      = result.alternatives || [];
+
+    if (allFiredRules.length > 0) {
+      sortedScored = _evidenceSort(allFiredRules.map(rule => _scoreCandidate(result, rule, snap)));
+      newPrimary   = sortedScored[0].rule;
+      const altRules = sortedScored.slice(1);
+      if (altRules.length > 0) {
+        newAlts = altRules.map(c => c.rule.label);
+      } else {
+        newAlts = (newPrimary.alternatives || []).slice(0, 3);
+      }
+      while (newAlts.length < 3) newAlts.push('Insufficient data for additional hypothesis');
+      newAlts = newAlts.slice(0, 3);
+    }
+
+    // ── Pass 2: Build enriched text using evidence-ranked primary ───────────
+    const updatedResult = { ...result, primary: newPrimary, alternatives: newAlts };
+
+    const enrichedPrimary      = hasData ? buildEnrichedPrimary(updatedResult, snap, ctx)      : null;
+    const enrichedAlternatives = hasData ? buildEnrichedAlternatives(updatedResult, snap, ctx) : null;
+    const dataSources           = ctx ? buildDataSources(snap, ctx) : [];
+    const corroboratingNote     = ctx ? buildCorroboratingNote(result.corroborating, snap) : null;
+
     const enrichedResult = {
-      ...result,
+      ...updatedResult,
       enrichedPrimary,
       enrichedAlternatives,
       dataSources,
       corroboratingNote,
     };
 
-    // Always compute evidence profile — signals 1-4 work without external data
-    const evidenceProfile = computeEvidenceProfile(enrichedResult, snap, ctx);
+    // ── Pass 3: Assemble display evidence profile with enriched labels ───────
+    const evidenceProfile = _buildDisplayProfile(sortedScored, enrichedResult, oldPrimaryId);
 
     return { ...enrichedResult, evidenceProfile };
   }
