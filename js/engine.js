@@ -64,9 +64,9 @@ const Engine = (() => {
         '';
       if (!label) continue;
 
-      // Normalize: collapse non-breaking spaces, multi-spaces, then uppercase
+      // Normalize: strip zero-width/invisible chars, collapse all whitespace, uppercase
       const normalizedLabel = label
-        .replace(/\u00A0/g, ' ')
+        .replace(/[\u00A0\u200B\u200C\u200D\uFEFF\u00AD]/g, ' ')  // NBSP, zero-width, BOM, soft-hyphen → space
         .replace(/\s+/g, ' ')
         .trim()
         .toUpperCase();
@@ -74,7 +74,8 @@ const Engine = (() => {
       console.log('ROW LABEL:', label);
 
       // Check 1 — hard stop at NET OPERATING INCOME
-      if (normalizedLabel === 'NET OPERATING INCOME') break;
+      // Use regex anchor instead of === to survive any residual invisible characters
+      if (/^NET\s+OPERATING\s+INCOME$/.test(normalizedLabel)) break;
 
       // Check 2 — skip TOTAL rows
       if (/^total/i.test(normalizedLabel)) continue;
