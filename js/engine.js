@@ -71,8 +71,6 @@ const Engine = (() => {
         .trim()
         .toUpperCase();
 
-      console.log('ROW LABEL:', label);
-
       // Check 1 — hard stop at NET OPERATING INCOME
       // Use regex anchor instead of === to survive any residual invisible characters
       if (/^NET\s+OPERATING\s+INCOME$/.test(normalizedLabel)) break;
