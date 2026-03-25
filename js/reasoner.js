@@ -303,3 +303,103 @@ const METRIC_RELATIONSHIP_MAP = [
   },
 
 ];
+
+// ── PART 2: REASONING ENGINE ──────────────────────────────────
+
+const Reasoner = (() => {
+
+  // ── DIRECTION CHECK ───────────────────────────────────────
+  // Returns true if ALL entries in matched[] satisfy the group's direction rule.
+  function directionConsistent(matched, direction) {
+    if (direction === 'any') return true;
+    return matched.every(cm => {
+      if (direction === 'expense_up')   return cm.section === 'EXPENSES' && cm.effectiveZ > 0;
+      if (direction === 'expense_down') return cm.section === 'EXPENSES' && cm.effectiveZ < 0;
+      if (direction === 'income_down')  return cm.section === 'INCOME'   && cm.effectiveZ < 0;
+      if (direction === 'income_up')    return cm.section === 'INCOME'   && cm.effectiveZ > 0;
+      return true;
+    });
+  }
+
+  function analyse(metric, monthIdx, allMetrics, months, snap) {
+    if (!metric) return null;
+
+    // ── STEP 1: Build coMovers[] ──────────────────────────
+    // Include the current metric itself, then every other metric that has
+    // an anomaly within ±1 month of monthIdx.
+
+    const coMovers = [];
+
+    // Helper: get the closest effectiveZ for a metric near monthIdx (±1)
+    function nearestZ(m, idx) {
+      // Prefer exact month, then idx-1, then idx+1
+      for (const offset of [0, -1, 1]) {
+        const ai = idx + offset;
+        if (ai < 0) continue;
+        if ((m.anomalies || []).includes(ai)) {
+          const z = m.zScores && m.zScores[ai];
+          if (z && z.effectiveZ != null) return z.effectiveZ;
+        }
+      }
+      return null;
+    }
+
+    // Add self
+    const selfZ = metric.zScores && metric.zScores[monthIdx];
+    coMovers.push({
+      id:          metric.id,
+      name:        metric.name,
+      nameLower:   metric.name.trim().toLowerCase(),
+      section:     metric.section,
+      effectiveZ:  selfZ ? selfZ.effectiveZ : 0,
+      direction:   selfZ && selfZ.effectiveZ < 0 ? 'negative' : 'positive',
+      isSelf:      true,
+    });
+
+    // Add co-moving peers
+    (allMetrics || []).forEach(m => {
+      if (m.id === metric.id) return;
+      const ez = nearestZ(m, monthIdx);
+      if (ez == null) return;
+      coMovers.push({
+        id:         m.id,
+        name:       m.name,
+        nameLower:  m.name.trim().toLowerCase(),
+        section:    m.section,
+        effectiveZ: ez,
+        direction:  ez < 0 ? 'negative' : 'positive',
+        isSelf:     false,
+      });
+    });
+
+    // ── STEP 2: Match coMovers against METRIC_RELATIONSHIP_MAP ──
+    const triggeredGroups = [];
+
+    METRIC_RELATIONSHIP_MAP.forEach(group => {
+      // Build a set of the group's metric names in lowercase for fast lookup
+      const groupNamesLower = group.metrics.map(n => n.trim().toLowerCase());
+
+      // A. Find which coMovers are in this group
+      const matched = coMovers.filter(cm => groupNamesLower.includes(cm.nameLower));
+      const matchCount = matched.length;
+
+      if (matchCount < group.minMatch) return;
+
+      // B. Check direction consistency across all matched entries
+      if (!directionConsistent(matched, group.direction)) return;
+
+      // C. Triggered — record it
+      triggeredGroups.push({
+        group,
+        matchCount,
+        matchedMetrics: matched,
+      });
+    });
+
+    // Steps 3-6 not yet implemented — placeholder return
+    return { coMovers, triggeredGroups };
+  }
+
+  return { analyse };
+
+})();
