@@ -414,10 +414,13 @@ const App = (() => {
     state.periodStart = pStart >= 0 ? pStart : null;
     state.periodEnd   = pEnd   >= 0 ? pEnd   : null;
 
-    // Wait for any in-flight context fetch
+    // Ensure context is fetched before analysis
     if (state._fetchingContext) {
       showMsg(`Fetching economic context for ${state.selectedCity}, ${state.selectedState}…`, 'status-msg');
       try { await state._fetchingContext; } catch {}
+    } else if (!state.dataContext) {
+      // No context yet and nothing in-flight — trigger now and await before proceeding
+      try { await fetchContextIfReady('status-msg'); } catch {}
     }
 
     _runAnalysisCore();
@@ -479,6 +482,8 @@ const App = (() => {
     if (state._fetchingContext) {
       showMsg(`Fetching economic context…`, 'status-msg-comp');
       try { await state._fetchingContext; } catch {}
+    } else if (!state.dataContext) {
+      try { await fetchContextIfReady('status-msg-comp'); } catch {}
     }
 
     const nameA = document.getElementById('prop-name-a')?.value.trim() || 'Asset A';
@@ -733,6 +738,7 @@ const App = (() => {
         setUploadLabel('upload-btn-a', '📂 ' + name);
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
+        if (state.selectedState && state.selectedCity) fetchContextIfReady();
       });
     });
 
@@ -770,6 +776,7 @@ const App = (() => {
         state.parsedA = data; state.fileNameA = name;
         setUploadLabel('upload-btn-a-comp', '📂 ' + name);
         showMsg('Asset A restored: ' + data.months.length + ' months', 'status-msg-comp');
+        if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       });
     });
 
@@ -778,6 +785,7 @@ const App = (() => {
         state.parsedB = data; state.fileNameB = name;
         setUploadLabel('upload-btn-b-comp', '📂 ' + name);
         showMsg('Asset B restored: ' + data.months.length + ' months', 'status-msg-comp');
+        if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       });
     });
 
