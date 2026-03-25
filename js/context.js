@@ -129,12 +129,11 @@ const Context = (() => {
     try {
       const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
       const entry = all[key];
-      if (!entry || Date.now() - entry.ts > CACHE_TTL) { console.log('[DEBUG loadCache] MISS (expired or absent) key:', key); return null; }
+      if (!entry || Date.now() - entry.ts > CACHE_TTL) return null;
       // Reject entries where FRED is entirely empty — cached during CORS failures
       const fred = entry.data?.fred || {};
       const hasFredData = Object.values(fred).some(map => Object.keys(map || {}).length > 0);
-      if (!hasFredData) { console.log('[DEBUG loadCache] MISS (empty FRED) key:', key); return null; }
-      console.log('[DEBUG loadCache] HIT key:', key, '| fedfunds keys:', Object.keys(fred.fedfunds || {}).length);
+      if (!hasFredData) return null;
       return entry.data;
     } catch { return null; }
   }
@@ -356,14 +355,6 @@ const Context = (() => {
       fetchCensus(stateAbbr, city),
       fetchHUD(stateAbbr),
     ]);
-
-    console.log('[DEBUG fetchDataContext] allSettled results — fred:', fredR.status, '| fema:', femaR.status, '| congress:', congressR.status, '| openStates:', osR.status, '| census:', censusR.status, '| hud:', hudR.status);
-    if (fredR.status === 'fulfilled') {
-      console.log('[DEBUG fetchDataContext] fred keys:', Object.keys(fredR.value));
-      console.log('[DEBUG fetchDataContext] fedfunds sample:', Object.entries(fredR.value.fedfunds || {}).slice(0,3));
-    } else {
-      console.log('[DEBUG fetchDataContext] FRED FAILED reason:', fredR.reason);
-    }
 
     const ctx = {
       stateAbbr, stateName, city,
