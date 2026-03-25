@@ -57,8 +57,16 @@ const Engine = (() => {
       const row = rows[r];
       if (!row || row.length === 0) continue;
 
-      const label = String(row[0] || '').trim();
+      const label = (row[0] && String(row[0]).trim())
+                 || (row[1] && String(row[1]).trim())
+                 || '';
       if (!label) continue;
+
+      // Check 1 — hard stop at NET OPERATING INCOME
+      if (label.toUpperCase() === 'NET OPERATING INCOME') break;
+
+      // Check 2 — skip TOTAL rows
+      if (/^total/i.test(label)) continue;
 
       // section header detection
       if (SECTION_PATTERNS.test(label)) {
