@@ -57,29 +57,40 @@ const Engine = (() => {
       const row = rows[r];
       if (!row || row.length === 0) continue;
 
-      const label = (row[0] && String(row[0]).trim())
-                 || (row[1] && String(row[1]).trim())
-                 || '';
+      const label =
+        (row[0] != null && String(row[0]).trim() !== '' ? String(row[0]).trim() : null) ||
+        (row[1] != null && String(row[1]).trim() !== '' ? String(row[1]).trim() : null) ||
+        (row[2] != null && String(row[2]).trim() !== '' ? String(row[2]).trim() : null) ||
+        '';
       if (!label) continue;
 
+      // Normalize: collapse non-breaking spaces, multi-spaces, then uppercase
+      const normalizedLabel = label
+        .replace(/\u00A0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+
+      console.log('ROW LABEL:', label);
+
       // Check 1 — hard stop at NET OPERATING INCOME
-      if (label.toUpperCase() === 'NET OPERATING INCOME') break;
+      if (normalizedLabel === 'NET OPERATING INCOME') break;
 
       // Check 2 — skip TOTAL rows
-      if (/^total/i.test(label)) continue;
+      if (/^total/i.test(normalizedLabel)) continue;
 
       // section header detection
-      if (SECTION_PATTERNS.test(label)) {
-        if (/income/i.test(label) && !/net/i.test(label) && !/expenses/i.test(label)) {
+      if (SECTION_PATTERNS.test(normalizedLabel)) {
+        if (/income/i.test(normalizedLabel) && !/net/i.test(normalizedLabel) && !/expenses/i.test(normalizedLabel)) {
           currentSection = 'INCOME';
-        } else if (/expenses/i.test(label)) {
+        } else if (/expenses/i.test(normalizedLabel)) {
           currentSection = 'EXPENSES';
         }
         continue;
       }
 
       // skip total / summary rows
-      if (EXCLUDED_PATTERNS.test(label)) continue;
+      if (EXCLUDED_PATTERNS.test(normalizedLabel)) continue;
 
       // extract values
       const values = [];
