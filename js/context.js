@@ -8,6 +8,18 @@ const Context = (() => {
   const FRED_KEY     = '85a8199d1263218d54ad0b86cfaf26db';
   const CONGRESS_KEY = 'WV28fUlsauhfLvzLwSUKTeNEZ1KJNteeY69AfbPP';
 
+  // ── CORS PROXY ────────────────────────────────────────
+  // All external API calls are routed through a CORS proxy when the app is
+  // running from a browser origin that the API servers don't whitelist.
+  const CORS_PROXY = 'https://corsproxy.io/?url=';
+  function proxied(url) {
+    try {
+      const host = new URL(url).hostname;
+      if (host === location.hostname || host === 'localhost' || host === '127.0.0.1') return url;
+    } catch (_) { return url; }
+    return CORS_PROXY + encodeURIComponent(url);
+  }
+
   // ── STATE ABBREVIATION MAP ────────────────────────────
   const STATE_ABBR = {
     'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
@@ -170,7 +182,7 @@ const Context = (() => {
   function fetchWithTimeout(url, ms) {
     const ctrl = new AbortController();
     const tid  = setTimeout(() => ctrl.abort(), ms || 9000);
-    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(tid));
+    return fetch(proxied(url), { signal: ctrl.signal }).finally(() => clearTimeout(tid));
   }
 
   // ── FRED API ──────────────────────────────────────────
@@ -213,7 +225,7 @@ const Context = (() => {
   // ── FEMA API ──────────────────────────────────────────
   async function fetchFEMA(stateAbbr, startDate, endDate) {
     const filter = `state%20eq%20'${stateAbbr}'%20and%20declarationDate%20ge%20'${startDate}'%20and%20declarationDate%20le%20'${endDate}'`;
-    const url = `https://www.fema.gov/api/open/v2/disasterDeclarationsSummaries?$filter=${filter}&$orderby=declarationDate%20desc&$top=50&$format=json`;
+    const url = `https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=${filter}&$orderby=declarationDate%20desc&$top=50&$format=json`;
     const resp = await fetchWithTimeout(url, 9000);
     if (!resp.ok) throw new Error(`FEMA: HTTP ${resp.status}`);
     const json = await resp.json();
