@@ -325,7 +325,8 @@ const Engine = (() => {
    */
   function isMaterial(deviation, purchasePrice) {
     if (!purchasePrice || purchasePrice <= 0) return false;
-    return Math.abs(deviation) >= purchasePrice * 0.001;
+    // Monthly materiality threshold: 10bps of purchase price annualised, divided by 12
+    return Math.abs(deviation) >= (purchasePrice * 0.001) / 12;
   }
 
   function getMaterialDeviation(metric, monthIdx) {
