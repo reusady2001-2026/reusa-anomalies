@@ -268,7 +268,7 @@ const Enrichment = (() => {
   /** Signal 2 — Rule Specificity (category tier) */
   function signal2_RuleSpecificity(_result, candidate) {
     const rule = candidate.rule;
-    if (!rule) return {
+    if (!rule || !rule.category) return {
       score: 0, icon: '➖', name: 'Rule Specificity',
       value: 'Unknown', explanation: 'No rule metadata available for this candidate',
     };
@@ -585,16 +585,18 @@ const Enrichment = (() => {
   // ── ENRICH ONE RESULT ─────────────────────────────────
 
   function enrichOne(result, ctx) {
-    if (!ctx || !result) return result;
+    if (!result) return result;
 
-    const snap = monthSnapshot(ctx, result.monthLabel);
-    const hasData = snap.fedfunds != null || snap.cpiYoY != null ||
-                    snap.stateUR != null || snap.femaRecent?.length;
+    // snap: full when ctx available; minimal stub when not (signals 1-4 still work)
+    const snap = ctx ? monthSnapshot(ctx, result.monthLabel) : { label: result.monthLabel };
+    const hasData = ctx != null && (snap.fedfunds != null || snap.cpiYoY != null ||
+                    snap.stateUR != null || (snap.femaRecent?.length || 0) > 0);
 
     const enrichedPrimary      = hasData ? buildEnrichedPrimary(result, snap, ctx)      : null;
     const enrichedAlternatives = hasData ? buildEnrichedAlternatives(result, snap, ctx) : null;
-    const dataSources           = buildDataSources(snap, ctx);
-    const corroboratingNote     = buildCorroboratingNote(result.corroborating, snap);
+    // Only build data sources list when ctx is present (avoids "undefined" state entries)
+    const dataSources       = ctx ? buildDataSources(snap, ctx) : [];
+    const corroboratingNote = ctx ? buildCorroboratingNote(result.corroborating, snap) : null;
 
     // Build enriched result first so computeEvidenceProfile can use enrichedPrimary/Alternatives
     const enrichedResult = {
@@ -605,6 +607,7 @@ const Enrichment = (() => {
       corroboratingNote,
     };
 
+    // Always compute evidence profile — signals 1-4 work without external data
     const evidenceProfile = computeEvidenceProfile(enrichedResult, snap, ctx);
 
     return { ...enrichedResult, evidenceProfile };
