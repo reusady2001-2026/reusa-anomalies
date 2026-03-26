@@ -44,30 +44,33 @@ export default async function handler(req, res) {
   const { property, analysis, anomalies = [], patterns = [] } = req.body;
 
   try {
-    // ── 1. Upsert property ─────────────────────────────────────────────────
-    //   Match on name + state_abbr + city. Supabase upsert with onConflict
-    //   returns the existing row via Prefer: resolution=merge-duplicates.
-    const propUpsert = await sbFetch(SUPABASE_URL, SUPABASE_ANON_KEY, '/properties', {
-      method: 'POST',
-      headers: {
-        'Prefer': 'resolution=merge-duplicates,return=representation',
-      },
-      body: JSON.stringify({
-        name:        property.name,
-        state_abbr:  property.stateAbbr,
-        city:        property.city,
-        asset_type:  property.assetType,
-      }),
-    });
+    // ── 1. Find or insert property ─────────────────────────────────────────
+    const findRes = await sbFetch(
+      SUPABASE_URL, SUPABASE_ANON_KEY,
+      `/properties?name=eq.${encodeURIComponent(property.name)}&state_abbr=eq.${encodeURIComponent(property.stateAbbr)}&city=eq.${encodeURIComponent(property.city)}&select=id&limit=1`,
+      { method: 'GET' }
+    );
+    const found = await findRes.json();
 
-    if (!propUpsert.ok) {
-      const txt = await propUpsert.text();
-      throw new Error(`Property upsert failed (${propUpsert.status}): ${txt}`);
+    let propertyId;
+    if (found && found.length > 0) {
+      propertyId = found[0].id;
+    } else {
+      const insertRes = await sbFetch(SUPABASE_URL, SUPABASE_ANON_KEY, '/properties', {
+        method:  'POST',
+        headers: { 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+          name:       property.name,
+          state_abbr: property.stateAbbr,
+          city:       property.city,
+          asset_type: property.assetType,
+          user_id:    'default_user',
+        }),
+      });
+      const inserted = await insertRes.json();
+      if (!insertRes.ok) throw new Error(`Property insert failed: ${JSON.stringify(inserted)}`);
+      propertyId = inserted[0].id;
     }
-
-    const propRows = await propUpsert.json();
-    const propertyId = Array.isArray(propRows) ? propRows[0]?.id : propRows?.id;
-    if (!propertyId) throw new Error('Property upsert returned no id');
 
     // ── 2. Insert analysis ─────────────────────────────────────────────────
     const analysisInsert = await sbFetch(SUPABASE_URL, SUPABASE_ANON_KEY, '/analyses', {
