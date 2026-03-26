@@ -174,12 +174,25 @@ const UI = (() => {
       const tr = metric.trends || {};
       html += `<td class="trend-col ${trendClass(tr.trend)}">${fmtTrend(tr.trend)}</td>`;
       html += `<td class="trend-col ${trendClass(tr.trend12m)}">${fmtTrend(tr.trend12m)}</td>`;
-      html += `<td class="trend-col ${trendClass(tr.trend3m)}">${fmtTrend(tr.trend3m)}</td>`;
+      if (tr.trendReversal) {
+        const arrow = tr.trendReversalDirection === 'up' ? '↗' : '↘';
+        html += `<td class="trend-col trend-reversal" title="3-month trend is reversing the 12-month direction">${arrow} Reversing</td>`;
+      } else {
+        html += `<td class="trend-col ${trendClass(tr.trend3m)}">${fmtTrend(tr.trend3m)}</td>`;
+      }
 
       // Quarter columns
       const q = metric.quarters || {};
       html += `<td class="quarter-col">${q.strongestQ || '—'}<br><small>${q.strongestQSum != null ? fmt(q.strongestQSum) : ''}</small></td>`;
-      html += `<td class="quarter-col">${q.weakestQ || '—'}<br><small>${q.weakestQSum != null ? fmt(q.weakestQSum) : ''}</small></td>`;
+      const ls = q.levelShift;
+      let weakestCell = `${q.weakestQ || '—'}<br><small>${q.weakestQSum != null ? fmt(q.weakestQSum) : ''}</small>`;
+      if (ls?.detected) {
+        const lsArrow = ls.direction === 'up' ? '⇧' : '⇩';
+        const lsSign  = ls.direction === 'up' ? '+' : '-';
+        const lsTip   = `Recent 2 quarters average ${ls.direction} ${ls.magnitude}% vs prior quarters`;
+        weakestCell += `<span class="level-shift-badge" title="${lsTip}">${lsArrow} New level (${lsSign}${ls.magnitude}%)</span>`;
+      }
+      html += `<td class="quarter-col">${weakestCell}</td>`;
 
       html += '</tr>';
     });
@@ -317,9 +330,22 @@ const UI = (() => {
     const tr = metric.trends || {};
     html += `<td class="${trendClass(tr.trend)}">${fmtTrend(tr.trend)}</td>`;
     html += `<td class="${trendClass(tr.trend12m)}">${fmtTrend(tr.trend12m)}</td>`;
-    html += `<td class="${trendClass(tr.trend3m)}">${fmtTrend(tr.trend3m)}</td>`;
+    if (tr.trendReversal) {
+      const arrow = tr.trendReversalDirection === 'up' ? '↗' : '↘';
+      html += `<td class="trend-reversal" title="3-month trend is reversing the 12-month direction">${arrow} Reversing</td>`;
+    } else {
+      html += `<td class="${trendClass(tr.trend3m)}">${fmtTrend(tr.trend3m)}</td>`;
+    }
     const q = metric.quarters || {};
-    html += `<td>${q.strongestQ || '—'}</td><td>${q.weakestQ || '—'}</td>`;
+    const lsComp = q.levelShift;
+    let weakestComp = q.weakestQ || '—';
+    if (lsComp?.detected) {
+      const lsArrow = lsComp.direction === 'up' ? '⇧' : '⇩';
+      const lsSign  = lsComp.direction === 'up' ? '+' : '-';
+      const lsTip   = `Recent 2 quarters average ${lsComp.direction} ${lsComp.magnitude}% vs prior quarters`;
+      weakestComp += `<span class="level-shift-badge" title="${lsTip}">${lsArrow} New level (${lsSign}${lsComp.magnitude}%)</span>`;
+    }
+    html += `<td>${q.strongestQ || '—'}</td><td>${weakestComp}</td>`;
     html += '</tr>';
     return html;
   }
