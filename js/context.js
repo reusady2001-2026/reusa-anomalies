@@ -57,59 +57,25 @@ const Context = (() => {
     'WI':'55','WY':'56',
   };
 
-  // ── STATE → CITIES MAP ────────────────────────────────
-  const STATE_CITIES = {
-    'Alabama':['Birmingham','Montgomery','Huntsville','Mobile','Tuscaloosa','Hoover','Dothan','Auburn','Decatur','Madison','Florence','Gadsden','Vestavia Hills','Prattville','Phenix City','Northport','Alabaster','Daphne','Opelika','Enterprise','Bessemer','Athens','Homewood','Pelham','Fairhope'],
-    'Alaska':['Anchorage','Fairbanks','Juneau','Sitka','Ketchikan','Wasilla','Kenai','Kodiak','Bethel','Palmer','Homer','Unalaska','Soldotna','Valdez','Nome','Barrow','Seward','Wrangell','Petersburg','Cordova'],
-    'Arizona':['Phoenix','Tucson','Mesa','Chandler','Scottsdale','Glendale','Gilbert','Tempe','Peoria','Surprise','Goodyear','Avondale','Flagstaff','Buckeye','Yuma','Casa Grande','Prescott','Maricopa','Apache Junction','Lake Havasu City','Oro Valley','Sierra Vista','Scottsdale','Kingman','Bullhead City'],
-    'Arkansas':['Little Rock','Fort Smith','Fayetteville','Springdale','Jonesboro','North Little Rock','Conway','Rogers','Pine Bluff','Bentonville','Hot Springs','Benton','Texarkana','Sherwood','Jacksonville','Russellville','Bella Vista','West Memphis','Paragould','Cabot','Searcy','Van Buren','El Dorado','Marion','Bryant'],
-    'California':['Los Angeles','San Diego','San Jose','San Francisco','Fresno','Sacramento','Long Beach','Oakland','Bakersfield','Anaheim','Santa Ana','Riverside','Stockton','Irvine','Chula Vista','Fremont','San Bernardino','Modesto','Fontana','Moreno Valley','Glendale','Huntington Beach','Santa Clarita','Garden Grove','Santa Rosa'],
-    'Colorado':['Denver','Colorado Springs','Aurora','Fort Collins','Lakewood','Thornton','Arvada','Westminster','Pueblo','Centennial','Boulder','Highlands Ranch','Greeley','Longmont','Loveland','Broomfield','Castle Rock','Commerce City','Parker','Northglenn','Brighton','Littleton','Englewood','Wheat Ridge','Lafayette'],
-    'Connecticut':['Bridgeport','New Haven','Hartford','Stamford','Waterbury','Norwalk','Danbury','New Britain','Greenwich','Meriden','West Hartford','Middletown','Torrington','Shelton','Norwalk','Milford','West Haven','Bristol','Stratford','East Hartford','Naugatuck','Enfield','Manchester','Southington','Hamden'],
-    'Delaware':['Wilmington','Dover','Newark','Middletown','Bear','Glasgow','Hockessin','Smyrna','Milford','Seaford','Georgetown','Elsmere','New Castle','Edgemoor','Claymont','Lewes','Rehoboth Beach','Laurel','Harrington','Camden','Brookside','Pike Creek','Greenville','Talleyville','Odessa'],
-    'Florida':['Jacksonville','Miami','Tampa','Orlando','St. Petersburg','Hialeah','Port St. Lucie','Cape Coral','Tallahassee','Fort Lauderdale','Pembroke Pines','Hollywood','Gainesville','Miramar','Coral Springs','Palm Bay','Clearwater','Pompano Beach','West Palm Beach','Lakeland','Davie','Miami Gardens','Boca Raton','Deltona','Plantation'],
-    'Georgia':['Atlanta','Columbus','Augusta','Savannah','Athens','Sandy Springs','Roswell','Macon','Albany','Warner Robins','Alpharetta','Marietta','Smyrna','Valdosta','Gainesville','Peachtree City','South Fulton','Stonecrest','Johns Creek','Mableton','Kennesaw','Milton','Rome','Woodstock','Dunwoody'],
-    'Hawaii':['Honolulu','Pearl City','Hilo','Kailua','Waipahu','Kaneohe','Mililani','Kahului','Ewa Beach','Kapolei','Kihei','Kailua-Kona','Makakilo','Waimalu','Aiea','Wailuku','Halawa','Royal Kunia','Nanakuli','Waianae','Schofield Barracks','Wahiawa','Kula','Lahaina','Lihue'],
-    'Idaho':['Boise','Nampa','Meridian','Idaho Falls','Pocatello','Caldwell','Coeur d\'Alene','Twin Falls','Lewiston','Post Falls','Rexburg','Moscow','Eagle','Kuna','Ammon','Chubbuck','Hayden','Mountain Home','Blackfoot','Jerome','Burley','American Falls','Sandpoint','Hailey','Garden City'],
-    'Illinois':['Chicago','Aurora','Joliet','Naperville','Rockford','Springfield','Elgin','Peoria','Champaign','Evanston','Decatur','Bloomington','Waukegan','Cicero','Schaumburg','Bolingbrook','Palatine','Arlington Heights','Skokie','Des Plaines','Orland Park','Oak Park','Tinley Park','Berwyn','Downers Grove'],
-    'Indiana':['Indianapolis','Fort Wayne','Evansville','South Bend','Carmel','Fishers','Bloomington','Hammond','Gary','Muncie','Lafayette','Terre Haute','Kokomo','Anderson','Noblesville','Greenwood','Elkhart','Mishawaka','Lawrence','Jeffersonville','Columbus','Portage','New Albany','Richmond','Westfield'],
-    'Iowa':['Des Moines','Cedar Rapids','Davenport','Sioux City','Iowa City','Waterloo','Council Bluffs','Ames','West Des Moines','Dubuque','Ankeny','Urbandale','Cedar Falls','Marion','Bettendorf','Mason City','Marshalltown','Clinton','Burlington','Ottumwa','Fort Dodge','Waukee','Coralville','Johnston','Clive'],
-    'Kansas':['Wichita','Overland Park','Kansas City','Olathe','Topeka','Lawrence','Shawnee','Manhattan','Lenexa','Salina','Hutchinson','Leavenworth','Leawood','Prairie Village','Emporia','Garden City','Liberal','Derby','Hays','Dodge City','Junction City','Great Bend','Newton','McPherson','El Dorado'],
-    'Kentucky':['Louisville','Lexington','Bowling Green','Owensboro','Covington','Richmond','Georgetown','Florence','Elizabethtown','Nicholasville','Hopkinsville','Frankfort','Henderson','Jeffersontown','Paducah','Erlanger','Independence','Radcliff','Ashland','Murray','Danville','Madisonville','Union','Florence','Shively'],
-    'Louisiana':['New Orleans','Baton Rouge','Shreveport','Metairie','Lafayette','Lake Charles','Kenner','Bossier City','Monroe','Alexandria','Marrero','New Iberia','Laplace','Slidell','Hammond','Houma','Central','Zachary','Bayou Cane','Prairieville','Harvey','Terrytown','Ruston','Pineville','Sulphur'],
-    'Maine':['Portland','Lewiston','Bangor','South Portland','Auburn','Biddeford','Sanford','Saco','Westbrook','Augusta','Waterville','Brewer','Orono','Windham','Scarborough','Gorham','Ellsworth','Rockland','Bath','Brunswick','Belfast','Presque Isle','Caribou','Old Town','Skowhegan'],
-    'Maryland':['Baltimore','Columbia','Germantown','Silver Spring','Waldorf','Frederick','Ellicott City','Glen Burnie','Gaithersburg','Rockville','Bethesda','Dundalk','Towson','Bowie','Annapolis','Hagerstown','Essex','Aspen Hill','Wheaton','College Park','Greenbelt','Upper Marlboro','Catonsville','Severn','Largo'],
-    'Massachusetts':['Boston','Worcester','Springfield','Lowell','Cambridge','New Bedford','Brockton','Quincy','Lynn','Fall River','Newton','Lawrence','Somerville','Framingham','Haverhill','Waltham','Medford','Taunton','Chicopee','Weymouth','Revere','Peabody','Methuen','Barnstable','Pittsfield'],
-    'Michigan':['Detroit','Grand Rapids','Warren','Sterling Heights','Ann Arbor','Lansing','Flint','Dearborn','Livonia','Westland','Troy','Farmington Hills','Kalamazoo','Wyoming','Saginaw','Southfield','Pontiac','Roseville','Dearborn Heights','Rochester Hills','Taylor','Royal Oak','Novi','Waterford','Eastpointe'],
-    'Minnesota':['Minneapolis','St. Paul','Rochester','Duluth','Brooklyn Park','Plymouth','St. Cloud','Eagan','Woodbury','Coon Rapids','Bloomington','Apple Valley','Edina','Burnsville','Maple Grove','Eden Prairie','Blaine','Lakeville','Minnetonka','Mankato','Maplewood','St. Louis Park','Moorhead','Oakdale','Fridley'],
-    'Mississippi':['Jackson','Gulfport','Southaven','Hattiesburg','Biloxi','Meridian','Tupelo','Olive Branch','Greenville','Horn Lake','Pearl','Madison','Brandon','Clinton','Ridgeland','Starkville','Columbus','Vicksburg','Pascagoula','Oxford','Gautier','Ocean Springs','D\'Iberville','Hernando','Moss Point'],
-    'Missouri':['Kansas City','St. Louis','Springfield','Columbia','Independence','Lee\'s Summit','O\'Fallon','St. Joseph','St. Charles','Blue Springs','Joplin','Chesterfield','Jefferson City','Cape Girardeau','Florissant','Lees Summit','Wildwood','Raytown','Liberty','Wentzville','Belton','University City','Kirkwood','Hazelwood','Ballwin'],
-    'Montana':['Billings','Missoula','Great Falls','Bozeman','Butte','Helena','Kalispell','Havre','Anaconda','Miles City','Belgrade','Livingston','Laurel','Whitefish','Lewistown','Glasgow','Sidney','Glendive','Columbia Falls','Polson','Hardin','Lolo','Hamilton','Dillon','Wolf Point'],
-    'Nebraska':['Omaha','Lincoln','Bellevue','Grand Island','Kearney','Fremont','Hastings','North Platte','Norfolk','Columbus','Papillion','La Vista','Scottsbluff','South Sioux City','Beatrice','Gering','Alliance','Lexington','Seward','York','Blair','McCook','Nebraska City','Plattsmouth','Schuyler'],
-    'Nevada':['Las Vegas','Henderson','Reno','North Las Vegas','Sparks','Carson City','Fernley','Elko','Mesquite','Boulder City','Enterprise','Sunrise Manor','Paradise','Whitney','Summerlin South','Spring Valley','Winchester','Gardnerville','Minden','Fallon','Winnemucca','Battle Mountain','Pahrump','Laughlin','Tonopah'],
-    'New Hampshire':['Manchester','Nashua','Concord','Derry','Dover','Rochester','Salem','Merrimack','Hudson','Keene','Amherst','Londonderry','Claremont','Laconia','Lebanon','Portsmouth','Exeter','Goffstown','Bedford','Milford','Hampton','Hooksett','Windham','Pelham','Gilford'],
-    'New Jersey':['Newark','Jersey City','Paterson','Elizabeth','Edison','Woodbridge','Lakewood','Toms River','Hamilton','Trenton','Clifton','Camden','Brick','Cherry Hill','Passaic','Middletown','Union City','Bayonne','East Orange','Piscataway','Irvington','Perth Amboy','Sayreville','Hoboken','Old Bridge'],
-    'New Mexico':['Albuquerque','Las Cruces','Rio Rancho','Santa Fe','Roswell','Farmington','Clovis','Hobbs','Alamogordo','Carlsbad','Gallup','Taos','Artesia','Los Lunas','Portales','Grants','Deming','Lovington','Clovis','Las Vegas','Bernalillo','Silver City','Ruidoso','Espanola','Aztec'],
-    'New York':['New York City','Buffalo','Rochester','Yonkers','Syracuse','Albany','New Rochelle','Mount Vernon','Schenectady','Utica','Binghamton','White Plains','Niagara Falls','Troy','Brooklyn','Manhattan','Queens','Bronx','Staten Island','Long Island City','Flushing','Jamaica','Harlem','Astoria','Babylon'],
-    'North Carolina':['Charlotte','Raleigh','Greensboro','Durham','Winston-Salem','Fayetteville','Cary','Wilmington','High Point','Concord','Asheville','Gastonia','Chapel Hill','Greenville','Rocky Mount','Apex','Kannapolis','Burlington','Wilson','Huntersville','Hickory','Indian Trail','Monroe','Mooresville','Sanford'],
-    'North Dakota':['Fargo','Bismarck','Grand Forks','Minot','West Fargo','Williston','Dickinson','Mandan','Jamestown','Wahpeton','Devils Lake','Valley City','Grafton','Lincoln','Beulah','Watford City','Hazen','Rugby','Bottineau','Cavalier','Carrington','Hillsboro','Lisbon','Ellendale','Oakes'],
-    'Ohio':['Columbus','Cleveland','Cincinnati','Toledo','Akron','Dayton','Parma','Canton','Youngstown','Lorain','Hamilton','Springfield','Kettering','Elyria','Lakewood','Cuyahoga Falls','Euclid','Middletown','Mentor','Beavercreek','Cleveland Heights','Fairfield','Newark','Warren','Strongsville'],
-    'Oklahoma':['Oklahoma City','Tulsa','Norman','Broken Arrow','Lawton','Edmond','Moore','Midwest City','Enid','Stillwater','Muskogee','Bartlesville','Owasso','Shawnee','Ponca City','Ardmore','Bixby','Yukon','Jenks','Mustang','Claremore','Duncan','Sand Springs','Sapulpa','Bethany'],
-    'Oregon':['Portland','Salem','Eugene','Gresham','Hillsboro','Bend','Beaverton','Medford','Springfield','Corvallis','Albany','Tigard','Lake Oswego','Keiser','Roseburg','Grants Pass','Oregon City','McMinnville','Redmond','Tualatin','Bethany','Aloha','West Linn','Wilsonville','Sherwood'],
-    'Pennsylvania':['Philadelphia','Pittsburgh','Allentown','Erie','Reading','Scranton','Bethlehem','Lancaster','Harrisburg','York','Wilkes-Barre','Chester','Norristown','Altoona','Easton','Levittown','McKeesport','Hazleton','New Castle','State College','Upper Darby','Abington','Bethel Park','Bucks County','Lower Merion'],
-    'Rhode Island':['Providence','Warwick','Cranston','Pawtucket','East Providence','Woonsocket','Coventry','Cumberland','North Providence','South Kingstown','Johnston','West Warwick','Central Falls','North Smithfield','Smithfield','Lincoln','Burrillville','North Kingstown','Bristol','Westerly','East Greenwich','Middletown','Portsmouth','Charlestown','Barrington'],
-    'South Carolina':['Charleston','Columbia','North Charleston','Mount Pleasant','Rock Hill','Greenville','Sumter','Goose Creek','Hilton Head','Spartanburg','Florence','Conway','Anderson','Myrtle Beach','Greer','Beaufort','Hanahan','Lexington','Bluffton','Aiken','Irmo','Cayce','Fort Mill','Clemson','Easley'],
-    'South Dakota':['Sioux Falls','Rapid City','Aberdeen','Brookings','Watertown','Mitchell','Yankton','Pierre','Huron','Vermillion','Spearfish','Brandon','Box Elder','Madison','Tea','Sturgis','Harrisburg','Dell Rapids','Milbank','Mobridge','Lead','Hot Springs','Chamberlain','Winner','Sisseton'],
-    'Tennessee':['Memphis','Nashville','Knoxville','Chattanooga','Clarksville','Murfreesboro','Franklin','Jackson','Johnson City','Bartlett','Hendersonville','Kingsport','Collierville','Smyrna','Cleveland','Brentwood','Germantown','Columbia','Spring Hill','La Vergne','Cookeville','Gallatin','Mount Juliet','Maryville','Bristol'],
-    'Texas':['Houston','San Antonio','Dallas','Austin','Fort Worth','El Paso','Arlington','Corpus Christi','Plano','Laredo','Lubbock','Garland','Irving','Amarillo','Grand Prairie','McKinney','Frisco','Pasadena','Mesquite','Killeen','McAllen','Waco','Carrollton','Midland','Denton'],
-    'Utah':['Salt Lake City','West Valley City','Provo','West Jordan','Orem','Sandy','Ogden','St. George','Layton','Millcreek','Taylorsville','Riverton','Logan','Murray','Lehi','South Jordan','Herriman','Draper','Bountiful','Clearfield','Spanish Fork','Eagle Mountain','Toelle','American Fork','Pleasant Grove'],
-    'Vermont':['Burlington','South Burlington','Rutland','Barre','Montpelier','Winooski','St. Albans','Newport','Vergennes','Middlebury','Morrisville','Hyde Park','Lyndonville','Brattleboro','Springfield','St. Johnsbury','Essex Junction','Shelburne','Williston','Colchester','Milton','Stowe','Bennington','Manchester','Randolph'],
-    'Virginia':['Virginia Beach','Norfolk','Chesapeake','Richmond','Newport News','Alexandria','Hampton','Roanoke','Portsmouth','Suffolk','Lynchburg','Harrisonburg','Charlottesville','Reston','Arlington','Leesburg','Blacksburg','Manassas','Herndon','Fredericksburg','Dale City','Centreville','McLean','Woodbridge','Springfield'],
-    'Washington':['Seattle','Spokane','Tacoma','Vancouver','Bellevue','Kent','Everett','Renton','Yakima','Kirkland','Bellingham','Kennewick','Federal Way','Spokane Valley','Marysville','Redmond','Shoreline','Pasco','Sammamish','Richland','Lakewood','Burien','Lakewood','Kenmore','Edmonds'],
-    'West Virginia':['Charleston','Huntington','Parkersburg','Morgantown','Wheeling','Fairmont','Beckley','Clarksburg','Martinsburg','South Charleston','Saint Albans','Vienna','Lewisburg','Weirton','Elkins','Nitro','Bluefield','Princeton','Bridgeport','Oak Hill','Dunbar','Cross Lanes','Hurricane','Moundsville','New Martinsville'],
-    'Wisconsin':['Milwaukee','Madison','Green Bay','Kenosha','Racine','Appleton','Waukesha','Eau Claire','Oshkosh','Janesville','West Allis','La Crosse','Sheboygan','Wauwatosa','Fond du Lac','New Berlin','Wausau','Brookfield','Beloit','Greenfield','Franklin','Oak Creek','Caledonia','Manitowoc','West Bend'],
-    'Wyoming':['Cheyenne','Casper','Laramie','Gillette','Rock Springs','Sheridan','Green River','Evanston','Riverton','Jackson','Cody','Lander','Torrington','Douglas','Rawlins','Worland','Powell','Thermopolis','Buffalo','Wheatland','Kemmerer','Afton','Star Valley Ranch','Glenrock','Greybull'],
-  };
+  // ── CITY LOOKUP (GeoNames API, cached) ───────────────
+  const _cityCache = {};
+
+  async function fetchCitiesForState(stateAbbr) {
+    const url = `https://secure.geonames.org/searchJSON?country=US&featureClass=P&adminCode1=${stateAbbr}&maxRows=1000&username=demo`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return (data.geonames || [])
+      .map(p => p.name)
+      .filter(Boolean)
+      .sort();
+  }
+
+  async function getCitiesForState(stateAbbr) {
+    if (_cityCache[stateAbbr]) return _cityCache[stateAbbr];
+    const cities = await fetchCitiesForState(stateAbbr);
+    _cityCache[stateAbbr] = cities;
+    return cities;
+  }
 
   const STATES = Object.entries(STATE_ABBR)
     .map(([name, abbr]) => ({ name, abbr }))
@@ -375,8 +341,9 @@ const Context = (() => {
   // ── PUBLIC ────────────────────────────────────────────
   return {
     STATES,
-    STATE_CITIES,
     STATE_ABBR,
+    getCitiesForState,
+    fetchCitiesForState,
     fetchDataContext,
     monthLabelToDate,
     dateToMonthLabel,

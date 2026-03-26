@@ -337,20 +337,20 @@ const App = (() => {
     });
   }
 
-  function populateCityDropdown(citySelectId, stateAbbr) {
+  async function populateCityDropdown(citySelectId, stateAbbr) {
     const sel = document.getElementById(citySelectId);
     if (!sel) return;
     sel.innerHTML = '<option value="">Select City…</option>';
     sel.disabled = !stateAbbr;
     if (!stateAbbr) return;
-    const stateName = Object.entries(Context.STATE_ABBR || {}).find(([, a]) => a === stateAbbr)?.[0];
-    const cities = (Context.STATE_CITIES || {})[stateName] || [];
+    const cities = await Context.getCitiesForState(stateAbbr).catch(() => []);
     cities.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c;
       opt.textContent = c;
       sel.appendChild(opt);
     });
+    sel.disabled = false;
   }
 
   // ── CONTEXT FETCHING ──────────────────────────────────
@@ -654,21 +654,23 @@ const App = (() => {
     if (savedLoc?.stateAbbr) {
       const ss = document.getElementById('state-select');
       if (ss) ss.value = savedLoc.stateAbbr;
-      populateCityDropdown('city-select', savedLoc.stateAbbr);
       state.selectedState = savedLoc.stateAbbr;
-      if (savedLoc.city) {
-        const cs = document.getElementById('city-select');
-        if (cs) cs.value = savedLoc.city;
-        state.selectedCity = savedLoc.city;
-      }
+      populateCityDropdown('city-select', savedLoc.stateAbbr).then(() => {
+        if (savedLoc.city) {
+          const cs = document.getElementById('city-select');
+          if (cs) cs.value = savedLoc.city;
+          state.selectedCity = savedLoc.city;
+        }
+      });
       // Comp dropdowns too
       const ssc = document.getElementById('state-select-comp');
       if (ssc) ssc.value = savedLoc.stateAbbr;
-      populateCityDropdown('city-select-comp', savedLoc.stateAbbr);
-      if (savedLoc.city) {
-        const csc = document.getElementById('city-select-comp');
-        if (csc) csc.value = savedLoc.city;
-      }
+      populateCityDropdown('city-select-comp', savedLoc.stateAbbr).then(() => {
+        if (savedLoc.city) {
+          const csc = document.getElementById('city-select-comp');
+          if (csc) csc.value = savedLoc.city;
+        }
+      });
     }
 
     // State change → repopulate cities
