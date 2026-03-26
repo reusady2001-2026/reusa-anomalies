@@ -92,7 +92,7 @@ const Context = (() => {
     try {
       const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
       const entry = all[key];
-      if (!entry || Date.now() - entry.ts > CACHE_TTL) return null;
+      if (!entry || Date.now() - entry.ts > 60 * 60 * 1000) return null;
       // Reject entries where FRED is entirely empty — cached during CORS failures
       const fred = entry.data?.fred || {};
       const hasFredData = Object.values(fred).some(map => Object.keys(map || {}).length > 0);
