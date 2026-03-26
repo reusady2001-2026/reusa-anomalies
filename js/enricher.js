@@ -15,11 +15,14 @@ const Enricher = (() => {
    * @param {Array}  months    - month label strings
    * @returns {Object} anomalyProfile
    */
-  function enrichAnomaly(metric, monthIdx, allMetrics, months) {
+  function enrichAnomaly(metric, monthIdx, allMetrics, months, coMovers) {
     return {
       velocity:           _velocity(metric, monthIdx),
       recovery:           _recovery(metric, monthIdx),
       dollarImpact:       _dollarImpactAndReference(metric, monthIdx, allMetrics),
+      causalityChain:     _causalityChain(metric, monthIdx, coMovers, allMetrics),
+      reversalTiming:     _reversalTiming(metric, monthIdx, months),
+      seasonalExpectation: _seasonalExpectation(metric, monthIdx, months),
     };
   }
 
@@ -111,6 +114,185 @@ const Enricher = (() => {
     }
 
     return { status, monthsToResolve, description };
+  }
+
+  // ── SIGNAL 5: CAUSALITY CHAIN ─────────────────────────────
+  // For each co-mover, find the earliest month it became anomalous
+  // within ±3 months of monthIdx. Negative offset = moved before current.
+
+  function _causalityChain(metric, monthIdx, coMovers, allMetrics) {
+    const peers = (coMovers || []).filter(cm => !cm.isSelf);
+
+    if (peers.length === 0) {
+      return {
+        likelyCause:  null,
+        effects:      [],
+        description:  'No co-moving metrics identified',
+      };
+    }
+
+    // Build a lookup map from metric id → anomalies[] from allMetrics
+    const anomalyMap = {};
+    (allMetrics || []).forEach(m => { anomalyMap[m.id] = m.anomalies || []; });
+
+    // For each peer, find earliest anomaly index within [monthIdx-3, monthIdx+3]
+    const offsets = peers.map(cm => {
+      const anomalies = anomalyMap[cm.id] || [];
+      let earliest = null;
+      for (let delta = -3; delta <= 3; delta++) {
+        const idx = monthIdx + delta;
+        if (idx < 0) continue;
+        if (anomalies.includes(idx)) {
+          earliest = delta; // offset relative to current anomaly
+          break;            // want the most negative (earliest) first
+        }
+      }
+      return { name: cm.name, section: cm.section, offset: earliest };
+    }).filter(e => e.offset !== null);
+
+    // Separate causes (negative offset or 0) and effects (positive offset)
+    const before = offsets.filter(e => e.offset < 0)
+                          .sort((a, b) => a.offset - b.offset); // most negative first
+    const same   = offsets.filter(e => e.offset === 0);
+    const after  = offsets.filter(e => e.offset > 0)
+                          .sort((a, b) => a.offset - b.offset);
+
+    const likelyCause = before.length > 0
+      ? { name: before[0].name, section: before[0].section, movedFirst: Math.abs(before[0].offset) }
+      : null;
+
+    const effects = after.map(e => ({ name: e.name, section: e.section, movedAfter: e.offset }));
+
+    let description;
+    if (likelyCause) {
+      const months = likelyCause.movedFirst;
+      description = `${metric.name} likely triggered by ${likelyCause.name} ${months} month${months !== 1 ? 's' : ''} earlier`;
+    } else if (effects.length > 0) {
+      const names = effects.slice(0, 2).map(e => e.name).join(' and ');
+      description = `This metric moved first — ${names} followed`;
+    } else if (same.length > 0) {
+      description = 'All metrics moved simultaneously — no clear cause identified';
+    } else {
+      description = 'No co-moving metrics identified';
+    }
+
+    return { likelyCause, effects, description };
+  }
+
+  // ── SIGNAL 6: REVERSAL TIMING ──────────────────────────────
+  // Uses trendReversal / trendReversalDirection already on metric.trends.
+  // Scans backwards to find where the direction changed.
+
+  function _reversalTiming(metric, monthIdx, months) {
+    const trends = metric.trends || {};
+
+    if (!trends.trendReversal) {
+      return {
+        detected:        false,
+        direction:       null,
+        startMonthIdx:   null,
+        startMonthLabel: null,
+        monthsAgo:       null,
+        description:     'No reversal detected',
+      };
+    }
+
+    const direction  = trends.trendReversalDirection; // 'up' | 'down'
+    const zScores    = metric.zScores || {};
+    // The current anomaly's effectiveZ determines "current" sign
+    const currentZ   = zScores[monthIdx] ? zScores[monthIdx].effectiveZ : 0;
+    const currentSign = Math.sign(currentZ);
+
+    // Walk backwards: find the last month whose sign was OPPOSITE to currentSign.
+    // The month immediately after that is where the reversal started.
+    let oppositeAt = null;
+    for (let i = monthIdx - 1; i >= 0; i--) {
+      const z = zScores[i];
+      if (!z || z.effectiveZ == null) continue;
+      if (Math.sign(z.effectiveZ) !== currentSign) {
+        oppositeAt = i;
+        break;
+      }
+    }
+
+    // Reversal started the month after oppositeAt, or at index 0 if no opposite found
+    const startMonthIdx   = oppositeAt !== null ? oppositeAt + 1 : 0;
+    const startMonthLabel = (months && months[startMonthIdx]) || null;
+    const monthsAgo       = monthIdx - startMonthIdx;
+
+    const dirLabel    = direction === 'up' ? 'upward' : 'downward';
+    const agoStr      = monthsAgo === 0 ? 'this month'
+                      : monthsAgo === 1 ? '1 month ago'
+                      : `${monthsAgo} months ago`;
+    const labelStr    = startMonthLabel ? ` in ${startMonthLabel},` : ',';
+    const description = `Reversing ${dirLabel} — trend turned${labelStr} ${agoStr}`;
+
+    return { detected: true, direction, startMonthIdx, startMonthLabel, monthsAgo, description };
+  }
+
+  // ── SIGNAL 7: SEASONAL EXPECTATION ────────────────────────
+  // Compares this month's elevation above mean to the historical average
+  // elevation for the same calendar month in prior years.
+
+  function _seasonalExpectation(metric, monthIdx, months) {
+    const vals = metric.values || [];
+    const mean = metric.mean   || 0;
+    const monthLabel = months && months[monthIdx]; // e.g. "Oct 2024"
+
+    // Derive calendar month name (e.g. "Oct") from the label
+    const calMonth = monthLabel ? monthLabel.split(' ')[0] : null;
+
+    // Actual elevation
+    const actual = vals[monthIdx];
+    const actualElevation = mean !== 0
+      ? Math.round(((actual - mean) / Math.abs(mean)) * 1000) / 10
+      : 0;
+
+    // Find prior values for the same calendar month
+    let sameMonthValues = [];
+    if (calMonth && months) {
+      for (let i = 0; i < monthIdx; i++) {
+        if (months[i] && months[i].startsWith(calMonth + ' ') && vals[i] != null) {
+          sameMonthValues.push(vals[i]);
+        }
+      }
+    }
+
+    // Also check metric.seasonalityMonths / recurringPatterns for the same idx
+    const isSeasonalMonth = !!(
+      (metric.seasonalityMonths && metric.seasonalityMonths.includes(monthIdx)) ||
+      (metric.recurringPatterns  && metric.recurringPatterns.includes(monthIdx))
+    );
+
+    if (sameMonthValues.length === 0 || mean === 0) {
+      return {
+        isSeasonalMonth,
+        expectedElevation:    null,
+        actualElevation,
+        excessAboveSeasonal:  null,
+        description: isSeasonalMonth
+          ? `This is a typically elevated month for this metric, but no prior-year data to quantify`
+          : 'No seasonal pattern detected for this metric in this month',
+      };
+    }
+
+    const sameMonthAvg    = sameMonthValues.reduce((s, v) => s + v, 0) / sameMonthValues.length;
+    const expectedElevation = Math.round(((sameMonthAvg - mean) / Math.abs(mean)) * 1000) / 10;
+    const excessAboveSeasonal = Math.round((actualElevation - expectedElevation) * 10) / 10;
+
+    const sign = v => v >= 0 ? '+' : '';
+    let description;
+    if (Math.abs(expectedElevation) < 1) {
+      description = `No meaningful seasonal pattern for ${calMonth} — actual is ${sign(actualElevation)}${actualElevation}% vs mean`;
+    } else {
+      const above = expectedElevation >= 0 ? 'above' : 'below';
+      const excessAbs = Math.abs(excessAboveSeasonal);
+      description = `${calMonth} typically runs ${Math.abs(expectedElevation)}% ${above} average — ` +
+        `actual is ${sign(actualElevation)}${actualElevation}%, ` +
+        `so ${excessAbs}% is ${excessAboveSeasonal >= 0 ? 'above' : 'below'} seasonal expectation`;
+    }
+
+    return { isSeasonalMonth, expectedElevation, actualElevation, excessAboveSeasonal, description };
   }
 
   // ── SIGNAL 3 + 4: DOLLAR IMPACT & REFERENCE POINT ────────
