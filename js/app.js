@@ -337,40 +337,9 @@ const App = (() => {
     });
   }
 
-  // Derive search-input id from the select id: "city-select" → "city-search",
-  // "city-select-comp" → "city-search-comp"
-  function _citySearchId(citySelectId) {
-    return citySelectId.replace('city-select', 'city-search');
-  }
-
-  function _ensureCitySearchInput(citySelectId) {
-    const searchId = _citySearchId(citySelectId);
-    if (document.getElementById(searchId)) return;
-    const sel = document.getElementById(citySelectId);
-    if (!sel) return;
-    const inp = document.createElement('input');
-    inp.type        = 'text';
-    inp.id          = searchId;
-    inp.placeholder = 'Search city…';
-    inp.autocomplete = 'off';
-    inp.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin-bottom:4px;padding:4px 6px;font-size:inherit;border:1px solid #ccc;border-radius:4px;';
-    sel.parentNode.insertBefore(inp, sel);
-    inp.addEventListener('input', () => {
-      const q = inp.value.trim().toLowerCase();
-      Array.from(sel.options).forEach(opt => {
-        if (!opt.value) { opt.hidden = false; return; } // keep placeholder visible
-        opt.hidden = q !== '' && !opt.textContent.toLowerCase().includes(q);
-      });
-    });
-  }
-
   async function populateCityDropdown(citySelectId, stateAbbr) {
     const sel = document.getElementById(citySelectId);
     if (!sel) return;
-
-    // Reset search input
-    const searchInp = document.getElementById(_citySearchId(citySelectId));
-    if (searchInp) searchInp.value = '';
 
     if (!stateAbbr) {
       sel.innerHTML = '<option value="">Select City…</option>';
@@ -378,10 +347,11 @@ const App = (() => {
       return;
     }
 
-    // Resolve abbreviation to the canonical abbr from Context.STATES
+    // Resolve to canonical abbr from Context.STATES
     const stateEntry = Context.STATES.find(s => s.abbr === stateAbbr || s.name === stateAbbr);
     const abbr = stateEntry?.abbr || stateAbbr;
 
+    // Immediately show loading state
     sel.innerHTML = '<option value="">Loading…</option>';
     sel.disabled = true;
 
@@ -389,8 +359,8 @@ const App = (() => {
     try {
       cities = await Context.getCitiesForState(abbr);
     } catch (err) {
-      console.warn(`populateCityDropdown: could not load cities for "${abbr}"`, err);
-      sel.innerHTML = '<option value="">Select City…</option>';
+      console.error(`populateCityDropdown: failed to load cities for "${abbr}"`, err);
+      sel.innerHTML = '<option value="">Could not load cities</option>';
       sel.disabled = false;
       return;
     }
@@ -403,8 +373,6 @@ const App = (() => {
       sel.appendChild(opt);
     });
     sel.disabled = false;
-
-    _ensureCitySearchInput(citySelectId);
   }
 
   // ── CONTEXT FETCHING ──────────────────────────────────

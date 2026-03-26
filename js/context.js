@@ -62,7 +62,9 @@ const Context = (() => {
 
   async function fetchCitiesForState(stateAbbr) {
     const url = `https://secure.geonames.org/searchJSON?country=US&featureClass=P&adminCode1=${stateAbbr}&maxRows=1000&username=demo`;
+    console.log('[GeoNames] fetching:', url);
     const res  = await fetch(url);
+    console.log('[GeoNames] response status:', res.status, res.statusText);
     const data = await res.json();
     return (data.geonames || [])
       .map(p => p.name)
