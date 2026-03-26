@@ -340,10 +340,31 @@ const App = (() => {
   async function populateCityDropdown(citySelectId, stateAbbr) {
     const sel = document.getElementById(citySelectId);
     if (!sel) return;
+
+    if (!stateAbbr) {
+      sel.innerHTML = '<option value="">Select City…</option>';
+      sel.disabled = true;
+      return;
+    }
+
+    // Resolve abbreviation to the canonical abbr from Context.STATES
+    const stateEntry = Context.STATES.find(s => s.abbr === stateAbbr || s.name === stateAbbr);
+    const abbr = stateEntry?.abbr || stateAbbr;
+
+    sel.innerHTML = '<option value="">Loading…</option>';
+    sel.disabled = true;
+
+    let cities;
+    try {
+      cities = await Context.getCitiesForState(abbr);
+    } catch (err) {
+      console.warn(`populateCityDropdown: could not load cities for "${abbr}"`, err);
+      sel.innerHTML = '<option value="">Select City…</option>';
+      sel.disabled = false;
+      return;
+    }
+
     sel.innerHTML = '<option value="">Select City…</option>';
-    sel.disabled = !stateAbbr;
-    if (!stateAbbr) return;
-    const cities = await Context.getCitiesForState(stateAbbr).catch(() => []);
     cities.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c;
@@ -674,16 +695,18 @@ const App = (() => {
     }
 
     // State change → repopulate cities
-    document.getElementById('state-select')?.addEventListener('change', e => {
+    document.getElementById('state-select')?.addEventListener('change', async e => {
       const abbr = e.target.value;
       state.selectedState = abbr;
       state.selectedCity  = '';
       state.dataContext   = null;
-      populateCityDropdown('city-select', abbr);
-      // Mirror to comp
+      await Promise.all([
+        populateCityDropdown('city-select', abbr),
+        populateCityDropdown('city-select-comp', abbr),
+      ]);
+      // Mirror state selection to comp
       const ssc = document.getElementById('state-select-comp');
       if (ssc) ssc.value = abbr;
-      populateCityDropdown('city-select-comp', abbr);
     });
     document.getElementById('city-select')?.addEventListener('change', e => {
       state.selectedCity = e.target.value;
@@ -697,15 +720,18 @@ const App = (() => {
     });
 
     // Comp dropdowns (allow independent selection too)
-    document.getElementById('state-select-comp')?.addEventListener('change', e => {
+    document.getElementById('state-select-comp')?.addEventListener('change', async e => {
       const abbr = e.target.value;
       state.selectedState = abbr;
       state.selectedCity  = '';
       state.dataContext   = null;
-      populateCityDropdown('city-select-comp', abbr);
+      await Promise.all([
+        populateCityDropdown('city-select-comp', abbr),
+        populateCityDropdown('city-select', abbr),
+      ]);
+      // Mirror state selection to primary
       const ss = document.getElementById('state-select');
       if (ss) ss.value = abbr;
-      populateCityDropdown('city-select', abbr);
     });
     document.getElementById('city-select-comp')?.addEventListener('change', e => {
       state.selectedCity = e.target.value;
