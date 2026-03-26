@@ -15,14 +15,15 @@ const Enricher = (() => {
    * @param {Array}  months    - month label strings
    * @returns {Object} anomalyProfile
    */
-  function enrichAnomaly(metric, monthIdx, allMetrics, months, coMovers) {
+  function enrichAnomaly(metric, monthIdx, allMetrics, months, coMovers, cloudHistory) {
     return {
-      velocity:           _velocity(metric, monthIdx),
-      recovery:           _recovery(metric, monthIdx),
-      dollarImpact:       _dollarImpactAndReference(metric, monthIdx, allMetrics),
-      causalityChain:     _causalityChain(metric, monthIdx, coMovers, allMetrics),
-      reversalTiming:     _reversalTiming(metric, monthIdx, months),
-      seasonalExpectation: _seasonalExpectation(metric, monthIdx, months),
+      velocity:              _velocity(metric, monthIdx),
+      recovery:              _recovery(metric, monthIdx),
+      dollarImpact:          _dollarImpactAndReference(metric, monthIdx, allMetrics),
+      causalityChain:        _causalityChain(metric, monthIdx, coMovers, allMetrics),
+      reversalTiming:        _reversalTiming(metric, monthIdx, months),
+      seasonalExpectation:   _seasonalExpectation(metric, monthIdx, months),
+      crossPropertyBaseline: _crossPropertyBaseline(metric, monthIdx, months, cloudHistory),
     };
   }
 
@@ -381,6 +382,83 @@ const Enricher = (() => {
         description,
       },
     };
+  }
+
+  // ── SIGNAL 8: CROSS-PROPERTY BASELINE ────────────────────
+  // Looks up how many times this anomaly's pattern group has appeared
+  // across the portfolio in cloudHistory.patterns.
+
+  function _crossPropertyBaseline(metric, monthIdx, months, cloudHistory) {
+    const EMPTY = {
+      timesSeenAcrossPortfolio: 0,
+      propertiesCount:          0,
+      typicalMonths:            [],
+      isTypicalMonth:           false,
+      portfolioContext:         'isolated',
+      description:              'First time this pattern has appeared across the portfolio',
+    };
+
+    if (!cloudHistory || !Array.isArray(cloudHistory.patterns) || cloudHistory.patterns.length === 0) {
+      return EMPTY;
+    }
+
+    // Resolve groupId from reasonData
+    const rd      = metric.reasonData && metric.reasonData[monthIdx];
+    const groupId = rd?.reasonerResult?.primary?.groupId
+                 || rd?.primary?.groupId
+                 || null;
+
+    if (!groupId) return EMPTY;
+
+    const matching = cloudHistory.patterns.filter(p => p.group_id === groupId);
+    if (matching.length === 0) return EMPTY;
+
+    // Distinct property names (Supabase join provides properties.name)
+    const propNames = new Set(matching.map(p => p.properties?.name).filter(Boolean));
+
+    // Collect month_num values and find the most frequent
+    const monthFreq = {};
+    matching.forEach(p => {
+      if (p.month_num != null) monthFreq[p.month_num] = (monthFreq[p.month_num] || 0) + 1;
+    });
+    const maxFreq = Math.max(0, ...Object.values(monthFreq));
+    const typicalMonths = maxFreq > 0
+      ? Object.keys(monthFreq)
+              .filter(k => monthFreq[k] === maxFreq)
+              .map(Number)
+              .sort((a, b) => a - b)
+      : [];
+
+    // Current month number — derive from months[] label (e.g. "Oct 2024" → month 10)
+    const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const label       = months && months[monthIdx];
+    const calMonthStr = label ? label.split(' ')[0] : null;
+    const currentMonthNum = calMonthStr ? MONTH_NAMES.indexOf(calMonthStr) + 1 : null;
+    const isTypicalMonth  = currentMonthNum != null && typicalMonths.includes(currentMonthNum);
+
+    const timesSeenAcrossPortfolio = matching.length;
+    const propertiesCount          = propNames.size;
+
+    const portfolioContext = timesSeenAcrossPortfolio === 0 ? 'isolated'
+                           : timesSeenAcrossPortfolio <= 2  ? 'rare'
+                           : 'common';
+
+    // Human description
+    let description;
+    if (timesSeenAcrossPortfolio === 0) {
+      description = 'First time this pattern has appeared across the portfolio';
+    } else {
+      const propStr = `${propertiesCount} propert${propertiesCount !== 1 ? 'ies' : 'y'}`;
+      description   = `Seen ${timesSeenAcrossPortfolio} time${timesSeenAcrossPortfolio !== 1 ? 's' : ''} across ${propStr}`;
+      if (typicalMonths.length > 0) {
+        const monthLabels = typicalMonths.map(n => MONTH_NAMES[n - 1]).filter(Boolean);
+        if (monthLabels.length > 0) {
+          description += ` — most common in ${monthLabels.join(' and ')}`;
+        }
+      }
+    }
+
+    return { timesSeenAcrossPortfolio, propertiesCount, typicalMonths, isTypicalMonth, portfolioContext, description };
   }
 
   // ── EXPORTS ───────────────────────────────────────────────

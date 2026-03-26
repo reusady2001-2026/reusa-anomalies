@@ -692,6 +692,22 @@ const App = (() => {
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
       // Enrich rule output with real-world data (no-op if context is null)
       state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext, state.cloudHistory);
+
+      (state.resultA.metrics || []).forEach(metric => {
+        (metric.anomalies || []).forEach(relIdx => {
+          if (!metric.reasonData?.[relIdx]) return;
+          const coMovers = metric.reasonData[relIdx]?.reasonerResult?.primary?.matchedMetrics || [];
+          metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
+            metric,
+            relIdx,
+            state.resultA.metrics,
+            state.resultA.months,
+            coMovers,
+            state.cloudHistory
+          );
+        });
+      });
+
       renderAnalyzerTable();
     } catch (err) {
       console.error(err);
@@ -791,6 +807,27 @@ const App = (() => {
     state.reasonsB = RuleEngine.analyse(state.resultB.metrics, state.resultB.months, getAssetInfo('b'));
     state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext);
     state.reasonsB = Enrichment.enrichAll(state.resultB, state.reasonsB, state.dataContext);
+
+    [
+      { result: state.resultA },
+      { result: state.resultB },
+    ].forEach(({ result }) => {
+      (result.metrics || []).forEach(metric => {
+        (metric.anomalies || []).forEach(relIdx => {
+          if (!metric.reasonData?.[relIdx]) return;
+          const coMovers = metric.reasonData[relIdx]?.reasonerResult?.primary?.matchedMetrics || [];
+          metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
+            metric,
+            relIdx,
+            result.metrics,
+            result.months,
+            coMovers,
+            state.cloudHistory
+          );
+        });
+      });
+    });
+
     renderComparisonView();
   }
 
