@@ -799,6 +799,79 @@ input[type="file"] { display: none; }
 .location-select:focus { outline: none; border-color: var(--blue-mid); box-shadow: 0 0 0 2px rgba(63,81,181,0.15); }
 .req-star { color: var(--red-mid); font-weight: 700; margin-left: 2px; }
 
+/* ── CITY AUTOCOMPLETE ── */
+.city-autocomplete-wrapper {
+  flex: 1;
+  position: relative;
+  min-width: 120px;
+}
+.city-autocomplete-wrapper input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-family: var(--font);
+  background: #fff;
+  color: var(--text-primary);
+}
+.city-autocomplete-wrapper input[type="text"]:focus {
+  outline: none;
+  border-color: var(--blue-mid);
+  box-shadow: 0 0 0 2px rgba(63,81,181,0.15);
+}
+.city-autocomplete-wrapper input[type="text"]:disabled {
+  background: #f5f5f5;
+  color: #bdbdbd;
+  cursor: not-allowed;
+}
+.city-autocomplete-wrapper ul {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #1e1e2e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.city-autocomplete-wrapper ul li {
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  color: #e0e0e0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.city-autocomplete-wrapper ul li:hover,
+.city-autocomplete-wrapper ul li.city-ac-active {
+  background: #2e3a5c;
+  color: #fff;
+}
+.city-autocomplete-wrapper ul li.city-ac-noresult {
+  color: #888;
+  cursor: default;
+  font-style: italic;
+}
+/* Dark theme */
+[data-theme="dark"] .city-autocomplete-wrapper input[type="text"] {
+  background: #252540;
+  color: #e0e0e0;
+  border-color: #444;
+}
+[data-theme="dark"] .city-autocomplete-wrapper input[type="text"]:disabled {
+  background: #1a1a28;
+  color: #555;
+}
+
 /* ── REASON PREVIEW (metric name cell subtitle) ── */
 .reason-preview {
   font-size: 0.68rem;

@@ -79,9 +79,10 @@
           <select id="state-select" class="location-select">
             <option value="">Select State…</option>
           </select>
-          <select id="city-select" class="location-select" disabled>
-            <option value="">Select City…</option>
-          </select>
+          <div class="city-autocomplete-wrapper">
+            <input type="text" id="city-input" placeholder="Select a state first…" autocomplete="off" disabled>
+            <ul id="city-dropdown-list" hidden></ul>
+          </div>
         </div>
       </div>
 
@@ -230,9 +231,10 @@
           <select id="state-select-comp" class="location-select">
             <option value="">Select State…</option>
           </select>
-          <select id="city-select-comp" class="location-select" disabled>
-            <option value="">Select City…</option>
-          </select>
+          <div class="city-autocomplete-wrapper">
+            <input type="text" id="city-input-comp" placeholder="Select a state first…" autocomplete="off" disabled>
+            <ul id="city-dropdown-list-comp" hidden></ul>
+          </div>
         </div>
       </div>
     </div>

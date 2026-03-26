@@ -337,42 +337,112 @@ const App = (() => {
     });
   }
 
-  async function populateCityDropdown(citySelectId, stateAbbr) {
-    const sel = document.getElementById(citySelectId);
-    if (!sel) return;
+  // ── CITY AUTOCOMPLETE ─────────────────────────────────
+  // Per-widget in-memory city lists keyed by input element id
+  const _acCities = {};
+
+  // Load (or reload) cities for a given autocomplete input.
+  // Mirrors the old populateCityDropdown signature for easy call-site reuse.
+  async function loadCityAutocomplete(inputId, listId, stateAbbr) {
+    const inp = document.getElementById(inputId);
+    const ul  = document.getElementById(listId);
+    if (!inp) return;
+
+    // Reset state immediately
+    inp.value       = '';
+    _acCities[inputId] = [];
+    if (ul) { ul.innerHTML = ''; ul.hidden = true; }
 
     if (!stateAbbr) {
-      sel.innerHTML = '<option value="">Select City…</option>';
-      sel.disabled = true;
+      inp.placeholder = 'Select a state first…';
+      inp.disabled    = true;
       return;
     }
 
-    // Resolve to canonical abbr from Context.STATES
     const stateEntry = Context.STATES.find(s => s.abbr === stateAbbr || s.name === stateAbbr);
     const abbr = stateEntry?.abbr || stateAbbr;
 
-    // Immediately show loading state
-    sel.innerHTML = '<option value="">Loading…</option>';
-    sel.disabled = true;
+    inp.placeholder = 'Loading…';
+    inp.disabled    = true;
 
     let cities;
     try {
       cities = await Context.getCitiesForState(abbr);
     } catch (err) {
-      console.error(`populateCityDropdown: failed to load cities for "${abbr}"`, err);
-      sel.innerHTML = '<option value="">Could not load cities</option>';
-      sel.disabled = false;
+      console.error(`loadCityAutocomplete: failed for "${abbr}"`, err);
+      inp.placeholder = 'Could not load cities';
+      inp.disabled    = false;
       return;
     }
 
-    sel.innerHTML = '<option value="">Select City…</option>';
-    cities.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      sel.appendChild(opt);
+    _acCities[inputId] = cities;
+    inp.placeholder    = 'Type to search city…';
+    inp.disabled       = false;
+  }
+
+  function _renderCityList(inputId, listId) {
+    const inp = document.getElementById(inputId);
+    const ul  = document.getElementById(listId);
+    if (!inp || !ul) return;
+    const q       = inp.value.trim().toLowerCase();
+    const cities  = _acCities[inputId] || [];
+    const matches = q ? cities.filter(c => c.toLowerCase().startsWith(q)) : [];
+
+    ul.innerHTML = '';
+    if (!q || matches.length === 0) {
+      if (q && cities.length > 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No results';
+        li.className   = 'city-ac-noresult';
+        ul.appendChild(li);
+        ul.hidden = false;
+      } else {
+        ul.hidden = true;
+      }
+      return;
+    }
+    matches.slice(0, 10).forEach(c => {
+      const li = document.createElement('li');
+      li.textContent = c;
+      ul.appendChild(li);
     });
-    sel.disabled = false;
+    ul.hidden = false;
+  }
+
+  // Wire input + list events once (called during init).
+  // onSelect(cityName) fires when the user picks a city.
+  function setupCityAutocomplete(inputId, listId, onSelect) {
+    const inp = document.getElementById(inputId);
+    const ul  = document.getElementById(listId);
+    if (!inp || !ul) return;
+
+    inp.addEventListener('input', () => _renderCityList(inputId, listId));
+
+    inp.addEventListener('focus', () => {
+      if (inp.value.trim()) _renderCityList(inputId, listId);
+    });
+
+    // mousedown fires before blur so we can read the target before the list hides
+    ul.addEventListener('mousedown', e => {
+      const li = e.target.closest('li');
+      if (!li || li.classList.contains('city-ac-noresult')) return;
+      e.preventDefault();               // prevent input blur
+      inp.value = li.textContent;
+      ul.hidden = true;
+      onSelect(li.textContent);
+    });
+
+    inp.addEventListener('blur', () => {
+      // Short delay lets mousedown complete first
+      setTimeout(() => { ul.hidden = true; }, 150);
+    });
+
+    // Hide when clicking outside the wrapper
+    document.addEventListener('click', e => {
+      if (!inp.closest('.city-autocomplete-wrapper')?.contains(e.target)) {
+        ul.hidden = true;
+      }
+    });
   }
 
   // ── CONTEXT FETCHING ──────────────────────────────────
@@ -671,77 +741,75 @@ const App = (() => {
     populateStateDropdown('state-select');
     populateStateDropdown('state-select-comp');
 
+    // Wire city autocomplete widgets
+    setupCityAutocomplete('city-input', 'city-dropdown-list', city => {
+      state.selectedCity = city;
+      const compInp = document.getElementById('city-input-comp');
+      if (compInp) compInp.value = city;
+      if (state.selectedState && city) {
+        saveLocation(state.selectedState, city);
+        fetchContextIfReady();
+      }
+    });
+    setupCityAutocomplete('city-input-comp', 'city-dropdown-list-comp', city => {
+      state.selectedCity = city;
+      const inp = document.getElementById('city-input');
+      if (inp) inp.value = city;
+      if (state.selectedState && city) {
+        saveLocation(state.selectedState, city);
+        fetchContextIfReady('status-msg-comp');
+      }
+    });
+
     // Restore last-used location
     const savedLoc = loadLocation();
     if (savedLoc?.stateAbbr) {
       const ss = document.getElementById('state-select');
       if (ss) ss.value = savedLoc.stateAbbr;
       state.selectedState = savedLoc.stateAbbr;
-      populateCityDropdown('city-select', savedLoc.stateAbbr).then(() => {
+      loadCityAutocomplete('city-input', 'city-dropdown-list', savedLoc.stateAbbr).then(() => {
         if (savedLoc.city) {
-          const cs = document.getElementById('city-select');
-          if (cs) cs.value = savedLoc.city;
+          const inp = document.getElementById('city-input');
+          if (inp) inp.value = savedLoc.city;
           state.selectedCity = savedLoc.city;
         }
       });
-      // Comp dropdowns too
       const ssc = document.getElementById('state-select-comp');
       if (ssc) ssc.value = savedLoc.stateAbbr;
-      populateCityDropdown('city-select-comp', savedLoc.stateAbbr).then(() => {
+      loadCityAutocomplete('city-input-comp', 'city-dropdown-list-comp', savedLoc.stateAbbr).then(() => {
         if (savedLoc.city) {
-          const csc = document.getElementById('city-select-comp');
-          if (csc) csc.value = savedLoc.city;
+          const compInp = document.getElementById('city-input-comp');
+          if (compInp) compInp.value = savedLoc.city;
         }
       });
     }
 
-    // State change → repopulate cities
+    // State change → reload cities for both screens
     document.getElementById('state-select')?.addEventListener('change', async e => {
       const abbr = e.target.value;
       state.selectedState = abbr;
       state.selectedCity  = '';
       state.dataContext   = null;
-      await Promise.all([
-        populateCityDropdown('city-select', abbr),
-        populateCityDropdown('city-select-comp', abbr),
-      ]);
-      // Mirror state selection to comp
       const ssc = document.getElementById('state-select-comp');
       if (ssc) ssc.value = abbr;
-    });
-    document.getElementById('city-select')?.addEventListener('change', e => {
-      state.selectedCity = e.target.value;
-      // Mirror to comp
-      const csc = document.getElementById('city-select-comp');
-      if (csc) csc.value = e.target.value;
-      if (state.selectedState && state.selectedCity) {
-        saveLocation(state.selectedState, state.selectedCity);
-        fetchContextIfReady();
-      }
+      await Promise.all([
+        loadCityAutocomplete('city-input',      'city-dropdown-list',      abbr),
+        loadCityAutocomplete('city-input-comp', 'city-dropdown-list-comp', abbr),
+      ]);
     });
 
-    // Comp dropdowns (allow independent selection too)
+    // Comp state change → reload cities for both screens
     document.getElementById('state-select-comp')?.addEventListener('change', async e => {
       const abbr = e.target.value;
       state.selectedState = abbr;
       state.selectedCity  = '';
       state.dataContext   = null;
-      await Promise.all([
-        populateCityDropdown('city-select-comp', abbr),
-        populateCityDropdown('city-select', abbr),
-      ]);
-      // Mirror state selection to primary
       const ss = document.getElementById('state-select');
       if (ss) ss.value = abbr;
-    });
-    document.getElementById('city-select-comp')?.addEventListener('change', e => {
-      state.selectedCity = e.target.value;
-      const cs = document.getElementById('city-select');
-      if (cs) cs.value = e.target.value;
-      if (state.selectedState && state.selectedCity) {
-        saveLocation(state.selectedState, state.selectedCity);
-        fetchContextIfReady('status-msg-comp');
-      }
+      await Promise.all([
+        loadCityAutocomplete('city-input-comp', 'city-dropdown-list-comp', abbr),
+        loadCityAutocomplete('city-input',      'city-dropdown-list',      abbr),
+      ]);
     });
 
     // Mode selection (onclick on the cards already handles this via
