@@ -529,6 +529,135 @@ const App = (() => {
     _runAnalysisCore();
   }
 
+  // ── CLOUD SAVE ────────────────────────────────────────
+
+  function saveAnalysisToCloud(resultA, reasonsA, dataContext) {
+    if (!resultA || !reasonsA) return;
+
+    // ── Property ────────────────────────────────────────
+    const property = {
+      name:      state.propertyNameA || 'Unknown Property',
+      stateAbbr: state.selectedState || '',
+      city:      state.selectedCity  || '',
+      assetType: state.assetTypeA    || 'Multifamily',
+    };
+
+    // ── Analysis ────────────────────────────────────────
+    const months = resultA.months || [];
+    const analysis = {
+      fileName:      state.fileNameA    || '',
+      monthCount:    months.length,
+      periodStart:   months[0]                     || '',
+      periodEnd:     months[months.length - 1]     || '',
+      purchasePrice: state.purchasePriceA           || 0,
+    };
+
+    // ── Helpers ─────────────────────────────────────────
+    const MONTH_ABBRS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    function parseMon(label) {
+      const parts = (label || '').split(' ');
+      const num   = MONTH_ABBRS.indexOf((parts[0] || '').toLowerCase()) + 1; // 1-12, or 0 if unrecognised
+      const year  = parseInt(parts[1], 10) || 0;
+      return { monthNum: num, monthYear: year };
+    }
+
+    function totalNOIForIdx(idx) {
+      return (resultA.metrics || [])
+        .filter(m => m.section === 'INCOME')
+        .reduce((sum, m) => sum + (m.values?.[idx] || 0), 0);
+    }
+
+    // ── Anomalies ───────────────────────────────────────
+    const anomalies = (reasonsA.results || []).map(r => {
+      const metric = (resultA.metrics || []).find(m => m.id === r.metricId);
+
+      let dollarDeviation = 0;
+      if (metric) {
+        if (typeof Engine.getMaterialDeviation === 'function') {
+          dollarDeviation = Engine.getMaterialDeviation(metric, r.monthIdx);
+        } else {
+          dollarDeviation = r.effectiveZ * (metric.stdDev || 0);
+        }
+      }
+
+      const useIdx = r.absMonthIdx ?? r.monthIdx;
+      const noi    = totalNOIForIdx(useIdx);
+      const pctOfNoi = noi > 0 ? (Math.abs(dollarDeviation) / noi) * 100 : 0;
+
+      const rPrimary  = r.reasonerResult?.primary;
+      const groupId   = rPrimary?.groupId   || r.primary?.groupId   || '';
+      const groupName = rPrimary?.groupName || r.primary?.groupName || '';
+      const signalCount = rPrimary?.signalCount ?? r.primary?.evidenceSignals ?? 0;
+      const anomalyType = metric?.zScores?.[r.monthIdx]?.anomalyType || '';
+      const { monthNum, monthYear } = parseMon(r.monthLabel);
+
+      return {
+        metricName:      r.metricName,
+        section:         r.section,
+        monthLabel:      r.monthLabel,
+        monthYear,
+        monthNum,
+        effectiveZ:      r.effectiveZ,
+        anomalyType,
+        pnl:             r.pnl,
+        dollarDeviation,
+        pctOfNoi,
+        groupId,
+        groupName,
+        generatedBy:     r.generatedBy || 'fallback',
+        signalCount,
+      };
+    });
+
+    // ── Patterns ────────────────────────────────────────
+    const patternMap = new Map(); // keyed by groupId|monthLabel — deduplicates
+
+    (reasonsA.results || []).forEach(r => {
+      if (r.generatedBy !== 'data_pattern') return;
+      const rPrimary = r.reasonerResult?.primary;
+      if (!rPrimary?.groupId) return;
+
+      const key = `${rPrimary.groupId}|${r.monthLabel}`;
+      if (patternMap.has(key)) return;
+
+      const matched = rPrimary.matchedMetrics || [];
+
+      // avgZ: mean of abs(effectiveZ) for each matched metric at this monthIdx
+      const zVals = matched
+        .map(mName => {
+          const m = (resultA.metrics || []).find(mx => mx.name === mName);
+          const z = m?.zScores?.[r.monthIdx];
+          return z ? Math.abs(z.effectiveZ) : null;
+        })
+        .filter(v => v !== null);
+      const avgZ = zVals.length
+        ? zVals.reduce((s, v) => s + v, 0) / zVals.length
+        : 0;
+
+      const { monthNum, monthYear } = parseMon(r.monthLabel);
+
+      patternMap.set(key, {
+        groupId:        rPrimary.groupId,
+        groupName:      rPrimary.groupName || '',
+        monthLabel:     r.monthLabel,
+        monthYear,
+        monthNum,
+        matchCount:     rPrimary.signalCount || matched.length,
+        matchedMetrics: matched,
+        avgZ,
+      });
+    });
+
+    const patterns = Array.from(patternMap.values());
+
+    // ── Fire-and-forget POST ─────────────────────────────
+    fetch('/api/save-analysis', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ property, analysis, anomalies, patterns }),
+    }).catch(err => console.warn('[Cloud] save failed:', err));
+  }
+
   function _runAnalysisCore() {
     const price = parsePrice(document.getElementById('price-a')?.value) || 0;
     if (price) saveHistory(STORAGE_KEY_PRICES, price);
@@ -544,6 +673,8 @@ const App = (() => {
       console.error(err);
       alert('Analysis error: ' + err.message);
     }
+
+    saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
   }
 
   function renderAnalyzerTable() {
