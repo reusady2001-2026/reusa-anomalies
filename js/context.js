@@ -57,19 +57,30 @@ const Context = (() => {
     'WI':'55','WY':'56',
   };
 
-  // ── CITY LOOKUP (GeoNames API, cached) ───────────────
+  // ── CITY LOOKUP (countriesnow.space API, cached) ─────
   const _cityCache = {};
 
   async function fetchCitiesForState(stateAbbr) {
-    const url = `https://secure.geonames.org/searchJSON?country=US&featureClass=P&adminCode1=${stateAbbr}&maxRows=1000&username=demo`;
-    console.log('[GeoNames] fetching:', url);
-    const res  = await fetch(url);
-    console.log('[GeoNames] response status:', res.status, res.statusText);
+    // Convert abbr to full state name using STATE_ABBR (invert the map)
+    const stateName = Object.keys(STATE_ABBR).find(
+      name => STATE_ABBR[name] === stateAbbr
+    );
+    if (!stateName) return [];
+
+    const url = 'https://countriesnow.space/api/v0.1/countries/state/cities';
+    console.log('[Cities] fetching for:', stateName);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country: 'United States', state: stateName })
+    });
+    console.log('[Cities] response status:', res.status);
     const data = await res.json();
-    return (data.geonames || [])
-      .map(p => p.name)
-      .filter(Boolean)
-      .sort();
+    if (data.error || !Array.isArray(data.data)) {
+      console.error('[Cities] unexpected response:', data);
+      return [];
+    }
+    return data.data.sort();
   }
 
   async function getCitiesForState(stateAbbr) {
