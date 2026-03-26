@@ -436,11 +436,24 @@ const Engine = (() => {
     const trend12m = changes.slice(-12).reduce((a, b) => a + b, 0);
     const trend3m = changes.slice(-3).reduce((a, b) => a + b, 0);
 
+    const trend3mDir  = trend3m  > 0 ? 'positive' : trend3m  < 0 ? 'negative' : 'flat';
+    const trend12mDir = trend12m > 0 ? 'positive' : trend12m < 0 ? 'negative' : 'flat';
+
+    const trendReversal =
+      (trend3mDir === 'positive' && trend12mDir === 'negative') ||
+      (trend3mDir === 'negative' && trend12mDir === 'positive');
+
+    const trendReversalDirection = trendReversal
+      ? (trend3mDir === 'positive' ? 'up' : 'down')
+      : null;
+
     return {
       trend: trend > 0 ? 'positive' : trend < 0 ? 'negative' : 'flat',
-      trend12m: trend12m > 0 ? 'positive' : trend12m < 0 ? 'negative' : 'flat',
-      trend3m: trend3m > 0 ? 'positive' : trend3m < 0 ? 'negative' : 'flat',
+      trend12m: trend12mDir,
+      trend3m:  trend3mDir,
       trendVal: trend, trend12mVal: trend12m, trend3mVal: trend3m,
+      trendReversal,
+      trendReversalDirection,
     };
   }
 
