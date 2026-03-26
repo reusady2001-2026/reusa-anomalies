@@ -597,7 +597,7 @@ const Enrichment = (() => {
 
   // ── ENRICH ONE RESULT ─────────────────────────────────
 
-  function enrichOne(result, ctx, allMetrics, months) {
+  function enrichOne(result, ctx, allMetrics, months, cloudHistory) {
     if (!result) return result;
 
     // snap: full object when ctx available; minimal stub when not (signals 1–4 still work)
@@ -608,7 +608,7 @@ const Enrichment = (() => {
     // ── Reasoner: data-driven reasoning runs first ───────────────────────────
     const metric = (allMetrics || []).find(m => m.id === result.metricId) || null;
     const reasonerResult = (typeof Reasoner !== 'undefined' && metric)
-      ? Reasoner.analyse(metric, result.monthIdx, allMetrics, months, snap)
+      ? Reasoner.analyse(metric, result.monthIdx, allMetrics, months, snap, cloudHistory || null)
       : null;
 
     // ── Pass 1: Score every fired rule candidate and sort by evidence ──────
@@ -692,11 +692,11 @@ const Enrichment = (() => {
    * returns the same structure with enriched fields added to each result.
    * Also updates metric.reasonData in-place so the table/card can access them.
    */
-  function enrichAll(engineResult, ruleResults, dataContext) {
+  function enrichAll(engineResult, ruleResults, dataContext, cloudHistory) {
     if (!ruleResults || !ruleResults.results) return ruleResults;
     const allMetrics = engineResult?.metrics || [];
     const months     = engineResult?.months  || [];
-    const enriched   = ruleResults.results.map(r => enrichOne(r, dataContext, allMetrics, months));
+    const enriched   = ruleResults.results.map(r => enrichOne(r, dataContext, allMetrics, months, cloudHistory || null));
 
     // Update metric.reasonData in-place
     if (engineResult) {

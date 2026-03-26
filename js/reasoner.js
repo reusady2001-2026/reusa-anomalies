@@ -321,7 +321,7 @@ const Reasoner = (() => {
     });
   }
 
-  function analyse(metric, monthIdx, allMetrics, months, snap) {
+  function analyse(metric, monthIdx, allMetrics, months, snap, cloudHistory) {
     if (!metric) return null;
 
     // ── STEP 1: Build coMovers[] ──────────────────────────
@@ -547,10 +547,28 @@ const Reasoner = (() => {
       generatedBy = triggeredGroups.length > 0 ? 'single_metric' : (selfEz != null ? 'single_metric' : 'fallback');
     }
 
+    // ── Historical context from cloudHistory ─────────────
+    const primaryGroupId = topGroup?.group.id || null;
+    let historicalContext = null;
+    if (cloudHistory && Array.isArray(cloudHistory.patterns) &&
+        cloudHistory.patterns.length > 0 && primaryGroupId) {
+      const matching = cloudHistory.patterns.filter(p => p.group_id === primaryGroupId);
+      if (matching.length > 0) {
+        const propNames    = new Set(matching.map(p => p.properties?.name).filter(Boolean));
+        const typicalMonths = [...new Set(matching.map(p => p.month_num).filter(v => v != null))]
+          .sort((a, b) => a - b);
+        historicalContext = {
+          timesSeenBefore: matching.length,
+          propertiesCount: propNames.size,
+          typicalMonths,
+        };
+      }
+    }
+
     // Primary
     const primary = {
       label:          primaryLabel,
-      groupId:        topGroup?.group.id   || null,
+      groupId:        primaryGroupId,
       groupName:      topGroup?.group.name || null,
       matchedMetrics: (topGroup?.matchedMetrics || [])
         .filter(cm => !cm.isSelf)
@@ -561,6 +579,7 @@ const Reasoner = (() => {
         : 0,
       relativeShare:  null,
       generatedBy,
+      historicalContext,
     };
 
     // Alternatives — always exactly 3

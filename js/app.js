@@ -36,6 +36,7 @@ const App = (() => {
     selectedCity: '',
     dataContext: null,
     _fetchingContext: null, // Promise<void> while in flight
+    cloudHistory: null,
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -529,6 +530,29 @@ const App = (() => {
     _runAnalysisCore();
   }
 
+  // ── CLOUD HISTORY ─────────────────────────────────────
+
+  async function fetchCloudHistory(groupId, metricName) {
+    const params = new URLSearchParams();
+    if (state.selectedState) params.set('stateAbbr',   state.selectedState);
+    if (groupId)             params.set('groupId',     groupId);
+    if (metricName)          params.set('metricName',  metricName);
+    params.set('limit', '100');
+
+    try {
+      const res  = await fetch(`/api/get-history?${params}`);
+      const data = await res.json();
+      return {
+        anomalies: data.anomalies || [],
+        patterns:  data.patterns  || [],
+        summary:   data.summary   || {},
+      };
+    } catch (err) {
+      console.warn('[Cloud] history fetch failed:', err);
+      return { anomalies: [], patterns: [], summary: {} };
+    }
+  }
+
   // ── CLOUD SAVE ────────────────────────────────────────
 
   function saveAnalysisToCloud(resultA, reasonsA, dataContext) {
@@ -667,7 +691,7 @@ const App = (() => {
       state.resultA  = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
       state.reasonsA = RuleEngine.analyse(state.resultA.metrics, state.resultA.months, getAssetInfo('a'));
       // Enrich rule output with real-world data (no-op if context is null)
-      state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext);
+      state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext, state.cloudHistory);
       renderAnalyzerTable();
     } catch (err) {
       console.error(err);
@@ -675,6 +699,10 @@ const App = (() => {
     }
 
     saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
+    fetchCloudHistory().then(history => {
+      state.cloudHistory = history;
+      console.log('[Cloud] history loaded:', history.summary);
+    });
   }
 
   function renderAnalyzerTable() {

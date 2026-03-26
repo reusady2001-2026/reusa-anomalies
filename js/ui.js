@@ -415,6 +415,18 @@ const UI = (() => {
         >${mt.icon} ${escHtml(mt.label)}</span>`;
     }
 
+    // ── Historical context line ────────────────────────────
+    const hCtx = reasonerPrimary?.historicalContext || null;
+    let historicalHtml = '';
+    if (hCtx && hCtx.timesSeenBefore > 0) {
+      const stateLabel = escHtml(reasonData.stateAbbr || '');
+      const inStr = stateLabel ? ` in ${stateLabel}` : '';
+      historicalHtml = `<div style="margin-top:5px;font-size:0.78rem;color:#757575">` +
+        `📈 Seen ${hCtx.timesSeenBefore} time${hCtx.timesSeenBefore !== 1 ? 's' : ''} ` +
+        `across ${hCtx.propertiesCount} propert${hCtx.propertiesCount !== 1 ? 'ies' : 'y'}${inStr}` +
+        `</div>`;
+    }
+
     // ── Co-moving metrics collapsible ──────────────────────
     let coMoversHtml = '';
     if (matchedMetrics.length > 0) {
@@ -442,6 +454,7 @@ const UI = (() => {
       <div class="anomaly-primary">
         <strong>Primary Reason</strong>${badgeHtml}<br>
         ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
+        ${historicalHtml}
         ${coMoversHtml}
       </div>`;
 
