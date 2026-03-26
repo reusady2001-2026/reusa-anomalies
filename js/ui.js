@@ -190,7 +190,7 @@ const UI = (() => {
         const lsArrow = ls.direction === 'up' ? '⇧' : '⇩';
         const lsSign  = ls.direction === 'up' ? '+' : '-';
         const lsTip   = `Recent 2 quarters average ${ls.direction} ${ls.magnitude}% vs prior quarters`;
-        weakestCell += `<span class="level-shift-badge" title="${lsTip}">${lsArrow} New level (${lsSign}${ls.magnitude}%)</span>`;
+        weakestCell += `<span class="level-shift-badge shift-${ls.direction}" title="${lsTip}">${lsArrow} New level (${lsSign}${ls.magnitude}%)</span>`;
       }
       html += `<td class="quarter-col">${weakestCell}</td>`;
 
@@ -343,7 +343,7 @@ const UI = (() => {
       const lsArrow = lsComp.direction === 'up' ? '⇧' : '⇩';
       const lsSign  = lsComp.direction === 'up' ? '+' : '-';
       const lsTip   = `Recent 2 quarters average ${lsComp.direction} ${lsComp.magnitude}% vs prior quarters`;
-      weakestComp += `<span class="level-shift-badge" title="${lsTip}">${lsArrow} New level (${lsSign}${lsComp.magnitude}%)</span>`;
+      weakestComp += `<span class="level-shift-badge shift-${lsComp.direction}" title="${lsTip}">${lsArrow} New level (${lsSign}${lsComp.magnitude}%)</span>`;
     }
     html += `<td>${q.strongestQ || '—'}</td><td>${weakestComp}</td>`;
     html += '</tr>';

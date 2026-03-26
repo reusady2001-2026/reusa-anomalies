@@ -6,12 +6,13 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --blue-dark:          #1a237e;
-  --blue-mid:           #283593;
-  --blue-light:         #e8eaf6;
-  --green-dark:         #1b5e20;
-  --green-mid:          #2e7d32;
-  --color-text-warning: #e65100;
+  --blue-dark:           #1a237e;
+  --blue-mid:            #283593;
+  --blue-light:          #e8eaf6;
+  --green-dark:          #1b5e20;
+  --green-mid:           #2e7d32;
+  --color-text-warning:  #e65100;
+  --color-text-success:  #2e7d32;
   --green-light:  #e8f5e9;
   --red-dark:     #7f0000;
   --red-mid:      #b71c1c;
@@ -498,7 +499,14 @@ input[type="file"] { display: none; }
 .trend-positive { color: var(--green-mid); font-weight: 700; }
 .trend-negative { color: var(--red-mid); font-weight: 700; }
 .trend-reversal  { color: var(--color-text-warning); font-weight: 500; }
-.level-shift-badge {
+.level-shift-badge.shift-up {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-top: 2px;
+  color: var(--color-text-success);
+}
+.level-shift-badge.shift-down {
   display: block;
   font-size: 0.72rem;
   font-weight: 600;
