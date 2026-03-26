@@ -154,7 +154,7 @@ export default async function handler(req, res) {
     res.status(200).json({ success: true, propertyId, analysisId });
 
   } catch (err) {
-    console.error('[save-analysis]', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[save-analysis] error:', err);
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
   }
 }

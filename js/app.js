@@ -679,6 +679,12 @@ const App = (() => {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ property, analysis, anomalies, patterns }),
+    }).then(async res => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.warn('[Cloud] save failed:', res.status, body);
+        return;
+      }
     }).catch(err => console.warn('[Cloud] save failed:', err));
   }
 
