@@ -514,7 +514,43 @@ const Engine = (() => {
     const strongestQ = fullQs[0];
     const weakestQ = fullQs[fullQs.length - 1];
 
-    return { strongestQ: strongestQ.key, strongestQSum: strongestQ.sum, weakestQ: weakestQ.key, weakestQSum: weakestQ.sum };
+    // ── Level shift detection ─────────────────────────────
+    // Re-sort chronologically (year asc, then quarter asc) for the split.
+    const chronoQs = [...fullQs].sort((a, b) => {
+      const [aqStr, ayStr] = a.key.split(' ');
+      const [bqStr, byStr] = b.key.split(' ');
+      const ay = parseInt(ayStr), by = parseInt(byStr);
+      if (ay !== by) return ay - by;
+      return parseInt(aqStr.slice(1)) - parseInt(bqStr.slice(1));
+    });
+
+    let levelShift = null;
+    if (chronoQs.length >= 3) {
+      const recentQs = chronoQs.slice(-2);
+      const priorQs  = chronoQs.slice(0, -2);
+      const recentAvg = recentQs.reduce((s, q) => s + q.sum, 0) / recentQs.length;
+      const priorAvg  = priorQs.reduce((s,  q) => s + q.sum, 0) / priorQs.length;
+      if (priorAvg === 0) {
+        levelShift = null;
+      } else {
+        const diff = (recentAvg - priorAvg) / Math.abs(priorAvg) * 100;
+        levelShift = Math.abs(diff) >= 15
+          ? {
+              detected:   true,
+              direction:  diff > 0 ? 'up' : 'down',
+              magnitude:  Math.round(Math.abs(diff)),
+              recentAvg:  Math.round(recentAvg),
+              priorAvg:   Math.round(priorAvg),
+            }
+          : { detected: false };
+      }
+    }
+
+    return {
+      strongestQ: strongestQ.key, strongestQSum: strongestQ.sum,
+      weakestQ:   weakestQ.key,   weakestQSum:   weakestQ.sum,
+      levelShift,
+    };
   }
 
   // ── FULL PIPELINE ─────────────────────────────────────
