@@ -4,22 +4,6 @@
 
 const Context = (() => {
 
-  // ── API KEYS ──────────────────────────────────────────
-  const FRED_KEY     = '85a8199d1263218d54ad0b86cfaf26db';
-  const CONGRESS_KEY = 'WV28fUlsauhfLvzLwSUKTeNEZ1KJNteeY69AfbPP';
-
-  // ── CORS PROXY ────────────────────────────────────────
-  // All external API calls are routed through a CORS proxy when the app is
-  // running from a browser origin that the API servers don't whitelist.
-  const CORS_PROXY = 'https://corsproxy.io/?url=';
-  function proxied(url) {
-    try {
-      const host = new URL(url).hostname;
-      if (host === location.hostname || host === 'localhost' || host === '127.0.0.1') return url;
-    } catch (_) { return url; }
-    return CORS_PROXY + encodeURIComponent(url);
-  }
-
   // ── STATE ABBREVIATION MAP ────────────────────────────
   const STATE_ABBR = {
     'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
@@ -161,19 +145,27 @@ const Context = (() => {
     return { startDate: toISO(lookback), endDate: toISO(endDate) };
   }
 
-  // ── FETCH HELPER ──────────────────────────────────────
-  function fetchWithTimeout(url, ms) {
+  // ── PROXY FETCH HELPER ────────────────────────────────
+  async function proxyFetch(source, params, timeoutMs) {
+    const qs   = new URLSearchParams({ source, ...params }).toString();
     const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), ms || 9000);
-    return fetch(proxied(url), { signal: ctrl.signal }).finally(() => clearTimeout(tid));
+    const tid  = setTimeout(() => ctrl.abort(), timeoutMs || 9000);
+    try {
+      const res = await fetch(`/api/proxy?${qs}`, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`proxy ${source}: HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(tid);
+    }
   }
 
   // ── FRED API ──────────────────────────────────────────
   async function fetchFREDSeries(seriesId, startDate, endDate) {
-    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&observation_start=${startDate}&observation_end=${endDate}&api_key=${FRED_KEY}&file_type=json`;
-    const resp = await fetchWithTimeout(url, 9000);
-    if (!resp.ok) throw new Error(`FRED ${seriesId}: HTTP ${resp.status}`);
-    const json = await resp.json();
+    const json = await proxyFetch('fred', {
+      series_id:         seriesId,
+      observation_start: startDate,
+      observation_end:   endDate,
+    });
     if (json.error_message) throw new Error(`FRED ${seriesId}: ${json.error_message}`);
     const map = {};
     (json.observations || []).forEach(obs => {
@@ -207,11 +199,7 @@ const Context = (() => {
 
   // ── FEMA API ──────────────────────────────────────────
   async function fetchFEMA(stateAbbr, startDate, endDate) {
-    const filter = `state%20eq%20'${stateAbbr}'%20and%20declarationDate%20ge%20'${startDate}'%20and%20declarationDate%20le%20'${endDate}'`;
-    const url = `https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$filter=${filter}&$orderby=declarationDate%20desc&$top=50&$format=json`;
-    const resp = await fetchWithTimeout(url, 9000);
-    if (!resp.ok) throw new Error(`FEMA: HTTP ${resp.status}`);
-    const json = await resp.json();
+    const json = await proxyFetch('fema', { state: stateAbbr, startDate, endDate });
     return (json.DisasterDeclarationsSummaries || []).map(d => ({
       title: d.declarationTitle || '',
       date:  (d.declarationDate || '').slice(0, 10),
@@ -222,12 +210,7 @@ const Context = (() => {
 
   // ── CONGRESS.GOV API ──────────────────────────────────
   async function fetchCongress(startDate, endDate) {
-    const terms = 'housing rent "real estate" multifamily "property tax" mortgage eviction zoning';
-    const q = encodeURIComponent(JSON.stringify({ query: terms }));
-    const url = `https://api.congress.gov/v3/bill?q=${q}&sort=date+asc&limit=20&format=json&api_key=${CONGRESS_KEY}`;
-    const resp = await fetchWithTimeout(url, 9000);
-    if (!resp.ok) throw new Error(`Congress: HTTP ${resp.status}`);
-    const json = await resp.json();
+    const json = await proxyFetch('congress', { startDate, endDate });
     const start = new Date(startDate);
     const end   = new Date(endDate);
     return (json.bills || [])
@@ -245,11 +228,7 @@ const Context = (() => {
 
   // ── OPENSTATES API ────────────────────────────────────
   async function fetchOpenStates(stateName, startDate, endDate) {
-    const q = encodeURIComponent('rent landlord tenant property tax eviction zoning');
-    const url = `https://v3.openstates.org/bills?jurisdiction=${encodeURIComponent(stateName)}&q=${q}&sort=updated_at&page=1&per_page=15`;
-    const resp = await fetchWithTimeout(url, 9000);
-    if (!resp.ok) throw new Error(`OpenStates: HTTP ${resp.status}`);
-    const json = await resp.json();
+    const json = await proxyFetch('openstates', { stateName });
     const start = new Date(startDate);
     const end   = new Date(endDate);
     return (json.results || [])
@@ -269,11 +248,7 @@ const Context = (() => {
   async function fetchCensus(stateAbbr, city) {
     const fips = STATE_FIPS[stateAbbr];
     if (!fips) return {};
-    const vars = 'B01003_001E,B19013_001E,B25003_002E,B25003_001E';
-    const url = `https://api.census.gov/data/2022/acs/acs5?get=NAME,${vars}&for=place:*&in=state:${fips}`;
-    const resp = await fetchWithTimeout(url, 10000);
-    if (!resp.ok) throw new Error(`Census: HTTP ${resp.status}`);
-    const rows = await resp.json();
+    const rows = await proxyFetch('census', { fips }, 10000);
     if (!Array.isArray(rows) || rows.length < 2) return {};
     const header = rows[0]; // ['NAME', 'B01003_001E', ...]
     const cityL  = city.toLowerCase().replace(/\s*city\s*$/i, '').trim();
@@ -295,10 +270,7 @@ const Context = (() => {
 
   // ── HUD FAIR MARKET RENTS ─────────────────────────────
   async function fetchHUD(stateAbbr) {
-    const url = `https://www.huduser.gov/hudapi/public/fmr/statedata/${stateAbbr}`;
-    const resp = await fetchWithTimeout(url, 9000);
-    if (!resp.ok) throw new Error(`HUD: HTTP ${resp.status}`);
-    const json = await resp.json();
+    const json = await proxyFetch('hud', { state: stateAbbr });
     const rows = (json.data || []).slice(0, 5);
     return { year: json.year || null, rows };
   }
