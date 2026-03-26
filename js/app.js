@@ -693,6 +693,7 @@ const App = (() => {
       // Enrich rule output with real-world data (no-op if context is null)
       state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext, state.cloudHistory);
 
+      console.log('[Enricher] starting enrichment loop, metrics:', state.resultA.metrics.length);
       (state.resultA.metrics || []).forEach(metric => {
         (metric.anomalies || []).forEach(relIdx => {
           if (!metric.reasonData?.[relIdx]) return;
@@ -704,6 +705,10 @@ const App = (() => {
             state.resultA.months,
             coMovers,
             state.cloudHistory
+          );
+          console.log('[Enricher] profile attached:',
+            metric.name, relIdx,
+            metric.reasonData[relIdx].anomalyProfile
           );
         });
       });
