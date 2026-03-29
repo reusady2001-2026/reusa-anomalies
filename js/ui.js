@@ -591,6 +591,16 @@ const UI = (() => {
     return html;
   }
 
+  // ── SUMMARY BADGES ────────────────────────────────────
+
+  function renderSummaryBadges(stats) {
+    if (!stats) return '';
+    return `<span class="summary-badge summary-badge--total">⚠ Total Material <strong>${stats.totalMaterial}</strong></span>` +
+           `<span class="summary-badge summary-badge--income">▲ Income <strong>${stats.incomeAnomalies}</strong></span>` +
+           `<span class="summary-badge summary-badge--expense">▼ Expenses <strong>${stats.expenseAnomalies}</strong></span>` +
+           `<span class="summary-badge summary-badge--seasonal">◈ Seasonal <strong>${stats.seasonalAnomalies}</strong></span>`;
+  }
+
   // ── HELPERS ───────────────────────────────────────────
 
   function escHtml(s) {
@@ -606,6 +616,7 @@ const UI = (() => {
     renderComparisonTable,
     renderDashboard,
     renderAnomalyCard,
+    renderSummaryBadges,
     getCellClass,
     fmt,
     fmtPct,

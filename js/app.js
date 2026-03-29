@@ -37,6 +37,7 @@ const App = (() => {
     dataContext: null,
     _fetchingContext: null, // Promise<void> while in flight
     cloudHistory: null,
+    summaryStats: null,
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -200,6 +201,8 @@ const App = (() => {
       const e = document.getElementById(id);
       if (e) { e.innerHTML = '<button class="close-card" title="Close">✕</button>'; e.classList.remove('open'); }
     });
+    const badgesEl = document.getElementById('summary-badges');
+    if (badgesEl) { badgesEl.innerHTML = ''; badgesEl.classList.add('hidden'); }
 
     ['controls-bar', 'controls-bar-comp', 'legend', 'legend-comp'].forEach(id => {
       const e = document.getElementById(id);
@@ -747,6 +750,20 @@ const App = (() => {
         });
       });
 
+      // Compute summary stats for badge display
+      state.summaryStats = { totalMaterial: 0, incomeAnomalies: 0, expenseAnomalies: 0, seasonalAnomalies: 0 };
+      (state.resultA.metrics || []).forEach(metric => {
+        const matCount = (metric.materialAnomalies || []).length;
+        state.summaryStats.totalMaterial += matCount;
+        if (metric.section === 'INCOME')   state.summaryStats.incomeAnomalies  += matCount;
+        if (metric.section === 'EXPENSES') state.summaryStats.expenseAnomalies += matCount;
+        (metric.anomalies || []).forEach(relIdx => {
+          if (metric.reasonData?.[relIdx]?.situationProfile?.angle === 'SEASONAL_VARIANCE') {
+            state.summaryStats.seasonalAnomalies++;
+          }
+        });
+      });
+
       renderAnalyzerTable();
     } catch (err) {
       console.error(err);
@@ -774,6 +791,12 @@ const App = (() => {
     const total = state.resultA.metrics.filter(m => m.type !== 'all_zero').length;
     const countEl = document.getElementById('row-count');
     if (countEl) countEl.textContent = `${rowCount} of ${total} rows`;
+
+    const badgesEl = document.getElementById('summary-badges');
+    if (badgesEl && state.summaryStats) {
+      badgesEl.innerHTML = UI.renderSummaryBadges(state.summaryStats);
+      badgesEl.classList.remove('hidden');
+    }
 
     document.getElementById('legend')?.classList.remove('hidden');
   }

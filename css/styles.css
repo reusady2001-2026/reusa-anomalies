@@ -769,6 +769,32 @@ input[type="file"] { display: none; }
 .legend-label { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .legend-sep { width: 1px; height: 18px; background: var(--grey-border); margin: 0 4px; }
 
+/* ── SUMMARY BADGES ── */
+.summary-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'JetBrains Mono', 'Fira Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #94a3b8;
+}
+.summary-badge strong { font-weight: 700; }
+.summary-badge--total   { color: #94a3b8; border-color: rgba(148,163,184,0.35); }
+.summary-badge--income  { color: #22c55e; border-color: rgba(34,197,94,0.35); }
+.summary-badge--expense { color: #f87171; border-color: rgba(248,113,113,0.35); }
+.summary-badge--seasonal { color: #f97316; border-color: rgba(249,115,22,0.35); }
+
 /* Swatch colours */
 .sw-material-pos { background: var(--green-mid); }
 .sw-material-neg { background: var(--red-mid); }
