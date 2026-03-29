@@ -439,9 +439,10 @@ const Enricher = (() => {
     const timesSeenAcrossPortfolio = matching.length;
     const propertiesCount          = propNames.size;
 
-    const portfolioContext = timesSeenAcrossPortfolio === 0 ? 'isolated'
-                           : timesSeenAcrossPortfolio <= 2  ? 'rare'
-                           : 'common';
+    let portfolioContext = timesSeenAcrossPortfolio === 0 ? 'isolated'
+                        : timesSeenAcrossPortfolio <= 2  ? 'rare'
+                        : 'common';
+    if (propertiesCount <= 1) portfolioContext = 'isolated';
 
     // Human description
     let description;

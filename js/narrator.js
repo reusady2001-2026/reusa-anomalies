@@ -75,6 +75,7 @@ const Narrator = (() => {
   }
 
   function _scorePortfolio(ap) {
+    if (ap.crossPropertyBaseline?.propertiesCount <= 1) return 0;
     const cpb = ap.crossPropertyBaseline;
     if (cpb?.portfolioContext === 'common')                                       return 3;
     if (cpb?.portfolioContext === 'rare')                                         return 2;
