@@ -235,11 +235,11 @@ const SENTENCE_LIBRARY = {
 
 // ── COMPOSER ──────────────────────────────────────────────
 
-function compose(anomaly, metric, dataContext, situationProfile) {
+function compose(anomaly, metric, dataContext, situationProfile, angleOverride) {
   if (!anomaly?.anomalyProfile || !situationProfile) return null;
 
   const ap  = anomaly.anomalyProfile;
-  const angle = situationProfile.angle;
+  const angle = angleOverride || situationProfile.angle;
   const lib   = SENTENCE_LIBRARY[angle] || SENTENCE_LIBRARY.ANOMALY_ALERT;
 
   const sentences = [

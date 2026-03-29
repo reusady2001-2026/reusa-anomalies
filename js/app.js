@@ -718,9 +718,24 @@ const App = (() => {
             metric.reasonData[relIdx], metric, state.dataContext, situationProfile
           );
           metric.reasonData[relIdx].situationProfile = situationProfile;
-          metric.reasonData[relIdx].narrativeResult  = narrativeResult;
+          metric.reasonData[relIdx].narrativeResult = narrativeResult;
+
           if (narrativeResult?.narrative) {
             metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+          }
+
+          // Generate alt narratives using ranked angles
+          if (situationProfile?.rankedAngles) {
+            const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
+            const existingAlts = metric.reasonData[relIdx].alternatives || [];
+            metric.reasonData[relIdx].enrichedAlternatives = altAngles
+              .slice(0, existingAlts.length || 3)
+              .map(altAngle => {
+                const altResult = Composer.compose(
+                  metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
+                );
+                return altResult?.narrative || existingAlts[altAngles.indexOf(altAngle)] || '';
+              });
           }
         });
       });
@@ -848,9 +863,24 @@ const App = (() => {
             metric.reasonData[relIdx], metric, state.dataContext, situationProfile
           );
           metric.reasonData[relIdx].situationProfile = situationProfile;
-          metric.reasonData[relIdx].narrativeResult  = narrativeResult;
+          metric.reasonData[relIdx].narrativeResult = narrativeResult;
+
           if (narrativeResult?.narrative) {
             metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+          }
+
+          // Generate alt narratives using ranked angles
+          if (situationProfile?.rankedAngles) {
+            const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
+            const existingAlts = metric.reasonData[relIdx].alternatives || [];
+            metric.reasonData[relIdx].enrichedAlternatives = altAngles
+              .slice(0, existingAlts.length || 3)
+              .map(altAngle => {
+                const altResult = Composer.compose(
+                  metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
+                );
+                return altResult?.narrative || existingAlts[altAngles.indexOf(altAngle)] || '';
+              });
           }
         });
       });
