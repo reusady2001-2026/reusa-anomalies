@@ -100,6 +100,15 @@ export default async function handler(req, res) {
         break;
       }
 
+      case 'census_permits': {
+        const { state_fips } = params;
+        targetUrl = `https://api.census.gov/data/timeseries/eits/bps` +
+          `?get=cell_value,time_slot_id,category_code` +
+          `&for=state:${encodeURIComponent(state_fips)}` +
+          `&time=from+2023`;
+        break;
+      }
+
       case 'openmeteo': {
         const { lat, lon, startDate, endDate } = params;
         targetUrl = `https://archive-api.open-meteo.com/v1/archive` +
