@@ -476,68 +476,88 @@ const UI = (() => {
         <span class="anomaly-month">${monthLabel}</span>
         <span class="anomaly-deviation">${deviation}</span>
         <span class="pnl-badge" style="color:${pnlColor}">${pnlLabel} (${metric.section})</span>
-      </div>
-      <div class="anomaly-primary">
-        <strong>Primary Reason</strong>${badgeHtml}<br>
-        ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
-        ${historicalHtml}
-        ${coMoversHtml}
       </div>`;
 
-    // ── Evidence profile ──
+    // ── Evidence profile path ──
     if (evidenceProfile) {
       const ep = evidenceProfile;
       const pri = ep.primary;
 
-      html += `<div class="ev-panel">`;
-
-      // Warning if an alternative outscores primary
+      // Warning outside boxes
       if (ep.warning) {
         html += `<div class="ev-warning">⚠ ${escHtml(ep.warning)}</div>`;
       }
 
-      // Primary evidence signals (always expanded)
-      html += `<div class="ev-primary">`;
-      html += _renderScoreLine(pri);
-      html += `<div class="ev-signals">`;
+      // Primary reason box (always expanded)
+      html += `<div class="reason-box reason-box--primary">
+        <div class="reason-box-header">
+          <span class="reason-box-label">Primary Reason</span>${badgeHtml}
+        </div>
+        <div class="reason-box-narrative">
+          ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
+          ${historicalHtml}
+          ${coMoversHtml}
+        </div>
+        <div class="reason-box-body">
+          ${_renderScoreLine(pri)}
+          <div class="ev-signals">`;
       (pri.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
-      html += `</div></div>`;
+      html += `</div></div></div>`;
 
-      // Alternative evidence panels (collapsible)
+      // Alt reason boxes (collapsible)
       if (ep.alternatives && ep.alternatives.length > 0) {
-        html += `<div class="ev-alternatives">`;
         ep.alternatives.forEach((alt, idx) => {
           const altDisplayText = (idx < (reasonData.enrichedAlternatives || []).length)
             ? reasonData.enrichedAlternatives[idx]
             : alt.label;
           const altPreview = escHtml(altDisplayText.length > 80 ? altDisplayText.slice(0, 80) + '…' : altDisplayText);
-          html += `<details class="ev-alt">
-            <summary class="ev-alt-header">
-              Alt ${idx + 1}: <span style="font-style:italic; opacity:0.7">${altPreview}</span>
+          html += `<details class="reason-box reason-box--alt">
+            <summary class="reason-box-summary">
+              <span class="reason-box-label">Alt ${idx + 1}</span>
+              <span class="reason-box-preview">${altPreview}</span>
               <span class="ev-score-count">${alt.evidenceSignals}/5</span>
               <span class="ev-score-share">${alt.relativeSupport}%</span>
             </summary>
-            <div style="padding: 8px 10px; font-size:12px; color:#cbd5e1; line-height:1.6; border-bottom: 1px solid rgba(255,255,255,0.06);">
-              ${escHtml(altDisplayText)}
-            </div>
-            ${_renderScoreLine(alt)}
-            <div class="ev-signals">`;
+            <div class="reason-box-body">
+              <div class="reason-box-narrative">${escHtml(altDisplayText)}</div>
+              ${_renderScoreLine(alt)}
+              <div class="ev-signals">`;
           (alt.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
-          html += `</div></details>`;
+          html += `</div></div></details>`;
         });
-        html += `</div>`;
       }
 
       // Disclaimer
       html += `<div class="ev-disclaimer">${escHtml(ep.disclaimer)}</div>`;
-      html += `</div>`;  // .ev-panel
     } else {
-      // No evidence profile (no data context loaded) — fall back to plain alternatives list
+      // No evidence profile — primary box (no signals)
+      html += `<div class="reason-box reason-box--primary">
+        <div class="reason-box-header">
+          <span class="reason-box-label">Primary Reason</span>${badgeHtml}
+        </div>
+        <div class="reason-box-narrative">
+          ${escHtml(enrichedPrimary || primary?.label || String(primary || ''))}
+          ${historicalHtml}
+          ${coMoversHtml}
+        </div>
+      </div>`;
+
+      // Alt boxes
       const displayAlts = reasonData.enrichedAlternatives || (alternatives || []);
       if (displayAlts.length > 0) {
-        html += '<div class="anomaly-alternatives"><strong>Alternative Explanations</strong><ol>';
-        displayAlts.forEach(alt => { html += `<li>${escHtml(alt)}</li>`; });
-        html += '</ol></div>';
+        displayAlts.forEach((alt, idx) => {
+          const altText = typeof alt === 'string' ? alt : (alt.label || String(alt));
+          const altPreview = escHtml(altText.length > 80 ? altText.slice(0, 80) + '…' : altText);
+          html += `<details class="reason-box reason-box--alt">
+            <summary class="reason-box-summary">
+              <span class="reason-box-label">Alt ${idx + 1}</span>
+              <span class="reason-box-preview">${altPreview}</span>
+            </summary>
+            <div class="reason-box-body">
+              <div class="reason-box-narrative">${escHtml(altText)}</div>
+            </div>
+          </details>`;
+        });
       }
     }
 

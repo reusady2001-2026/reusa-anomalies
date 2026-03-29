@@ -614,6 +614,78 @@ input[type="file"] { display: none; }
   color: var(--text-muted);
 }
 
+/* ── REASON BOXES ── */
+.reason-box {
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.reason-box--primary {
+  background: var(--orange-light);
+  border-color: rgba(230,81,0,0.25);
+}
+.reason-box--alt {
+  background: var(--grey-bg);
+  border-color: #e0e0e0;
+}
+.reason-box-header {
+  padding: 10px 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.reason-box-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+.reason-box--primary .reason-box-label { color: var(--orange); }
+.reason-box-narrative {
+  padding: 6px 14px 10px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.reason-box-body {
+  padding: 0 14px 10px;
+}
+.reason-box-body .reason-box-narrative {
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  margin-bottom: 8px;
+}
+.reason-box-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-size: 0.82rem;
+}
+.reason-box-summary::-webkit-details-marker { display: none; }
+.reason-box-summary::before { content: '▶ '; font-size: 0.62rem; color: var(--text-muted); }
+.reason-box--alt[open] > .reason-box-summary::before { content: '▼ '; }
+.reason-box-preview {
+  font-style: italic;
+  opacity: 0.68;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+[data-theme="dark"] .reason-box--primary { background: rgba(230,81,0,0.15); border-color: rgba(230,81,0,0.3); }
+[data-theme="dark"] .reason-box--alt { background: rgba(255,255,255,0.03); border-color: #2a2a45; }
+[data-theme="dark"] .reason-box-body .reason-box-narrative { border-bottom-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .reason-box-summary::before { color: #777; }
+[data-theme="dark"] .reason-box-label { color: #888; }
+[data-theme="dark"] .reason-box--primary .reason-box-label { color: #ff8a65; }
+[data-theme="dark"] .reason-box-narrative { color: #cbd5e1; }
+
 /* ── THEME TOGGLE BUTTON ── */
 .btn-theme-toggle {
   background: rgba(255,255,255,0.15);
