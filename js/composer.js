@@ -88,8 +88,8 @@ const SENTENCE_LIBRARY = {
 
   SEASONAL_VARIANCE: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
-      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — consistent with seasonal patterns for this expense category.`;
+      const dev = _deviation(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} was ${dev} vs. ${ref} in ${_monthLabel(anomaly)} — consistent with seasonal patterns for this expense category.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
       const w = _weatherContext(dataContext, _monthLabel(anomaly));
@@ -120,10 +120,10 @@ const SENTENCE_LIBRARY = {
 
   COST_SHOCK: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      const dev = _deviation(ap), ref = _refLabel(ap);
       const cause    = ap.causalityChain?.likelyCause?.name;
       const causeStr = cause ? `, likely triggered by movement in ${cause}` : '';
-      return `${_metricLabel(m)} spiked ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}${causeStr}.`;
+      return `${_metricLabel(m)} spiked ${dev} vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}${causeStr}.`;
     },
     context: (anomaly, metric, dataContext, ap, m) => {
       const month = _monthLabel(anomaly);
@@ -153,8 +153,8 @@ const SENTENCE_LIBRARY = {
 
   MARKET_PRESSURE: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
-      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — movement consistent with broader market conditions rather than a property-specific event.`;
+      const dev = _deviation(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} was ${dev} vs. ${ref} in ${_monthLabel(anomaly)} — movement consistent with broader market conditions rather than a property-specific event.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
       const month = _monthLabel(anomaly);
@@ -189,8 +189,8 @@ const SENTENCE_LIBRARY = {
   OPERATIONAL_DRIFT: {
     opening: (anomaly, metric, dataContext, ap, m) => {
       const months = ap.velocity?.monthCount;
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
-      return `${_metricLabel(m)} has drifted ${_direction(ap)} baseline over ${months || 'several'} months — currently ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}.`;
+      const dev = _deviation(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} has drifted ${_direction(ap)} baseline over ${months || 'several'} months — currently ${dev} vs. ${ref} in ${_monthLabel(anomaly)}.`;
     },
     context: () => `No single triggering event identified. Likely reflects gradual contract escalation, usage creep, or unreported operational changes.`,
     closing: (anomaly, metric, dataContext, ap) => {
@@ -203,9 +203,9 @@ const SENTENCE_LIBRARY = {
 
   RECOVERY_STORY: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      const dev = _deviation(ap), ref = _refLabel(ap);
       const months = ap.recovery?.monthsToResolve;
-      return `${_metricLabel(m)} peaked at ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} but recovered within ${months || 'a few'} month${months !== 1 ? 's' : ''}.`;
+      return `${_metricLabel(m)} peaked at ${dev} vs. ${ref} in ${_monthLabel(anomaly)} but recovered within ${months || 'a few'} month${months !== 1 ? 's' : ''}.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
       const cause = ap.causalityChain?.likelyCause?.name;
@@ -216,9 +216,9 @@ const SENTENCE_LIBRARY = {
 
   PORTFOLIO_PATTERN: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      const dev = _deviation(ap), ref = _refLabel(ap);
       const count = ap.crossPropertyBaseline?.propertiesCount;
-      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — same pattern observed across ${count || 'multiple'} portfolio properties, suggesting a shared driver.`;
+      return `${_metricLabel(m)} was ${dev} vs. ${ref} in ${_monthLabel(anomaly)} — same pattern observed across ${count || 'multiple'} portfolio properties, suggesting a shared driver.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
       const typical = ap.crossPropertyBaseline?.typicalMonths || [];
@@ -231,15 +231,14 @@ const SENTENCE_LIBRARY = {
 
   ANOMALY_ALERT: {
     opening: (anomaly, metric, dataContext, ap, m) => {
-      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
-      return `${_metricLabel(m)} deviated ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}.`;
+      const dev = _deviation(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} deviated ${dev} vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}.`;
     },
-    context: () => `No clear causal pattern identified from available data — manual review recommended.`,
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
       if (status === 'resolved')   return `The anomaly has since resolved.`;
-      if (status === 'worsening')  return `The deviation is growing — escalate for review.`;
-      if (status === 'persisting') return `Anomaly is ongoing.`;
+      if (status === 'worsening')  return `Deviation is growing — escalate for review.`;
+      if (status === 'persisting') return `Anomaly is ongoing — manual review recommended.`;
       return '';
     },
   },
