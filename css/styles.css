@@ -636,7 +636,7 @@ input[type="file"] { display: none; }
   padding: 12px;
 }
 .reason-box--primary {
-  border-color: rgba(230,81,0,0.4);
+  border-color: #22c55e;
 }
 .reason-box-header {
   display: flex;
@@ -652,7 +652,17 @@ input[type="file"] { display: none; }
   letter-spacing: 0.07em;
   color: #64748b;
 }
-.reason-box--primary .reason-box-label { color: #ff8a65; }
+.reason-box--primary .reason-box-label { color: #22c55e; }
+/* Alt box border colors — ordered by sibling position after primary */
+.reason-box--primary + .reason-box--alt                                                           { border-color: #f97316; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt                                        { border-color: #a855f7; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt + .reason-box--alt                     { border-color: #06b6d4; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt + .reason-box--alt + .reason-box--alt  { border-color: #f43f5e; }
+/* Alt box label colors — match border */
+.reason-box--primary + .reason-box--alt .reason-box-label                                                          { color: #f97316; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt .reason-box-label                                       { color: #a855f7; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt + .reason-box--alt .reason-box-label                    { color: #06b6d4; }
+.reason-box--primary + .reason-box--alt + .reason-box--alt + .reason-box--alt + .reason-box--alt .reason-box-label { color: #f43f5e; }
 .reason-box-narrative {
   font-size: 12px;
   line-height: 1.6;
