@@ -604,6 +604,79 @@ const UI = (() => {
            `<span class="summary-badge summary-badge--seasonal">◈ Seasonal <strong>${stats.seasonalAnomalies}</strong></span>`;
   }
 
+  // ── RULE CANDIDATES PANEL ────────────────────────────
+
+  function renderRuleCandidates(candidates, onApprove, onDismiss) {
+    const panel = document.getElementById('rule-candidates-panel');
+    if (!panel) return;
+
+    if (!candidates || candidates.length === 0) {
+      panel.innerHTML = '';
+      return;
+    }
+
+    const cardsHtml = candidates.map(c => {
+      const pt = c.pattern_type.replace(/_/g, ' ');
+      const opt1Text = `When ${c.metric_name} shows a ${pt} pattern, flag as expected behavior`;
+      const opt2Text = `When ${c.metric_name} shows a ${pt} pattern, reduce anomaly severity by one tier`;
+      return `<div class="rule-suggestion-card" data-id="${escHtml(c.id)}">
+        <div class="rule-suggestion-title">${escHtml(c.metric_name)} — ${escHtml(pt)}</div>
+        <div class="rule-suggestion-meta">Seen ${c.total_occurrences} times across ${c.distinct_property_count} properties</div>
+        <div class="rule-suggestion-options">
+          <label><input type="radio" name="rule_${escHtml(c.id)}" value="opt1"> ${escHtml(opt1Text)}</label>
+          <label><input type="radio" name="rule_${escHtml(c.id)}" value="opt2"> ${escHtml(opt2Text)}</label>
+          <label><input type="radio" name="rule_${escHtml(c.id)}" value="custom"> Write my own:</label>
+          <input type="text" class="rule-custom-input" placeholder="Describe the rule..." style="display:none">
+        </div>
+        <div class="rule-suggestion-actions">
+          <button class="rule-btn-approve" data-id="${escHtml(c.id)}">Add Rule</button>
+          <button class="rule-btn-dismiss" data-id="${escHtml(c.id)}">Dismiss</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    panel.innerHTML = `<div class="rule-suggestion-panel">
+      <div class="rule-suggestion-header">💡 Pattern Detected</div>
+      ${cardsHtml}
+    </div>`;
+
+    panel.querySelectorAll('.rule-suggestion-card').forEach(card => {
+      const candidateId = card.dataset.id;
+      const candidate   = candidates.find(x => x.id === candidateId);
+      const radios      = card.querySelectorAll('input[type="radio"]');
+      const customInput = card.querySelector('.rule-custom-input');
+
+      // Show/hide custom text input based on radio selection
+      radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          customInput.style.display = radio.value === 'custom' ? 'block' : 'none';
+        });
+      });
+
+      // Approve
+      card.querySelector('.rule-btn-approve').addEventListener('click', () => {
+        const selected = card.querySelector('input[type="radio"]:checked');
+        if (!selected) return;
+        const pt = candidate ? candidate.pattern_type.replace(/_/g, ' ') : '';
+        let ruleText;
+        if (selected.value === 'opt1') {
+          ruleText = `When ${candidate.metric_name} shows a ${pt} pattern, flag as expected behavior`;
+        } else if (selected.value === 'opt2') {
+          ruleText = `When ${candidate.metric_name} shows a ${pt} pattern, reduce anomaly severity by one tier`;
+        } else {
+          ruleText = customInput.value.trim();
+        }
+        if (!ruleText) return;
+        onApprove(candidateId, ruleText);
+      });
+
+      // Dismiss
+      card.querySelector('.rule-btn-dismiss').addEventListener('click', () => {
+        onDismiss(candidateId);
+      });
+    });
+  }
+
   // ── HELPERS ───────────────────────────────────────────
 
   function escHtml(s) {
@@ -620,6 +693,7 @@ const UI = (() => {
     renderDashboard,
     renderAnomalyCard,
     renderSummaryBadges,
+    renderRuleCandidates,
     getCellClass,
     fmt,
     fmtPct,

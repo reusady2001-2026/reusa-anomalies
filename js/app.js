@@ -737,6 +737,28 @@ const App = (() => {
     }
   }
 
+  function showRuleCandidates() {
+    const onApprove = async (candidateId, ruleText) => {
+      await fetch('/api/save-rule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', candidateId, ruleText }),
+      });
+      state.ruleCandidates = state.ruleCandidates.filter(c => c.id !== candidateId);
+      UI.renderRuleCandidates(state.ruleCandidates, onApprove, onDismiss);
+    };
+    const onDismiss = async (candidateId) => {
+      await fetch('/api/save-rule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dismiss', candidateId }),
+      });
+      state.ruleCandidates = state.ruleCandidates.filter(c => c.id !== candidateId);
+      UI.renderRuleCandidates(state.ruleCandidates, onApprove, onDismiss);
+    };
+    UI.renderRuleCandidates(state.ruleCandidates, onApprove, onDismiss);
+  }
+
   function _runAnalysisCore() {
     const price = parsePrice(document.getElementById('price-a')?.value) || 0;
     if (price) saveHistory(STORAGE_KEY_PRICES, price);
@@ -820,7 +842,9 @@ const App = (() => {
 
     saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
     detectPatternsInCloud(state.resultA, state.reasonsA); // fire-and-forget
-    fetchRuleCandidates(); // fire-and-forget
+    fetchRuleCandidates().then(() => {
+      if (state.ruleCandidates.length > 0) showRuleCandidates();
+    });
     fetchCloudHistory().then(history => {
       state.cloudHistory = history;
       console.log('[Cloud] history loaded:', history.summary);
