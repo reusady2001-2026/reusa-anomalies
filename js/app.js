@@ -711,6 +711,14 @@ const App = (() => {
             coMovers,
             state.cloudHistory
           );
+          const situationProfile = Narrator.profile(
+            metric.reasonData[relIdx], metric, state.dataContext
+          );
+          const narrativeResult = Composer.compose(
+            metric.reasonData[relIdx], metric, state.dataContext, situationProfile
+          );
+          metric.reasonData[relIdx].situationProfile = situationProfile;
+          metric.reasonData[relIdx].narrativeResult  = narrativeResult;
         });
       });
 
@@ -830,6 +838,14 @@ const App = (() => {
             coMovers,
             state.cloudHistory
           );
+          const situationProfile = Narrator.profile(
+            metric.reasonData[relIdx], metric, state.dataContext
+          );
+          const narrativeResult = Composer.compose(
+            metric.reasonData[relIdx], metric, state.dataContext, situationProfile
+          );
+          metric.reasonData[relIdx].situationProfile = situationProfile;
+          metric.reasonData[relIdx].narrativeResult  = narrativeResult;
         });
       });
     });
