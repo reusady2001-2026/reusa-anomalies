@@ -506,11 +506,16 @@ const UI = (() => {
       // Alternative evidence panels (collapsible)
       if (ep.alternatives && ep.alternatives.length > 0) {
         html += `<div class="ev-alternatives">`;
-        ep.alternatives.forEach((alt, i) => {
-          const altHeader = reasonData.enrichedAlternatives?.[i] || alt.label;
+        ep.alternatives.forEach((alt, idx) => {
+          const altDisplayText = (idx < (reasonData.enrichedAlternatives || []).length)
+            ? reasonData.enrichedAlternatives[idx]
+            : alt.label;
+          const altHeader = altDisplayText.length > 120
+            ? altDisplayText.slice(0, 117) + '…'
+            : altDisplayText;
           html += `<details class="ev-alt">
             <summary class="ev-alt-header">
-              Alt ${i + 1}: ${escHtml(altHeader.length > 70 ? altHeader.slice(0, 67) + '…' : altHeader)}
+              Alt ${idx + 1}: ${escHtml(altHeader)}
               <span class="ev-score-count">${alt.evidenceSignals}/5</span>
               <span class="ev-score-share">${alt.relativeSupport}%</span>
             </summary>

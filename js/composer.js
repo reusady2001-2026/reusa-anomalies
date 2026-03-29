@@ -253,6 +253,20 @@ function compose(anomaly, metric, dataContext, situationProfile, angleOverride) 
   .filter(s => s && s.trim().length > 0)
   .join(' ');
 
+  if (angleOverride && sentences.length > 0) {
+    const frames = {
+      SEASONAL_VARIANCE:  'Alternatively, seasonal patterns may explain this:',
+      COST_SHOCK:         'Another explanation — a discrete cost shock:',
+      MARKET_PRESSURE:    'Alternatively, broader market conditions may be the driver:',
+      OPERATIONAL_DRIFT:  'Alternatively, this may reflect operational drift:',
+      RECOVERY_STORY:     'Alternatively, this may be a recovery pattern:',
+      PORTFOLIO_PATTERN:  'Alternatively, this matches a portfolio-wide pattern:',
+      ANOMALY_ALERT:      'Alternatively, no clear pattern has been identified:',
+    };
+    const frame = frames[angleOverride] || 'Alternatively:';
+    return { angle, confidence: situationProfile.confidence, scores: situationProfile.scores, narrative: `${frame} ${sentences}` };
+  }
+
   return {
     angle,
     confidence: situationProfile.confidence,
