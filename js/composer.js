@@ -66,7 +66,7 @@ function _coMoverNames(ap) {
 
 function _noiStr(ap) {
   const noi = ap?.dollarImpact?.dollarImpact?.formattedPctOfNoi;
-  return noi ? `, representing ${noi} of NOI` : '';
+  return noi ? `, representing ${noi}` : '';
 }
 
 // ── SENTENCE LIBRARY ──────────────────────────────────────
