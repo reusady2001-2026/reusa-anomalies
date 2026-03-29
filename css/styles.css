@@ -850,8 +850,8 @@ input[type="file"] { display: none; }
 [data-theme="dark"] .anomaly-table td.metric-name { background: #1a1a2e; color: #e0e0e0; }
 [data-theme="dark"] .section-header-row { background: #12122a; }
 [data-theme="dark"] .section-header { color: #90caf9; background: #12122a; }
-[data-theme="dark"] .metric-row:hover td { background-color: rgba(255,255,255,0.06) !important; }
-[data-theme="dark"] .metric-row:hover td.metric-name { background-color: rgba(255,255,255,0.09) !important; }
+[data-theme="dark"] .metric-row:hover td { background-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .metric-row:hover td.metric-name { background-color: rgba(255,255,255,0.09); }
 [data-theme="dark"] .cell-inactive { background: #252535; color: #555; }
 [data-theme="dark"] .cell-skipped { background: #1e1e30; color: #666; }
 [data-theme="dark"] .trend-col, [data-theme="dark"] .quarter-col { background: #202035; }
