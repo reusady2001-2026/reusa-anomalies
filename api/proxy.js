@@ -70,13 +70,27 @@ export default async function handler(req, res) {
 
       case 'openstates': {
         const { stateName } = params;
-        targetUrl = `https://v3.openstates.org/bills` +
-          `?jurisdiction=${encodeURIComponent(stateName)}` +
-          `&q=rent%20landlord%20tenant%20property%20tax%20eviction%20zoning` +
+        const STATE_CODES = {
+          'alabama':'al','alaska':'ak','arizona':'az','arkansas':'ar','california':'ca',
+          'colorado':'co','connecticut':'ct','delaware':'de','florida':'fl','georgia':'ga',
+          'hawaii':'hi','idaho':'id','illinois':'il','indiana':'in','iowa':'ia',
+          'kansas':'ks','kentucky':'ky','louisiana':'la','maine':'me','maryland':'md',
+          'massachusetts':'ma','michigan':'mi','minnesota':'mn','mississippi':'ms','missouri':'mo',
+          'montana':'mt','nebraska':'ne','nevada':'nv','new hampshire':'nh','new jersey':'nj',
+          'new mexico':'nm','new york':'ny','north carolina':'nc','north dakota':'nd','ohio':'oh',
+          'oklahoma':'ok','oregon':'or','pennsylvania':'pa','rhode island':'ri','south carolina':'sc',
+          'south dakota':'sd','tennessee':'tn','texas':'tx','utah':'ut','vermont':'vt',
+          'virginia':'va','washington':'wa','west virginia':'wv','wisconsin':'wi','wyoming':'wy',
+        };
+        const stateCode  = STATE_CODES[(stateName || '').toLowerCase()] || 'nj';
+        const jurisdiction = `ocd-jurisdiction/country:us/state:${stateCode}/government`;
+        const osUrl  = `https://v3.openstates.org/bills` +
+          `?jurisdiction=${encodeURIComponent(jurisdiction)}` +
+          `&q=rent+landlord+tenant+property+tax+eviction+zoning` +
           `&sort=updated_at` +
           `&page=1` +
           `&per_page=15`;
-        const osRes  = await fetch(targetUrl, {
+        const osRes  = await fetch(osUrl, {
           headers: { 'X-API-KEY': process.env.OPENSTATES_KEY || '' }
         });
         const osData = await osRes.json();
