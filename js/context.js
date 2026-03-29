@@ -184,6 +184,16 @@ const Context = (() => {
       ['CUUR0000SEHC',   'rentCPI'],
       ['HOUST',          'housingStarts'],
       ['MORTGAGE30US',   'mortgage30'],
+      ['CUUR0000SAE',    'energyCPI'],
+      ['CUUR0000SAM',    'medicalCPI'],
+      ['CUUR0000SAH',    'housingCPI'],
+      ['CUUR0000SAGL',   'transportCPI'],
+      ['CES0500000003',  'avgHourlyEarnings'],
+      ['WPUIP2311001',   'insurancePPI'],
+      ['DGS10',          'treasury10y'],
+      ['DGS2',           'treasury2y'],
+      ['DPRIME',         'primeLoanRate'],
+      ['COMREPUSQ159N',  'crePrice'],
     ];
     if (urCode) series.push([urCode, 'stateUR']);
 
