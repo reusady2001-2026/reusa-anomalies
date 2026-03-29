@@ -102,21 +102,30 @@ export default async function handler(req, res) {
 
       case 'census_permits': {
         const { state_fips } = params;
-        targetUrl = `https://api.census.gov/data/timeseries/eits/bps` +
+        const cpUrl = `https://api.census.gov/data/timeseries/eits/bps` +
           `?get=cell_value,time_slot_id,category_code` +
-          `&for=state:${encodeURIComponent(state_fips)}` +
+          `&for=state:${state_fips}` +
+          `&seasonally_adj=no` +
           `&time=from+2023`;
-        break;
+        const cpRes  = await fetch(cpUrl);
+        const cpData = await cpRes.json();
+        res.writeHead(cpRes.status, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(cpData));
+        return;
       }
 
       case 'openmeteo': {
         const { lat, lon, startDate, endDate } = params;
-        targetUrl = `https://archive-api.open-meteo.com/v1/archive` +
+        const omUrl = `https://archive-api.open-meteo.com/v1/archive` +
           `?latitude=${lat}&longitude=${lon}` +
           `&start_date=${startDate}&end_date=${endDate}` +
           `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum` +
           `&timezone=auto&temperature_unit=fahrenheit`;
-        break;
+        const omRes  = await fetch(omUrl);
+        const omData = await omRes.json();
+        res.writeHead(omRes.status, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(omData));
+        return;
       }
 
       default:
