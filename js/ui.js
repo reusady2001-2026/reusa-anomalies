@@ -498,11 +498,13 @@ const UI = (() => {
           ${historicalHtml}
           ${coMoversHtml}
         </div>
-        <div class="reason-box-body">
-          ${_renderScoreLine(pri)}
-          <div class="ev-signals">`;
+        <details class="rb-evidence">
+          <summary>Evidence signals</summary>
+          <div class="reason-box-body">
+            ${_renderScoreLine(pri)}
+            <div class="ev-signals">`;
       (pri.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
-      html += `</div></div></div>`;
+      html += `</div></div></details></div>`;
 
       // Alt reason boxes (collapsible)
       if (ep.alternatives && ep.alternatives.length > 0) {
@@ -515,15 +517,15 @@ const UI = (() => {
             <summary class="reason-box-summary">
               <span class="reason-box-label">Alt ${idx + 1}</span>
               <span class="reason-box-preview">${altPreview}</span>
-              <span class="ev-score-count">${alt.evidenceSignals}/5</span>
-              <span class="ev-score-share">${alt.relativeSupport}%</span>
             </summary>
             <div class="reason-box-body">
               <div class="reason-box-narrative">${escHtml(altDisplayText)}</div>
-              ${_renderScoreLine(alt)}
-              <div class="ev-signals">`;
+              <details class="rb-evidence">
+                <summary>Evidence signals</summary>
+                ${_renderScoreLine(alt)}
+                <div class="ev-signals">`;
           (alt.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
-          html += `</div></div></details>`;
+          html += `</div></details></div></details>`;
         });
       }
 

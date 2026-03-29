@@ -726,17 +726,19 @@ const App = (() => {
             metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
           }
 
-          // Generate alt narratives using ranked angles
+          // Generate alt narratives using ranked angles (always 2–4)
           if (situationProfile?.rankedAngles) {
             const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
             const existingAlts = metric.reasonData[relIdx].alternatives || [];
-            metric.reasonData[relIdx].enrichedAlternatives = altAngles
-              .slice(0, existingAlts.length || 3)
-              .map(altAngle => {
+            const paddedAngles = [...altAngles];
+            while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
+            metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
+              .slice(0, 4)
+              .map((altAngle, i) => {
                 const altResult = Composer.compose(
                   metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
                 );
-                return altResult?.narrative || existingAlts[altAngles.indexOf(altAngle)] || '';
+                return altResult?.narrative || existingAlts[i] || '';
               });
           }
         });
@@ -871,17 +873,19 @@ const App = (() => {
             metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
           }
 
-          // Generate alt narratives using ranked angles
+          // Generate alt narratives using ranked angles (always 2–4)
           if (situationProfile?.rankedAngles) {
             const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
             const existingAlts = metric.reasonData[relIdx].alternatives || [];
-            metric.reasonData[relIdx].enrichedAlternatives = altAngles
-              .slice(0, existingAlts.length || 3)
-              .map(altAngle => {
+            const paddedAngles = [...altAngles];
+            while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
+            metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
+              .slice(0, 4)
+              .map((altAngle, i) => {
                 const altResult = Composer.compose(
                   metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
                 );
-                return altResult?.narrative || existingAlts[altAngles.indexOf(altAngle)] || '';
+                return altResult?.narrative || existingAlts[i] || '';
               });
           }
         });
