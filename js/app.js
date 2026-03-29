@@ -750,19 +750,24 @@ const App = (() => {
         });
       });
 
-      // Compute summary stats for badge display
+      // Compute summary stats for badge display (seasonal takes priority; no double-counting)
       state.summaryStats = { totalMaterial: 0, incomeAnomalies: 0, expenseAnomalies: 0, seasonalAnomalies: 0 };
       (state.resultA.metrics || []).forEach(metric => {
-        const matCount = (metric.materialAnomalies || []).length;
-        state.summaryStats.totalMaterial += matCount;
-        if (metric.section === 'INCOME')   state.summaryStats.incomeAnomalies  += matCount;
-        if (metric.section === 'EXPENSES') state.summaryStats.expenseAnomalies += matCount;
-        (metric.anomalies || []).forEach(relIdx => {
-          if (metric.reasonData?.[relIdx]?.situationProfile?.angle === 'SEASONAL_VARIANCE') {
+        (metric.materialAnomalies || []).forEach(relIdx => {
+          const isSeasonal = metric.reasonData?.[relIdx]?.situationProfile?.angle === 'SEASONAL_VARIANCE';
+          if (isSeasonal) {
             state.summaryStats.seasonalAnomalies++;
+          } else if (metric.section === 'INCOME') {
+            state.summaryStats.incomeAnomalies++;
+          } else if (metric.section === 'EXPENSES') {
+            state.summaryStats.expenseAnomalies++;
           }
         });
       });
+      state.summaryStats.totalMaterial =
+        state.summaryStats.incomeAnomalies +
+        state.summaryStats.expenseAnomalies +
+        state.summaryStats.seasonalAnomalies;
 
       renderAnalyzerTable();
     } catch (err) {

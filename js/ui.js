@@ -16,19 +16,22 @@ const UI = (() => {
 
     const isMaterialSeasonal = metric.seasonalityMonths && metric.seasonalityMonths.includes(relIdx);
     const isMaterial = metric.materialAnomalies && metric.materialAnomalies.includes(relIdx);
+    const isNarratorSeasonal = isMaterial &&
+      (metric.reasonData?.[relIdx]?.situationProfile?.angle === 'SEASONAL_VARIANCE');
     const isAnomaly = z.isAnomaly;
     const isReversion = z.isReversion;
 
     if (materialFocusActive) {
-      // Only material anomalies shown
-      if (isMaterial && !isMaterialSeasonal) {
-        return z.pnl === 'profit' ? 'cell-material-positive' : 'cell-material-negative';
+      if (isMaterial) {
+        if (isNarratorSeasonal) return 'cell-seasonal-material';
+        if (!isMaterialSeasonal) return z.pnl === 'profit' ? 'cell-material-positive' : 'cell-material-negative';
       }
       return 'cell-normal';
     }
 
     // Full display
     if (isMaterialSeasonal) return 'cell-seasonal-material';
+    if (isNarratorSeasonal) return 'cell-seasonal-material';
     if (isMaterial) {
       return z.pnl === 'profit' ? 'cell-material-positive' : 'cell-material-negative';
     }
