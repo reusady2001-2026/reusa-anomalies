@@ -38,6 +38,7 @@ const App = (() => {
     _fetchingContext: null, // Promise<void> while in flight
     cloudHistory: null,
     summaryStats: null,
+    ruleCandidates: [],
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -694,6 +695,48 @@ const App = (() => {
     }).catch(err => console.warn('[Cloud] save failed:', err));
   }
 
+  async function detectPatternsInCloud(resultA, reasonsA) {
+    try {
+      const anomalies = [];
+      (resultA.metrics || []).forEach(metric => {
+        (metric.anomalies || []).forEach(relIdx => {
+          const rd = metric.reasonData?.[relIdx];
+          if (!rd) return;
+          const sp = rd.situationProfile;
+          if (!sp) return;
+          anomalies.push({
+            metricName: metric.name,
+            section: metric.section,
+            monthLabel: rd.monthLabel,
+            angle: sp.angle,
+            propertyName: state.propertyNameA || 'unknown',
+            effectiveZ: rd.effectiveZ || 0,
+          });
+        });
+      });
+      if (anomalies.length === 0) return;
+      await fetch('/api/detect-patterns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anomalies }),
+      });
+    } catch (err) {
+      console.warn('[Patterns] detection failed:', err.message);
+    }
+  }
+
+  async function fetchRuleCandidates() {
+    try {
+      const res = await fetch('/api/get-rule-candidates');
+      const data = await res.json();
+      if (data.success) {
+        state.ruleCandidates = data.candidates || [];
+      }
+    } catch (err) {
+      console.warn('[Rules] failed to fetch candidates:', err.message);
+    }
+  }
+
   function _runAnalysisCore() {
     const price = parsePrice(document.getElementById('price-a')?.value) || 0;
     if (price) saveHistory(STORAGE_KEY_PRICES, price);
@@ -776,6 +819,8 @@ const App = (() => {
     }
 
     saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
+    detectPatternsInCloud(state.resultA, state.reasonsA); // fire-and-forget
+    fetchRuleCandidates(); // fire-and-forget
     fetchCloudHistory().then(history => {
       state.cloudHistory = history;
       console.log('[Cloud] history loaded:', history.summary);
