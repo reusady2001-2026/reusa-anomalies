@@ -139,77 +139,66 @@ const SENTENCE_LIBRARY = {
   },
 
   MARKET_PRESSURE: {
-    opening: (anomaly, metric, dataContext, ap) => {
-      return `${_metricLabel(metric)} moved ${_direction(ap)} expected levels in ${_monthLabel(anomaly)}, consistent with broader market conditions.`;
-    },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `The deviation was ${dev} (${pct}) vs. ${ref}.` : '';
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — movement consistent with broader market conditions rather than a property-specific event.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
-      const fred  = dataContext?.fred;
       const month = _monthLabel(anomaly);
       const parts = [];
-      if (fred?.cpi?.[month])       parts.push(`CPI was running at elevated levels`);
-      if (fred?.mortgage30?.[month]) parts.push(`30-year mortgage rates were ${fred.mortgage30[month].toFixed(2)}%`);
-      if (fred?.fedfunds?.[month])   parts.push(`the federal funds rate was ${fred.fedfunds[month].toFixed(2)}%`);
-      if (dataContext?.fema?.length > 0) parts.push(`FEMA disaster declarations were active in the state`);
-      return parts.length > 0 ? `Market context: ${parts.join('; ')}.` : '';
+      const ff = _fredValue(dataContext, 'fedfunds', month);
+      if (ff != null) parts.push(`Fed Funds Rate ${ff.toFixed(2)}%`);
+      const m30 = _fredValue(dataContext, 'mortgage30', month);
+      if (m30 != null) parts.push(`30yr Mortgage ${m30.toFixed(2)}%`);
+      const cpi = _fredValue(dataContext, 'cpi', month);
+      if (cpi != null) parts.push(`CPI ${cpi.toFixed(1)}`);
+      const rentCPI = _fredValue(dataContext, 'rentCPI', month);
+      if (rentCPI != null) parts.push(`Rent CPI ${rentCPI.toFixed(1)}`);
+      const ur = _fredValue(dataContext, 'stateUR', month);
+      if (ur != null) parts.push(`State unemployment ${ur.toFixed(1)}%`);
+      if (dataContext?.fema?.length > 0) parts.push(`FEMA declarations active in state`);
+      return parts.length > 0 ? `Market indicators for ${month}: ${parts.join(' · ')}.` : '';
     },
     portfolio: (anomaly, metric, dataContext, ap) => {
       const ctx = ap.crossPropertyBaseline?.portfolioContext;
-      if (ctx === 'common') return `Similar movement was observed across the portfolio, reinforcing a market-wide explanation.`;
+      const count = ap.crossPropertyBaseline?.propertiesCount;
+      if (ctx === 'common') return `Pattern observed across ${count} properties — reinforces market-wide explanation.`;
       return '';
     },
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
       if (status === 'resolved')   return `Conditions have since normalized.`;
-      if (status === 'persisting') return `Market pressures appear ongoing. Review exposure and repricing opportunities.`;
+      if (status === 'persisting') return `Market pressures appear ongoing — review exposure and repricing opportunities.`;
       return '';
     },
   },
 
   OPERATIONAL_DRIFT: {
-    opening: (anomaly, metric, dataContext, ap) => {
+    opening: (anomaly, metric, dataContext, ap, m) => {
       const months = ap.velocity?.monthCount;
-      return `${_metricLabel(metric)} has been drifting ${_direction(ap)} baseline over ${months || 'several'} months without a clear triggering event.`;
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} has drifted ${_direction(ap)} baseline over ${months || 'several'} months — currently ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}.`;
     },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `Current level is ${dev} (${pct}) vs. ${ref}.` : '';
-    },
-    context: (anomaly, metric, dataContext, ap) => {
-      return `No single causal factor has been identified. This may reflect gradual contract escalation, usage creep, or unreported operational changes.`;
-    },
+    context: () => `No single triggering event identified. Likely reflects gradual contract escalation, usage creep, or unreported operational changes.`,
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
-      if (status === 'worsening')  return `The drift is accelerating. A formal review of this cost center is recommended.`;
-      if (status === 'persisting') return `The elevated level has persisted. Consider benchmarking against prior-year actuals.`;
+      if (status === 'worsening')  return `Drift is accelerating — formal review of this cost center recommended.`;
+      if (status === 'persisting') return `Elevated level has persisted — benchmark against prior-year actuals.`;
       return '';
     },
   },
 
   RECOVERY_STORY: {
-    opening: (anomaly, metric, dataContext, ap) => {
-      return `${_metricLabel(metric)} experienced an anomaly in ${_monthLabel(anomaly)} but has since shown signs of recovery.`;
-    },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `At its peak, the variance was ${dev} (${pct}) vs. ${ref}.` : '';
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      const months = ap.recovery?.monthsToResolve;
+      return `${_metricLabel(m)} peaked at ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} but recovered within ${months || 'a few'} month${months !== 1 ? 's' : ''}.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
-      const months = ap.recovery?.monthsToResolve;
-      return months ? `Recovery occurred within ${months} month${months > 1 ? 's' : ''}.` : '';
+      const cause = ap.causalityChain?.likelyCause?.name;
+      return cause ? `Movement in ${cause} appears to have been the primary driver.` : '';
     },
-    closing: (anomaly, metric, dataContext, ap) => {
-      return `No further action required unless the pattern recurs.`;
-    },
+    closing: () => `No further action required unless the pattern recurs.`,
   },
 
   PORTFOLIO_PATTERN: {
