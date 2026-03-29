@@ -192,10 +192,13 @@ const App = (() => {
     // Clear output areas (both screens)
     ['table-container', 'table-container-comp',
      'dashboard-container', 'dashboard-container-comp',
-     'detail-card', 'detail-card-comp',
      'status-msg', 'status-msg-comp'].forEach(id => {
       const e = document.getElementById(id);
       if (e) { e.innerHTML = ''; e.classList.add('hidden'); }
+    });
+    ['detail-card', 'detail-card-comp'].forEach(id => {
+      const e = document.getElementById(id);
+      if (e) { e.innerHTML = '<button class="close-card" title="Close">✕</button>'; e.classList.remove('open'); }
     });
 
     ['controls-bar', 'controls-bar-comp', 'legend', 'legend-comp'].forEach(id => {
@@ -958,7 +961,8 @@ const App = (() => {
   function attachCellClicks(container, result) {
     container.querySelectorAll('[data-anomaly="1"]').forEach(cell => {
       cell.style.cursor = 'pointer';
-      cell.addEventListener('click', () => {
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
         const metricId = cell.dataset.metric;
         const ri = parseInt(cell.dataset.ri);
         const metric = result.metrics.find(m => m.id === metricId);
@@ -974,8 +978,7 @@ const App = (() => {
         if (cardEl) {
           cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' +
             UI.renderAnomalyCard(reasonData, metric, monthLabel);
-          cardEl.classList.remove('hidden');
-          cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          cardEl.classList.add('open');
         }
       });
     });
@@ -1269,18 +1272,25 @@ const App = (() => {
     ['detail-card', 'detail-card-comp'].forEach(id => {
       document.getElementById(id)?.addEventListener('click', e => {
         if (e.target.classList.contains('close-card')) {
-          document.getElementById(id)?.classList.add('hidden');
+          e.stopPropagation();
+          document.getElementById(id)?.classList.remove('open');
         }
       });
     });
 
-    // Close export menus when clicking outside
+    // Close export menus and detail panels when clicking outside
     document.addEventListener('click', e => {
       ['export-menu', 'export-menu-comp'].forEach(id => {
         const menu = document.getElementById(id);
         const btn  = document.getElementById(id.replace('menu', 'btn'));
         if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
           menu.classList.add('hidden');
+        }
+      });
+      ['detail-card', 'detail-card-comp'].forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel && panel.classList.contains('open') && !panel.contains(e.target)) {
+          panel.classList.remove('open');
         }
       });
     });
