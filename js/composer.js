@@ -44,6 +44,31 @@ function _deltaPct(ap) {
   return ap.dollarImpact?.referencePoint?.formattedDeltaPct || '';
 }
 
+function _fredValue(dataContext, key, monthLabel) {
+  const series = dataContext?.fred?.[key];
+  if (!series || !monthLabel) return null;
+  return series[monthLabel] ?? null;
+}
+
+function _weatherContext(dataContext, monthLabel) {
+  const hdd  = dataContext?.weather?.heatingDegreeDays?.[monthLabel];
+  const cdd  = dataContext?.weather?.coolingDegreeDays?.[monthLabel];
+  const rain = dataContext?.weather?.precipitation?.[monthLabel];
+  return { hdd: hdd || 0, cdd: cdd || 0, rain: rain || 0 };
+}
+
+function _coMoverNames(ap) {
+  const cause   = ap?.causalityChain?.likelyCause?.name;
+  const effects = (ap?.causalityChain?.effects || []).map(e => e.name);
+  const all     = [...(cause ? [cause] : []), ...effects];
+  return all.length > 0 ? all : null;
+}
+
+function _noiStr(ap) {
+  const noi = ap?.dollarImpact?.dollarImpact?.formattedPctOfNoi;
+  return noi ? `, representing ${noi} of NOI` : '';
+}
+
 // ── SENTENCE LIBRARY ──────────────────────────────────────
 
 const SENTENCE_LIBRARY = {
@@ -263,12 +288,12 @@ function compose(anomaly, metric, dataContext, situationProfile) {
   const lib   = SENTENCE_LIBRARY[angle] || SENTENCE_LIBRARY.ANOMALY_ALERT;
 
   const sentences = [
-    lib.opening?.(anomaly, metric, dataContext, ap),
-    lib.impact?.(anomaly, metric, dataContext, ap),
-    lib.context?.(anomaly, metric, dataContext, ap),
-    lib.causality?.(anomaly, metric, dataContext, ap),
-    lib.portfolio?.(anomaly, metric, dataContext, ap),
-    lib.closing?.(anomaly, metric, dataContext, ap),
+    lib.opening?.(anomaly, metric, dataContext, ap, metric),
+    lib.impact?.(anomaly, metric, dataContext, ap, metric),
+    lib.context?.(anomaly, metric, dataContext, ap, metric),
+    lib.causality?.(anomaly, metric, dataContext, ap, metric),
+    lib.portfolio?.(anomaly, metric, dataContext, ap, metric),
+    lib.closing?.(anomaly, metric, dataContext, ap, metric),
   ]
   .filter(s => s && s.trim().length > 0)
   .join(' ');
