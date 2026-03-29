@@ -67,11 +67,17 @@ const Context = (() => {
     return data.data.sort();
   }
 
-  async function getCitiesForState(stateAbbr) {
-    if (_cityCache[stateAbbr]) return _cityCache[stateAbbr];
-    const cities = await fetchCitiesForState(stateAbbr);
-    _cityCache[stateAbbr] = cities;
-    return cities;
+  function getCitiesForState(stateAbbr) {
+    if (_cityCache[stateAbbr]) return Promise.resolve(_cityCache[stateAbbr]);
+    // Store the in-flight promise so concurrent callers share one fetch
+    if (!_cityCache[`_pending_${stateAbbr}`]) {
+      _cityCache[`_pending_${stateAbbr}`] = fetchCitiesForState(stateAbbr).then(cities => {
+        _cityCache[stateAbbr] = cities;
+        delete _cityCache[`_pending_${stateAbbr}`];
+        return cities;
+      });
+    }
+    return _cityCache[`_pending_${stateAbbr}`];
   }
 
   const STATES = Object.entries(STATE_ABBR)
