@@ -483,11 +483,6 @@ const UI = (() => {
       const ep = evidenceProfile;
       const pri = ep.primary;
 
-      // Warning outside boxes
-      if (ep.warning) {
-        html += `<div class="ev-warning">⚠ ${escHtml(ep.warning)}</div>`;
-      }
-
       // Primary reason box (always expanded)
       html += `<div class="reason-box reason-box--primary">
         <div class="reason-box-header">
