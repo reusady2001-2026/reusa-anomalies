@@ -74,84 +74,66 @@ function _noiStr(ap) {
 const SENTENCE_LIBRARY = {
 
   SEASONAL_VARIANCE: {
-    opening: (anomaly, metric, dataContext, ap) => {
-      const excess    = ap.seasonalExpectation?.excessAboveSeasonal;
-      const excessStr = excess ? ` — ${_pct(excess / 100)} above seasonal norms` : '';
-      return `${_metricLabel(metric)} showed elevated activity in ${_monthLabel(anomaly)}, consistent with seasonal patterns for this expense category${excessStr}.`;
-    },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `The variance was ${dev} (${pct}) vs. ${ref}.` : '';
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — consistent with seasonal patterns for this expense category.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
-      const month = _monthLabel(anomaly);
-      const hdd = dataContext?.weather?.heatingDegreeDays;
-      if (hdd && hdd[month] && hdd[month] > 500) {
-        return `Heating degree days in the period were elevated, consistent with higher utility and maintenance demand.`;
-      }
-      const cdd = dataContext?.weather?.coolingDegreeDays;
-      if (cdd && cdd[month] && cdd[month] > 200) {
-        return `Cooling degree days in the period were elevated, consistent with higher utility demand.`;
-      }
-      return '';
+      const w = _weatherContext(dataContext, _monthLabel(anomaly));
+      const parts = [];
+      if (w.hdd > 400) parts.push(`heating degree days were ${w.hdd.toLocaleString()} — driving elevated heating and weatherization demand`);
+      if (w.cdd > 150) parts.push(`cooling degree days were ${w.cdd.toLocaleString()} — consistent with elevated cooling and pool-related costs`);
+      if (w.rain > 100) parts.push(`precipitation was ${w.rain}mm — above average, consistent with drainage and exterior maintenance costs`);
+      return parts.length > 0 ? `Weather data supports this: ${parts.join('; ')}.` : '';
     },
     portfolio: (anomaly, metric, dataContext, ap) => {
-      const ctx   = ap.crossPropertyBaseline?.portfolioContext;
-      const count = ap.crossPropertyBaseline?.propertiesCount;
-      if (ctx === 'common') return `This pattern was observed across ${count} properties in the portfolio this period.`;
-      if (ctx === 'rare')   return `This pattern appeared in a small number of portfolio properties.`;
-      return '';
+      const ctx     = ap.crossPropertyBaseline?.portfolioContext;
+      const count   = ap.crossPropertyBaseline?.propertiesCount;
+      const typical = ap.crossPropertyBaseline?.typicalMonths || [];
+      const MO      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const typicalStr = typical.length > 0 ? ` Historically fires in: ${typical.map(m => MO[m - 1]).filter(Boolean).join(', ')}.` : '';
+      if (ctx === 'common') return `Seen across ${count} properties this period — portfolio-wide seasonal pattern.${typicalStr}`;
+      if (ctx === 'rare')   return `Appeared in a small number of portfolio properties.${typicalStr}`;
+      return typicalStr.trim();
     },
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
-      if (status === 'resolved')   return `Costs have normalized in subsequent months.`;
-      if (status === 'persisting') return `The elevated level has continued into subsequent months — monitor for deviation from expected seasonal curve.`;
+      if (status === 'resolved')   return `Costs normalized in subsequent months — no action required.`;
+      if (status === 'persisting') return `Elevated level has continued — monitor against expected seasonal curve.`;
+      if (status === 'worsening')  return `Costs escalating beyond seasonal norms — review vendor contracts.`;
       return '';
     },
   },
 
   COST_SHOCK: {
-    opening: (anomaly, metric, dataContext, ap) => {
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
       const cause    = ap.causalityChain?.likelyCause?.name;
-      const causeStr = cause ? `, likely driven by movement in ${cause}` : '';
-      return `${_metricLabel(metric)} experienced a significant cost increase in ${_monthLabel(anomaly)}${causeStr}.`;
+      const causeStr = cause ? `, likely triggered by movement in ${cause}` : '';
+      return `${_metricLabel(m)} spiked ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}${causeStr}.`;
     },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      const noi = ap.dollarImpact?.dollarImpact?.formattedPctOfNoi;
-      const noiStr = noi ? `, representing ${noi} of NOI` : '';
-      return dev ? `The spike was ${dev} (${pct}) vs. ${ref}${noiStr}.` : '';
-    },
-    context: (anomaly, metric, dataContext, ap) => {
+    context: (anomaly, metric, dataContext, ap, m) => {
       const month = _monthLabel(anomaly);
-      const energyCPI = dataContext?.fred?.energyCPI;
-      if (energyCPI && energyCPI[month] && metric.name?.toLowerCase().includes('gas')) {
-        return `Energy CPI data for the period shows elevated utility pricing in the broader market.`;
-      }
-      const insurancePPI = dataContext?.fred?.insurancePPI;
-      if (insurancePPI && metric.name?.toLowerCase().includes('insurance')) {
-        return `Insurance pricing indices were elevated during this period, consistent with industry-wide rate increases.`;
-      }
-      return '';
+      const parts = [];
+      const energy = _fredValue(dataContext, 'energyCPI', month);
+      if (energy && m?.name?.match(/gas|electric|utility|water|sewer/i)) parts.push(`Energy CPI was ${energy.toFixed(1)} nationally`);
+      const ins = _fredValue(dataContext, 'insurancePPI', month);
+      if (ins && m?.name?.match(/insurance/i)) parts.push(`Insurance PPI was ${ins.toFixed(1)} — elevated rate environment`);
+      const earn = _fredValue(dataContext, 'avgHourlyEarnings', month);
+      if (earn && m?.section?.match(/payroll/i)) parts.push(`Average hourly earnings were $${earn.toFixed(2)} nationally — labor cost pressure`);
+      if (dataContext?.fema?.length > 0) parts.push(`FEMA disaster declarations were active in the state`);
+      return parts.length > 0 ? parts.join('. ') + '.' : '';
     },
     causality: (anomaly, metric, dataContext, ap) => {
-      const effects = ap.causalityChain?.effects || [];
-      if (effects.length > 0) {
-        const names = effects.map(e => e.name).join(', ');
-        return `Related movement was observed in: ${names}.`;
-      }
-      return '';
+      const movers = _coMoverNames(ap);
+      return movers ? `Related movement in: ${movers.join(', ')}.` : '';
     },
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
       const months = ap.recovery?.monthsToResolve;
-      if (status === 'resolved')   return `Costs returned to normal levels within ${months || 'a few'} months.`;
-      if (status === 'worsening')  return `The cost pressure has continued to escalate — immediate review recommended.`;
-      if (status === 'persisting') return `Costs have remained elevated. Review vendor contracts or operational drivers.`;
+      if (status === 'resolved')   return `Costs returned to baseline within ${months || 'a few'} months.`;
+      if (status === 'worsening')  return `Cost pressure escalating — immediate review recommended.`;
+      if (status === 'persisting') return `Costs remain elevated — review vendor contracts or operational drivers.`;
       return '';
     },
   },
