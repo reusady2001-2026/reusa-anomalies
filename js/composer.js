@@ -69,6 +69,19 @@ function _noiStr(ap) {
   return noi ? `, representing ${noi}` : '';
 }
 
+function _yoyPct(dataContext, key, monthLabel, allMonths) {
+  const series = dataContext?.fred?.[key];
+  if (!series || !monthLabel || !allMonths) return null;
+  const idx = allMonths.indexOf(monthLabel);
+  if (idx < 12) return null;
+  const priorLabel = allMonths[idx - 12];
+  const current = series[monthLabel];
+  const prior = series[priorLabel];
+  if (current == null || prior == null || prior === 0) return null;
+  const change = ((current - prior) / Math.abs(prior)) * 100;
+  return `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
+}
+
 // ── SENTENCE LIBRARY ──────────────────────────────────────
 
 const SENTENCE_LIBRARY = {
@@ -115,8 +128,8 @@ const SENTENCE_LIBRARY = {
     context: (anomaly, metric, dataContext, ap, m) => {
       const month = _monthLabel(anomaly);
       const parts = [];
-      const energy = _fredValue(dataContext, 'energyCPI', month);
-      if (energy && m?.name?.match(/gas|electric|utility|water|sewer/i)) parts.push(`Energy CPI was ${energy.toFixed(1)} nationally`);
+      const energyYoy = _yoyPct(dataContext, 'energyCPI', month, anomaly.allMonths || []);
+      if (energyYoy && m?.name?.match(/gas|electric|utility|water|sewer/i)) parts.push(`Energy CPI ${energyYoy} YoY nationally`);
       const ins = _fredValue(dataContext, 'insurancePPI', month);
       if (ins && m?.name?.match(/insurance/i)) parts.push(`Insurance PPI was ${ins.toFixed(1)} — elevated rate environment`);
       const earn = _fredValue(dataContext, 'avgHourlyEarnings', month);
@@ -150,10 +163,10 @@ const SENTENCE_LIBRARY = {
       if (ff != null) parts.push(`Fed Funds Rate ${ff.toFixed(2)}%`);
       const m30 = _fredValue(dataContext, 'mortgage30', month);
       if (m30 != null) parts.push(`30yr Mortgage ${m30.toFixed(2)}%`);
-      const cpi = _fredValue(dataContext, 'cpi', month);
-      if (cpi != null) parts.push(`CPI ${cpi.toFixed(1)}`);
-      const rentCPI = _fredValue(dataContext, 'rentCPI', month);
-      if (rentCPI != null) parts.push(`Rent CPI ${rentCPI.toFixed(1)}`);
+      const cpiYoy = _yoyPct(dataContext, 'cpi', month, anomaly.allMonths || []);
+      if (cpiYoy != null) parts.push(`CPI ${cpiYoy} YoY`);
+      const rentYoy = _yoyPct(dataContext, 'rentCPI', month, anomaly.allMonths || []);
+      if (rentYoy != null) parts.push(`Rent CPI ${rentYoy} YoY`);
       const ur = _fredValue(dataContext, 'stateUR', month);
       if (ur != null) parts.push(`State unemployment ${ur.toFixed(1)}%`);
       if (dataContext?.fema?.length > 0) parts.push(`FEMA declarations active in state`);
