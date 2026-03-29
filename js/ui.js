@@ -507,9 +507,10 @@ const UI = (() => {
       if (ep.alternatives && ep.alternatives.length > 0) {
         html += `<div class="ev-alternatives">`;
         ep.alternatives.forEach((alt, i) => {
+          const altHeader = reasonData.enrichedAlternatives?.[i] || alt.label;
           html += `<details class="ev-alt">
             <summary class="ev-alt-header">
-              Alt ${i + 1}: ${escHtml(alt.label.length > 70 ? alt.label.slice(0, 67) + '…' : alt.label)}
+              Alt ${i + 1}: ${escHtml(altHeader.length > 70 ? altHeader.slice(0, 67) + '…' : altHeader)}
               <span class="ev-score-count">${alt.evidenceSignals}/5</span>
               <span class="ev-score-share">${alt.relativeSupport}%</span>
             </summary>
