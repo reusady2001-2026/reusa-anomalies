@@ -87,7 +87,7 @@ export default async function handler(req, res) {
         const osUrl  = `https://v3.openstates.org/bills` +
           `?jurisdiction=${encodeURIComponent(jurisdiction)}` +
           `&q=rent+landlord+tenant+property+tax+eviction+zoning` +
-          `&sort=updated_at` +
+          `&sort=updated_desc` +
           `&page=1` +
           `&per_page=15`;
         const osRes  = await fetch(osUrl, {
