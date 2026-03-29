@@ -116,6 +116,25 @@ const Narrator = (() => {
     return 'ANOMALY_ALERT';
   }
 
+  // ── BLOCKED ANGLES ────────────────────────────────────────
+
+  function getBlockedAngles(scores, ap) {
+    const blocked = [];
+    // Never use PORTFOLIO_PATTERN if only 1 or fewer properties
+    if ((ap.crossPropertyBaseline?.propertiesCount || 0) <= 1) {
+      blocked.push('PORTFOLIO_PATTERN');
+    }
+    // Never use SEASONAL_VARIANCE if isSeasonalMonth is false
+    if (!ap.seasonalExpectation?.isSeasonalMonth) {
+      blocked.push('SEASONAL_VARIANCE');
+    }
+    // Never use RECOVERY_STORY if recovery status is not resolved
+    if (ap.recovery?.status !== 'resolved') {
+      blocked.push('RECOVERY_STORY');
+    }
+    return blocked;
+  }
+
   // ── CONFIDENCE ────────────────────────────────────────────
 
   function _calcConfidence(scores) {
@@ -167,7 +186,20 @@ const Narrator = (() => {
     // Ensure dominant angle is always first
     const dedupedRanked = [angle, ...rankedAngles.filter(a => a !== angle)];
 
-    return { angle, scores, dominantScore, confidence, rankedAngles: dedupedRanked };
+    const blocked = getBlockedAngles(scores, ap);
+    const filteredRanked = dedupedRanked.filter(a => !blocked.includes(a));
+    // If dominant angle itself is blocked, use next available
+    const finalAngle = blocked.includes(angle)
+      ? (filteredRanked[0] || 'ANOMALY_ALERT')
+      : angle;
+
+    return {
+      angle: finalAngle,
+      scores,
+      dominantScore,
+      confidence,
+      rankedAngles: filteredRanked,
+    };
   }
 
   return { profile };
