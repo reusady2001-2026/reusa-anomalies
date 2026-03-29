@@ -886,6 +886,20 @@ input[type="file"] { display: none; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #444; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #666; }
 
+/* ── LIGHT MODE OVERRIDES — detail panel & reason boxes ── */
+[data-theme="light"] #detail-card,
+[data-theme="light"] #detail-card-comp {
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .reason-box {
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="light"] .reason-box-label         { color: #64748b; }
+[data-theme="light"] .reason-box-narrative      { color: #334155; }
+[data-theme="light"] .rb-evidence > summary     { color: #475569; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
   .mode-cards { flex-direction: column; }
