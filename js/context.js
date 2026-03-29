@@ -201,6 +201,7 @@ const Context = (() => {
       ['DPRIME',         'primeLoanRate'],
       ['COMREPUSQ159N',  'crePrice'],
       ['RRVRUSQ156N',    'rentalVacancyUS'],
+      ['PERMITNSA',      'buildingPermits'],
     ];
     if (urCode) series.push([urCode, 'stateUR']);
 
@@ -367,29 +368,6 @@ const Context = (() => {
     }
   }
 
-  // ── BUILDING PERMITS (Census BPS) ────────────────────
-  async function fetchBuildingPermits(stateAbbr) {
-    const fips = STATE_FIPS[stateAbbr];
-    if (!fips) return [];
-    try {
-      const rows = await proxyFetch('census_permits', { state_fips: fips }, 10000);
-      if (!Array.isArray(rows) || rows.length < 2) return [];
-      const header  = rows[0];
-      const valIdx  = header.indexOf('cell_value');
-      const timeIdx = header.indexOf('time_slot_id');
-      const catIdx  = header.indexOf('category_code');
-      return rows.slice(1)
-        .filter(r => r[catIdx] === '5') // 5-unit+ buildings only
-        .map(r => ({
-          period: r[timeIdx],
-          units:  parseInt(r[valIdx]) || 0,
-        }))
-        .sort((a, b) => a.period.localeCompare(b.period));
-    } catch {
-      return [];
-    }
-  }
-
   async function fetchDataContext(stateAbbr, city, months, onProgress) {
     const ck = _cacheKey(stateAbbr, city, months);
     const cached = loadCache(ck);
@@ -402,14 +380,13 @@ const Context = (() => {
 
     if (onProgress) onProgress(`Fetching economic context for ${city}, ${stateAbbr}…`);
 
-    const [fredR, femaR, congressR, osR, censusR, weatherR, permitsR] = await Promise.allSettled([
+    const [fredR, femaR, congressR, osR, censusR, weatherR] = await Promise.allSettled([
       fetchFRED(stateAbbr, startDate, endDate),
       fetchFEMA(stateAbbr, startDate, endDate),
       fetchCongress(startDate, endDate),
       fetchOpenStates(stateName, startDate, endDate),
       fetchCensus(stateAbbr, city),
       fetchWeather(stateAbbr, startDate, endDate),
-      fetchBuildingPermits(stateAbbr),
     ]);
 
     const ctx = {
@@ -422,7 +399,6 @@ const Context = (() => {
       openStates: osR.status         === 'fulfilled' ? osR.value         : [],
       census:     censusR.status     === 'fulfilled' ? censusR.value     : {},
       weather:    weatherR.status    === 'fulfilled' ? weatherR.value    : {},
-      permits:    permitsR.status    === 'fulfilled' ? permitsR.value    : [],
     };
 
     saveCache(ck, ctx);

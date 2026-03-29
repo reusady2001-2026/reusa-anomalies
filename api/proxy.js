@@ -117,20 +117,6 @@ export default async function handler(req, res) {
         break;
       }
 
-      case 'census_permits': {
-        const { state_fips } = params;
-        const cpUrl = `https://api.census.gov/data/timeseries/eits/bps` +
-          `?get=cell_value,time_slot_id,category_code,geo_id` +
-          `&geo_id=0400000US${state_fips}` +
-          `&seasonally_adj=no` +
-          `&time=from+2023`;
-        const cpRes  = await fetch(cpUrl);
-        const cpData = await cpRes.json();
-        res.writeHead(cpRes.status, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(cpData));
-        return;
-      }
-
       case 'openmeteo': {
         const { lat, lon, startDate, endDate } = params;
         const omUrl = `https://archive-api.open-meteo.com/v1/archive` +
