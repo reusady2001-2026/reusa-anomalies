@@ -563,27 +563,6 @@ const UI = (() => {
       html += `</ul></details>`;
     }
 
-    const nr = reasonData.narrativeResult;
-    if (nr && nr.narrative) {
-      const confidenceColor = nr.confidence === 'high' ? '#4ade80' : nr.confidence === 'medium' ? '#facc15' : '#94a3b8';
-      html += `
-        <div class="narrative-block" style="
-          margin-top: 12px;
-          padding: 12px 14px;
-          background: rgba(255,255,255,0.04);
-          border-left: 3px solid ${confidenceColor};
-          border-radius: 0 6px 6px 0;
-        ">
-          <div style="font-size:10px; color:${confidenceColor}; font-family:'JetBrains Mono',monospace; letter-spacing:0.08em; margin-bottom:6px; text-transform:uppercase;">
-            ${nr.angle.replace(/_/g,' ')} · ${nr.confidence} confidence
-          </div>
-          <div style="font-size:12px; color:#cbd5e1; line-height:1.6;">
-            ${nr.narrative}
-          </div>
-        </div>
-      `;
-    }
-
     html += '</div>';
     return html;
   }

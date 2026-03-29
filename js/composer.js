@@ -202,48 +202,32 @@ const SENTENCE_LIBRARY = {
   },
 
   PORTFOLIO_PATTERN: {
-    opening: (anomaly, metric, dataContext, ap) => {
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
       const count = ap.crossPropertyBaseline?.propertiesCount;
-      return `${_metricLabel(metric)} anomaly in ${_monthLabel(anomaly)} was not isolated — the same pattern appeared across ${count || 'multiple'} properties in the portfolio.`;
-    },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `This property's variance was ${dev} (${pct}) vs. ${ref}.` : '';
+      return `${_metricLabel(m)} was ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)} — same pattern observed across ${count || 'multiple'} portfolio properties, suggesting a shared driver.`;
     },
     context: (anomaly, metric, dataContext, ap) => {
       const typical = ap.crossPropertyBaseline?.typicalMonths || [];
-      if (typical.length > 0) {
-        const MO     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const labels = typical.map(m => MO[m - 1]).filter(Boolean).join(', ');
-        return `Historically, this pattern has appeared in: ${labels}.`;
-      }
+      const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      if (typical.length > 0) return `Historically appears in: ${typical.map(m => MO[m - 1]).filter(Boolean).join(', ')}.`;
       return '';
     },
-    closing: (anomaly, metric, dataContext, ap) => {
-      return `Consider a portfolio-wide review of this expense category.`;
-    },
+    closing: () => `Consider a portfolio-wide review of this expense category.`,
   },
 
   ANOMALY_ALERT: {
-    opening: (anomaly, metric, dataContext, ap) => {
-      return `${_metricLabel(metric)} deviated significantly from expected levels in ${_monthLabel(anomaly)}.`;
+    opening: (anomaly, metric, dataContext, ap, m) => {
+      const dev = _deviation(ap), pct = _deltaPct(ap), ref = _refLabel(ap);
+      return `${_metricLabel(m)} deviated ${dev} (${pct}) vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}.`;
     },
-    impact: (anomaly, metric, dataContext, ap) => {
-      const dev = _deviation(ap);
-      const pct = _deltaPct(ap);
-      const ref = _refLabel(ap);
-      return dev ? `The variance was ${dev} (${pct}) vs. ${ref}.` : '';
-    },
-    context: (anomaly, metric, dataContext, ap) => {
-      return `No clear causal pattern has been identified from available data.`;
-    },
+    context: () => `No clear causal pattern identified from available data — manual review recommended.`,
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
-      if (status === 'resolved')                           return `The anomaly has since resolved.`;
-      if (status === 'persisting' || status === 'worsening') return `The anomaly is ongoing. Manual review recommended.`;
-      return `Manual review recommended.`;
+      if (status === 'resolved')   return `The anomaly has since resolved.`;
+      if (status === 'worsening')  return `The deviation is growing — escalate for review.`;
+      if (status === 'persisting') return `Anomaly is ongoing.`;
+      return '';
     },
   },
 
