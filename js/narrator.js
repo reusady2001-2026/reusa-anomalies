@@ -144,7 +144,29 @@ const Narrator = (() => {
     const confidence    = _calcConfidence(scores);
     const dominantScore = Math.max(...Object.values(scores));
 
-    return { angle, scores, dominantScore, confidence };
+    // Score each angle against the dimension scores
+    const ANGLE_AFFINITY = {
+      SEASONAL_VARIANCE:  ['market', 'portfolio', 'trend'],
+      RECOVERY_STORY:     ['trend', 'persistence', 'causality'],
+      PORTFOLIO_PATTERN:  ['portfolio', 'market', 'severity'],
+      MARKET_PRESSURE:    ['market', 'severity', 'portfolio'],
+      COST_SHOCK:         ['severity', 'causality', 'persistence'],
+      OPERATIONAL_DRIFT:  ['persistence', 'severity', 'trend'],
+      ANOMALY_ALERT:      ['severity', 'trend', 'market'],
+    };
+
+    const rankedAngles = Object.entries(ANGLE_AFFINITY)
+      .map(([a, dims]) => ({
+        angle: a,
+        score: dims.reduce((sum, d) => sum + (scores[d] || 0), 0),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .map(e => e.angle);
+
+    // Ensure dominant angle is always first
+    const dedupedRanked = [angle, ...rankedAngles.filter(a => a !== angle)];
+
+    return { angle, scores, dominantScore, confidence, rankedAngles: dedupedRanked };
   }
 
   return { profile };
