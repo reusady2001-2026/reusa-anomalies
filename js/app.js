@@ -794,7 +794,12 @@ const App = (() => {
           metric.reasonData[relIdx].narrativeResult = narrativeResult;
 
           if (narrativeResult?.narrative) {
-            metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+            const hasCoMovers =
+              metric.reasonData[relIdx].anomalyProfile?.causalityChain?.likelyCause !== null ||
+              (metric.reasonData[relIdx].anomalyProfile?.causalityChain?.effects?.length || 0) > 0;
+            if (narrativeResult.angle !== 'ANOMALY_ALERT' || hasCoMovers) {
+              metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+            }
           }
 
           // Generate alt narratives using ranked angles (always 2–4)
@@ -804,13 +809,15 @@ const App = (() => {
             const paddedAngles = [...altAngles];
             while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
             metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
-              .slice(0, 4)
               .map((altAngle, i) => {
                 const altResult = Composer.compose(
                   metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
                 );
-                return altResult?.narrative || existingAlts[i] || '';
-              });
+                return altResult || { narrative: existingAlts[i] || '', angle: altAngle };
+              })
+              .filter(result => result?.angle !== 'ANOMALY_ALERT')
+              .slice(0, 4)
+              .map(result => result.narrative || '');
           }
         });
       });
@@ -970,7 +977,12 @@ const App = (() => {
           metric.reasonData[relIdx].narrativeResult = narrativeResult;
 
           if (narrativeResult?.narrative) {
-            metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+            const hasCoMovers =
+              metric.reasonData[relIdx].anomalyProfile?.causalityChain?.likelyCause !== null ||
+              (metric.reasonData[relIdx].anomalyProfile?.causalityChain?.effects?.length || 0) > 0;
+            if (narrativeResult.angle !== 'ANOMALY_ALERT' || hasCoMovers) {
+              metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+            }
           }
 
           // Generate alt narratives using ranked angles (always 2–4)
@@ -980,13 +992,15 @@ const App = (() => {
             const paddedAngles = [...altAngles];
             while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
             metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
-              .slice(0, 4)
               .map((altAngle, i) => {
                 const altResult = Composer.compose(
                   metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
                 );
-                return altResult?.narrative || existingAlts[i] || '';
-              });
+                return altResult || { narrative: existingAlts[i] || '', angle: altAngle };
+              })
+              .filter(result => result?.angle !== 'ANOMALY_ALERT')
+              .slice(0, 4)
+              .map(result => result.narrative || '');
           }
         });
       });
