@@ -190,10 +190,10 @@ const Context = (() => {
       ['CUUR0000SEHC',   'rentCPI'],
       ['HOUST',          'housingStarts'],
       ['MORTGAGE30US',   'mortgage30'],
-      ['CUSR0000SAE',    'energyCPI'],
-      ['CUSR0000SAM',    'medicalCPI'],
+      ['CPIENGSL',       'energyCPI'],
+      ['CPIMEDSL',       'medicalCPI'],
       ['CUSR0000SAH1',   'housingCPI'],
-      ['CUSR0000SAGL',   'transportCPI'],
+      ['CPITRNSL',       'transportCPI'],
       ['CES0500000003',  'avgHourlyEarnings'],
       ['WPUIP2311001',   'insurancePPI'],
       ['DGS10',          'treasury10y'],
@@ -325,8 +325,10 @@ const Context = (() => {
     if (!coords) return {};
 
     try {
+      const today     = new Date().toISOString().slice(0, 10);
+      const cappedEnd = endDate > today ? today : endDate;
       const data = await proxyFetch('openmeteo', {
-        lat: coords[0], lon: coords[1], startDate, endDate,
+        lat: coords[0], lon: coords[1], startDate, endDate: cappedEnd,
       });
 
       const dates    = data?.daily?.time                || [];

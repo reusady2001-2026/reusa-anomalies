@@ -94,6 +94,9 @@ export default async function handler(req, res) {
           headers: { 'X-API-KEY': process.env.OPENSTATES_KEY || '' }
         });
         const osData = await osRes.json();
+        if (osRes.status !== 200) {
+          console.error('[OpenStates] error response:', osRes.status, JSON.stringify(osData));
+        }
         res.writeHead(osRes.status, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
         res.end(JSON.stringify(osData));
         return;
@@ -117,8 +120,8 @@ export default async function handler(req, res) {
       case 'census_permits': {
         const { state_fips } = params;
         const cpUrl = `https://api.census.gov/data/timeseries/eits/bps` +
-          `?get=cell_value,time_slot_id,category_code` +
-          `&for=state:${state_fips}` +
+          `?get=cell_value,time_slot_id,category_code,geo_id` +
+          `&geo_id=0400000US${state_fips}` +
           `&seasonally_adj=no` +
           `&time=from+2023`;
         const cpRes  = await fetch(cpUrl);
