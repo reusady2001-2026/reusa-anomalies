@@ -118,7 +118,7 @@ const Narrator = (() => {
 
   // ── BLOCKED ANGLES ────────────────────────────────────────
 
-  function getBlockedAngles(scores, ap) {
+  function getBlockedAngles(scores, ap, metric) {
     const blocked = [];
     // Never use PORTFOLIO_PATTERN if only 1 or fewer properties
     if ((ap.crossPropertyBaseline?.propertiesCount || 0) <= 1) {
@@ -132,6 +132,20 @@ const Narrator = (() => {
     if (ap.recovery?.status !== 'resolved') {
       blocked.push('RECOVERY_STORY');
     }
+
+    const metricName = (metric?.name || '').toLowerCase();
+
+    const isEventDriven = /inspection|permit|legal|court|license|fee|registr|certif|violation|fine|application/.test(metricName);
+    const isOneTime = /inspection|permit|court|violation|fine/.test(metricName);
+
+    if (isEventDriven || isOneTime) {
+      blocked.push('MARKET_PRESSURE');
+    }
+
+    if (isOneTime) {
+      blocked.push('SEASONAL_VARIANCE');
+    }
+
     return blocked;
   }
 
@@ -186,7 +200,7 @@ const Narrator = (() => {
     // Ensure dominant angle is always first
     const dedupedRanked = [angle, ...rankedAngles.filter(a => a !== angle)];
 
-    const blocked = getBlockedAngles(scores, ap);
+    const blocked = getBlockedAngles(scores, ap, metric);
     const filteredRanked = dedupedRanked.filter(a => !blocked.includes(a));
     // If dominant angle itself is blocked, use next available
     const finalAngle = blocked.includes(angle)
