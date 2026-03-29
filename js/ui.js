@@ -563,7 +563,7 @@ const UI = (() => {
       html += `</ul></details>`;
     }
 
-    const nr = anomaly.narrativeResult;
+    const nr = reasonData.narrativeResult;
     if (nr && nr.narrative) {
       const confidenceColor = nr.confidence === 'high' ? '#4ade80' : nr.confidence === 'medium' ? '#facc15' : '#94a3b8';
       html += `
