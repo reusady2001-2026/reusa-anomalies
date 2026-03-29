@@ -76,7 +76,13 @@ export default async function handler(req, res) {
           `&sort=updated_at` +
           `&page=1` +
           `&per_page=15`;
-        break;
+        const osRes  = await fetch(targetUrl, {
+          headers: { 'X-API-KEY': process.env.OPENSTATES_KEY || '' }
+        });
+        const osData = await osRes.json();
+        res.writeHead(osRes.status, { ...CORS_HEADERS, 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(osData));
+        return;
       }
 
       case 'census': {
@@ -91,6 +97,16 @@ export default async function handler(req, res) {
       case 'hud': {
         const { state } = params;
         targetUrl = `https://www.huduser.gov/hudapi/public/fmr/statedata/${encodeURIComponent(state)}`;
+        break;
+      }
+
+      case 'openmeteo': {
+        const { lat, lon, startDate, endDate } = params;
+        targetUrl = `https://archive-api.open-meteo.com/v1/archive` +
+          `?latitude=${lat}&longitude=${lon}` +
+          `&start_date=${startDate}&end_date=${endDate}` +
+          `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum` +
+          `&timezone=auto&temperature_unit=fahrenheit`;
         break;
       }
 

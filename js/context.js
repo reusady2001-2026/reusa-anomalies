@@ -296,6 +296,68 @@ const Context = (() => {
    * @param {function} onProgress  optional callback(msg)
    * @returns {Promise<Object>} dataContext
    */
+  // ── OPEN-METEO WEATHER ────────────────────────────────
+  async function fetchWeather(stateAbbr, startDate, endDate) {
+    const STATE_CENTROIDS = {
+      'AL':[32.8,-86.8],'AK':[64.2,-153.4],'AZ':[34.3,-111.1],'AR':[34.9,-92.4],
+      'CA':[36.8,-119.4],'CO':[39.0,-105.5],'CT':[41.6,-72.7],'DE':[39.0,-75.5],
+      'FL':[28.7,-82.5],'GA':[32.2,-83.4],'HI':[20.3,-156.4],'ID':[44.4,-114.6],
+      'IL':[40.0,-89.2],'IN':[39.8,-86.1],'IA':[42.1,-93.5],'KS':[38.5,-98.4],
+      'KY':[37.5,-85.3],'LA':[31.1,-91.9],'ME':[45.4,-69.2],'MD':[39.1,-76.8],
+      'MA':[42.2,-71.5],'MI':[44.3,-85.4],'MN':[46.4,-93.1],'MS':[32.7,-89.7],
+      'MO':[38.5,-92.5],'MT':[47.0,-109.6],'NE':[41.5,-99.9],'NV':[39.3,-116.6],
+      'NH':[43.7,-71.6],'NJ':[40.1,-74.7],'NM':[34.4,-106.1],'NY':[42.9,-75.5],
+      'NC':[35.5,-79.8],'ND':[47.5,-100.5],'OH':[40.4,-82.8],'OK':[35.6,-96.9],
+      'OR':[44.6,-122.1],'PA':[40.6,-77.2],'RI':[41.7,-71.5],'SC':[33.9,-80.9],
+      'SD':[44.4,-100.2],'TN':[35.8,-86.3],'TX':[31.5,-99.3],'UT':[39.3,-111.1],
+      'VT':[44.1,-72.7],'VA':[37.8,-78.2],'WA':[47.4,-120.4],'WV':[38.6,-80.6],
+      'WI':[44.3,-89.8],'WY':[43.0,-107.6],
+    };
+
+    const coords = STATE_CENTROIDS[stateAbbr];
+    if (!coords) return {};
+
+    try {
+      const data = await proxyFetch('openmeteo', {
+        lat: coords[0], lon: coords[1], startDate, endDate,
+      });
+
+      const dates    = data?.daily?.time                || [];
+      const maxTemps = data?.daily?.temperature_2m_max  || [];
+      const minTemps = data?.daily?.temperature_2m_min  || [];
+      const precip   = data?.daily?.precipitation_sum   || [];
+
+      const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+      const hdd = {}, cdd = {}, rain = {}, avgHigh = {}, avgLow = {}, counts = {};
+
+      dates.forEach((dateStr, i) => {
+        const d     = new Date(dateStr + 'T00:00:00');
+        const label = `${MO[d.getMonth()]} ${d.getFullYear()}`;
+        if (!counts[label]) { counts[label] = 0; hdd[label] = 0; cdd[label] = 0; rain[label] = 0; avgHigh[label] = 0; avgLow[label] = 0; }
+        counts[label]++;
+        const avgTemp = ((maxTemps[i] || 0) + (minTemps[i] || 0)) / 2;
+        hdd[label]     += Math.max(0, 65 - avgTemp);
+        cdd[label]     += Math.max(0, avgTemp - 65);
+        rain[label]    += precip[i] || 0;
+        avgHigh[label] += maxTemps[i] || 0;
+        avgLow[label]  += minTemps[i] || 0;
+      });
+
+      Object.keys(counts).forEach(label => {
+        avgHigh[label] = Math.round(avgHigh[label] / counts[label]);
+        avgLow[label]  = Math.round(avgLow[label]  / counts[label]);
+        hdd[label]     = Math.round(hdd[label]);
+        cdd[label]     = Math.round(cdd[label]);
+        rain[label]    = Math.round(rain[label] * 10) / 10;
+      });
+
+      return { heatingDegreeDays: hdd, coolingDegreeDays: cdd, precipitation: rain, avgHighTemp: avgHigh, avgLowTemp: avgLow };
+    } catch {
+      return {};
+    }
+  }
+
   async function fetchDataContext(stateAbbr, city, months, onProgress) {
     const ck = _cacheKey(stateAbbr, city, months);
     const cached = loadCache(ck);
@@ -308,13 +370,13 @@ const Context = (() => {
 
     if (onProgress) onProgress(`Fetching economic context for ${city}, ${stateAbbr}…`);
 
-    const [fredR, femaR, congressR, osR, censusR, hudR] = await Promise.allSettled([
+    const [fredR, femaR, congressR, osR, censusR, weatherR] = await Promise.allSettled([
       fetchFRED(stateAbbr, startDate, endDate),
       fetchFEMA(stateAbbr, startDate, endDate),
       fetchCongress(startDate, endDate),
       fetchOpenStates(stateName, startDate, endDate),
       fetchCensus(stateAbbr, city),
-      fetchHUD(stateAbbr),
+      fetchWeather(stateAbbr, startDate, endDate),
     ]);
 
     const ctx = {
@@ -326,7 +388,7 @@ const Context = (() => {
       congress:   congressR.status   === 'fulfilled' ? congressR.value   : [],
       openStates: osR.status         === 'fulfilled' ? osR.value         : [],
       census:     censusR.status     === 'fulfilled' ? censusR.value     : {},
-      hud:        hudR.status        === 'fulfilled' ? hudR.value        : {},
+      weather:    weatherR.status    === 'fulfilled' ? weatherR.value    : {},
     };
 
     saveCache(ck, ctx);
