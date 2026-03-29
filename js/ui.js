@@ -510,15 +510,16 @@ const UI = (() => {
           const altDisplayText = (idx < (reasonData.enrichedAlternatives || []).length)
             ? reasonData.enrichedAlternatives[idx]
             : alt.label;
-          const altHeader = altDisplayText.length > 120
-            ? altDisplayText.slice(0, 117) + '…'
-            : altDisplayText;
+          const altPreview = escHtml(altDisplayText.length > 80 ? altDisplayText.slice(0, 80) + '…' : altDisplayText);
           html += `<details class="ev-alt">
             <summary class="ev-alt-header">
-              Alt ${idx + 1}: ${escHtml(altHeader)}
+              Alt ${idx + 1}: <span style="font-style:italic; opacity:0.7">${altPreview}</span>
               <span class="ev-score-count">${alt.evidenceSignals}/5</span>
               <span class="ev-score-share">${alt.relativeSupport}%</span>
             </summary>
+            <div style="padding: 8px 10px; font-size:12px; color:#cbd5e1; line-height:1.6; border-bottom: 1px solid rgba(255,255,255,0.06);">
+              ${escHtml(altDisplayText)}
+            </div>
             ${_renderScoreLine(alt)}
             <div class="ev-signals">`;
           (alt.signals || []).forEach(sig => { html += _renderSignalRow(sig); });
