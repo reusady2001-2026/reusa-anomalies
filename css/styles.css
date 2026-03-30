@@ -255,6 +255,19 @@ input[type="file"] { display: none; }
   transition: all 0.15s;
 }
 .btn-secondary:hover { background: var(--blue-light); }
+.save-analysis-btn {
+  background: #22c55e;
+  color: #0f172a;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.save-analysis-btn:hover { background: #16a34a; }
+.save-analysis-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-secondary.active {
   background: var(--blue-dark);
   color: #fff;

@@ -39,6 +39,7 @@ const App = (() => {
     cloudHistory: null,
     summaryStats: null,
     ruleCandidates: [],
+    isSaved: false,
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -209,6 +210,9 @@ const App = (() => {
       const e = document.getElementById(id);
       if (e) e.classList.add('hidden');
     });
+
+    document.getElementById('save-analysis-btn')?.classList.add('hidden');
+    state.isSaved = false;
   }
 
   // ── FILE PARSING ──────────────────────────────────────
@@ -681,8 +685,8 @@ const App = (() => {
 
     const patterns = Array.from(patternMap.values());
 
-    // ── Fire-and-forget POST ─────────────────────────────
-    fetch('/api/save-analysis', {
+    // ── POST ─────────────────────────────────────────────
+    return fetch('/api/save-analysis', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ property, analysis, anomalies, patterns }),
@@ -844,16 +848,12 @@ const App = (() => {
         state.summaryStats.seasonalAnomalies;
 
       renderAnalyzerTable();
+      document.getElementById('save-analysis-btn')?.classList.remove('hidden');
     } catch (err) {
       console.error(err);
       alert('Analysis error: ' + err.message);
     }
 
-    saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
-    detectPatternsInCloud(state.resultA, state.reasonsA); // fire-and-forget
-    fetchRuleCandidates().then(() => {
-      if (state.ruleCandidates.length > 0) showRuleCandidates();
-    });
     fetchCloudHistory().then(history => {
       state.cloudHistory = history;
       console.log('[Cloud] history loaded:', history.summary);
@@ -1320,6 +1320,23 @@ const App = (() => {
     document.getElementById('btn-material-focus')?.addEventListener('click', function() {
       toggleMaterialFocus(this);
     });
+
+    document.getElementById('save-analysis-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('save-analysis-btn');
+      btn.disabled = true;
+      btn.textContent = '💾 Saving...';
+      try {
+        await saveAnalysisToCloud(state.resultA, state.reasonsA, state.dataContext);
+        detectPatternsInCloud(state.resultA, state.reasonsA); // fire-and-forget
+        await fetchRuleCandidates();
+        if (state.ruleCandidates.length > 0) showRuleCandidates();
+        btn.textContent = '✅ Saved';
+        state.isSaved = true;
+      } catch (err) {
+        btn.textContent = '❌ Failed';
+        btn.disabled = false;
+      }
+    });
     document.getElementById('section-filter')?.addEventListener('change', e => {
       state.sectionFilter = e.target.value;
       if (state.mode === 'analyzer') renderAnalyzerTable();
@@ -1419,12 +1436,20 @@ const App = (() => {
     if (s) s.classList.add('active');
   }
 
-  return { init, selectMode };
+  return { init, selectMode, _state: state };
 })();
 
 // Global fallback — used by onclick attributes on mode cards (guarantees
 // navigation even if addEventListener wiring fails for any reason).
 window.oaasSelectMode = function(mode) { App.selectMode(mode); };
+
+// Warn before leaving if analysis is unsaved
+window.addEventListener('beforeunload', (e) => {
+  if (App._state?.resultA && !App._state?.isSaved) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 // Scripts live at the bottom of <body> so the DOM is fully built.
 // Call init() directly — DOMContentLoaded may have already fired.
