@@ -761,7 +761,12 @@ const UI = (() => {
         const isUp      = flag.direction === 'up';
         const cellClass  = (isIncome ? isUp : !isUp) ? 'cell-material-positive' : 'cell-material-negative';
         const displayVal = fmt(result.values[i]);
-        const onclickAttr = `UI.openEADetail('${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}')`;
+        const reasoningEscaped = (flag.reasoning || '')
+          .replace(/\\/g, '\\\\')
+          .replace(/'/g, "\\'")
+          .replace(/\r/g, '')
+          .replace(/\n/g, '\\n');
+        const onclickAttr = `UI.openEADetail('${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}','${reasoningEscaped}')`;
         html += `<td class="${cellClass}" style="cursor:pointer;text-align:center" onclick="${escHtml(onclickAttr)}"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
       });
 
@@ -774,7 +779,7 @@ const UI = (() => {
 
   // ── EA DETAIL PANEL (called via inline onclick) ───────
 
-  function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction) {
+  function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
     const cardEl = document.getElementById('detail-card');
     if (!cardEl) return;
 
@@ -783,9 +788,14 @@ const UI = (() => {
       return '$' + Math.round(Math.abs(n)).toLocaleString();
     }
 
+    const reasoningHtml = reasoning
+      ? `<div class="ea-detail-reasoning">${escHtml(reasoning).replace(/\n\n/g, '<br><br>')}</div>`
+      : '';
+
     const content = `
       <div class="ea-detail">
         <div class="ea-detail-title">${escHtml(metricName)} — ${escHtml(monthLabel)}</div>
+        ${reasoningHtml}
         <div class="ea-detail-body">
           <div class="ea-detail-row"><span>T3 Current (annualized)</span><span>${fmtLocal(t3Current)}</span></div>
           <div class="ea-detail-row"><span>T3 Prior (annualized)</span><span>${fmtLocal(t3Prior)}</span></div>

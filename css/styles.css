@@ -309,11 +309,22 @@ input[type="file"] { display: none; }
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .ea-detail-flagged { color: #f97316; font-weight: 600; }
+.ea-detail-reasoning {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.7;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  border-left: 3px solid rgba(255,255,255,0.1);
+}
 
 /* Light mode overrides */
 [data-theme="light"] .ea-detail-title { color: #1e293b; }
 [data-theme="light"] .ea-detail-row { color: #475569; border-bottom-color: rgba(0,0,0,0.07); }
 [data-theme="light"] .ea-detail-flagged { color: #c2410c; }
+[data-theme="light"] .ea-detail-reasoning { color: #334155; background: rgba(0,0,0,0.02); }
 
 .btn-secondary.active {
   background: var(--blue-dark);
