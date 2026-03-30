@@ -760,6 +760,8 @@ const App = (() => {
   }
 
   function _runAnalysisCore() {
+    state.propertyNameA = document.getElementById('prop-name-a')?.value.trim() || 'Unknown Property';
+
     const price = parsePrice(document.getElementById('price-a')?.value) || 0;
     if (price) saveHistory(STORAGE_KEY_PRICES, price);
     state.purchasePriceA = price;
