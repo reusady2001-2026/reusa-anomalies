@@ -1198,6 +1198,7 @@ const App = (() => {
     // oaasSelectMode; these listeners are an additional layer)
     document.getElementById('btn-analyzer')?.addEventListener('click', () => selectMode('analyzer'));
     document.getElementById('btn-comparison')?.addEventListener('click', () => selectMode('comparison'));
+    document.getElementById('nav-executive')?.addEventListener('click', () => selectMode('executive'));
 
     // Back buttons
     document.querySelectorAll('.btn-back').forEach(btn => {

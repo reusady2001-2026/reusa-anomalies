@@ -33,6 +33,13 @@
         Upload two assets side by side. Compare anomalies, deltas, and volatility across both portfolios.
       </div>
     </div>
+    <div class="mode-card" id="nav-executive" onclick="oaasSelectMode('executive')">
+      <div class="mode-card-icon">📋</div>
+      <div class="mode-card-title">Executive Analysis</div>
+      <div class="mode-card-desc">
+        Generate an executive-ready summary from an existing operational analysis.
+      </div>
+    </div>
   </div>
 </div>
 
@@ -348,6 +355,32 @@
 
   </div><!-- /app-body -->
 </div><!-- /screen-comparison -->
+
+
+<!-- ═══════════════════════════════════════
+     EXECUTIVE ANALYSIS SCREEN
+════════════════════════════════════════ -->
+<div id="screen-executive" class="screen">
+
+  <div class="app-header">
+    <button class="btn-back">← Back</button>
+    <span class="header-title">Executive Analysis</span>
+  </div>
+
+  <div class="app-body">
+    <div class="control-panel">
+      <div class="ea-controls-row">
+        <span class="ea-label">Load a file from the Operational Analysis tab first, then click Run.</span>
+        <button id="btn-run-executive" class="btn-secondary" disabled>
+          Run Executive Analysis
+        </button>
+      </div>
+    </div>
+    <div id="ea-summary-badges"></div>
+    <div id="ea-table-container"></div>
+  </div>
+
+</div><!-- /screen-executive -->
 
 
 <!-- ═══════════════════════════════════════
