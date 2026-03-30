@@ -282,6 +282,31 @@ input[type="file"] { display: none; }
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* ── EXECUTIVE DETAIL PANEL ── */
+.ea-detail { padding: 16px; }
+.ea-detail-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 16px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ea-detail-body { display: flex; flex-direction: column; gap: 8px; }
+.ea-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.ea-detail-flagged { color: #f97316; font-weight: 600; }
+
+/* Light mode overrides */
+[data-theme="light"] .ea-detail-title { color: #1e293b; }
+[data-theme="light"] .ea-detail-row { color: #475569; border-bottom-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .ea-detail-flagged { color: #c2410c; }
+
 .btn-secondary.active {
   background: var(--blue-dark);
   color: #fff;

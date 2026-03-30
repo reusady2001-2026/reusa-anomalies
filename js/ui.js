@@ -696,6 +696,141 @@ const UI = (() => {
     });
   }
 
+  // ── EXECUTIVE TABLE ───────────────────────────────────
+
+  function renderExecutiveTable(executiveResult, months) {
+    const container = document.getElementById('ea-table-container');
+    const badgesEl  = document.getElementById('ea-summary-badges');
+    if (!container) return;
+
+    const { results, threshold } = executiveResult;
+
+    // ── Summary badges ────────────────────────────────
+    if (badgesEl) {
+      const incomeFlags   = results.filter(r => r.section === 'INCOME').length;
+      const expenseFlags  = results.filter(r => r.section === 'EXPENSES').length;
+      badgesEl.innerHTML =
+        `<span class="summary-badge summary-badge--total">⚠ Flagged Metrics <strong>${results.length}</strong></span>` +
+        `<span class="summary-badge summary-badge--income">▲ Income <strong>${incomeFlags}</strong></span>` +
+        `<span class="summary-badge summary-badge--expense">▼ Expenses <strong>${expenseFlags}</strong></span>`;
+      badgesEl.classList.remove('hidden');
+    }
+
+    if (results.length === 0) {
+      container.innerHTML = '<p style="padding:16px;color:#64748b">No metrics exceeded the materiality threshold.</p>';
+      return;
+    }
+
+    // ── Determine visible month range ─────────────────
+    // Find the last month index that has any flag across all results
+    let lastFlaggedIdx = 0;
+    results.forEach(r => {
+      Object.keys(r.flags).forEach(i => {
+        if (parseInt(i) > lastFlaggedIdx) lastFlaggedIdx = parseInt(i);
+      });
+    });
+    const visibleMonths = months.slice(0, lastFlaggedIdx + 1);
+
+    // ── Build table ───────────────────────────────────
+    let html = '<div style="overflow-x:auto"><table class="anomaly-table ea-exec-table">';
+
+    // Header
+    html += '<thead><tr><th class="metric-name-col">Metric</th>';
+    visibleMonths.forEach(m => { html += `<th>${escHtml(m)}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    let lastSection = '';
+    results.forEach(result => {
+      if (result.section !== lastSection) {
+        lastSection = result.section;
+        html += `<tr class="section-header-row">
+          <td colspan="${visibleMonths.length + 1}" class="section-header">${escHtml(result.section)}</td>
+        </tr>`;
+      }
+
+      html += `<tr class="metric-row" data-ea-metric="${escHtml(result.name)}">`;
+      html += `<td class="metric-name">${escHtml(result.name)}</td>`;
+
+      visibleMonths.forEach((_, i) => {
+        const flag = result.flags[i];
+        if (!flag) {
+          html += '<td class="cell-normal"></td>';
+          return;
+        }
+        const isIncome  = result.section === 'INCOME';
+        const isUp      = flag.direction === 'up';
+        const cellClass = (isIncome ? isUp : !isUp) ? 'cell-material-positive' : 'cell-material-negative';
+        const arrow     = isUp ? '▲' : '▼';
+        html += `<td class="${cellClass}" data-ea-month-idx="${i}" data-ea-metric="${escHtml(result.name)}" style="cursor:pointer;text-align:center">${arrow}</td>`;
+      });
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+
+    // ── Cell click → detail panel ─────────────────────
+    container.querySelectorAll('td[data-ea-month-idx]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const metricName = cell.dataset.eaMetric;
+        const monthIdx   = parseInt(cell.dataset.eaMonthIdx);
+        const result     = results.find(r => r.name === metricName);
+        const flag       = result && result.flags[monthIdx];
+        if (!flag) return;
+
+        const cardEl = document.getElementById('detail-card');
+        if (!cardEl) return;
+
+        const d = {
+          metricName,
+          monthLabel:       flag.monthLabel,
+          T3_current:       flag.T3_current,
+          T3_prior:         flag.T3_prior,
+          T12:              flag.T12,
+          threshold:        flag.threshold,
+          movementFromPrior: flag.movementFromPrior,
+          movementFromT12:  flag.movementFromT12,
+          flaggedByPrior:   flag.flaggedByPrior,
+          flaggedByT12:     flag.flaggedByT12,
+          direction:        flag.direction,
+        };
+
+        cardEl.innerHTML = `<button class="close-card" title="Close">✕</button>
+          <div class="ea-detail">
+            <div class="ea-detail-title">${escHtml(d.metricName)} — ${escHtml(d.monthLabel)}</div>
+            <div class="ea-detail-body">
+              <div class="ea-detail-row">
+                <span>T3 Current (annualized)</span>
+                <span>${fmt(d.T3_current)}</span>
+              </div>
+              <div class="ea-detail-row">
+                <span>T3 Prior (annualized)</span>
+                <span>${fmt(d.T3_prior)}</span>
+              </div>
+              <div class="ea-detail-row">
+                <span>T12</span>
+                <span>${fmt(d.T12)}</span>
+              </div>
+              <div class="ea-detail-row">
+                <span>Threshold (0.1% of purchase price)</span>
+                <span>${fmt(d.threshold)}</span>
+              </div>
+              <div class="ea-detail-row ${d.flaggedByPrior ? 'ea-detail-flagged' : ''}">
+                <span>Movement vs T3 Prior</span>
+                <span>${fmt(d.movementFromPrior)} ${d.flaggedByPrior ? '⚠ exceeds threshold' : ''}</span>
+              </div>
+              <div class="ea-detail-row ${d.flaggedByT12 ? 'ea-detail-flagged' : ''}">
+                <span>Movement vs T12</span>
+                <span>${fmt(d.movementFromT12)} ${d.flaggedByT12 ? '⚠ exceeds threshold' : ''}</span>
+              </div>
+            </div>
+          </div>`;
+        cardEl.classList.add('open');
+      });
+    });
+  }
+
   // ── HELPERS ───────────────────────────────────────────
 
   function escHtml(s) {
@@ -713,6 +848,7 @@ const UI = (() => {
     renderAnomalyCard,
     renderSummaryBadges,
     renderRuleCandidates,
+    renderExecutiveTable,
     getCellClass,
     fmt,
     fmtPct,
