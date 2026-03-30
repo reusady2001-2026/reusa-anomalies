@@ -759,9 +759,9 @@ const UI = (() => {
         }
         const isIncome  = result.section === 'INCOME';
         const isUp      = flag.direction === 'up';
-        const cellClass = (isIncome ? isUp : !isUp) ? 'cell-material-positive' : 'cell-material-negative';
-        const arrow     = isUp ? '▲' : '▼';
-        html += `<td class="${cellClass}" data-ea-month-idx="${i}" data-ea-metric="${escHtml(result.name)}" style="cursor:pointer;text-align:center">${arrow}</td>`;
+        const cellClass  = (isIncome ? isUp : !isUp) ? 'cell-material-positive' : 'cell-material-negative';
+        const displayVal = fmt(result.values[i]);
+        html += `<td class="${cellClass}" data-ea-month-idx="${i}" data-ea-metric="${escHtml(result.name)}" style="cursor:pointer;text-align:center"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
       });
 
       html += '</tr>';
