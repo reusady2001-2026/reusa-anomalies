@@ -638,6 +638,7 @@ const UI = (() => {
       return `<div class="rule-suggestion-card" data-id="${escHtml(c.id)}">
         <div class="rule-suggestion-title">${escHtml(c.metric_name)} — ${escHtml(pt)}</div>
         <div class="rule-suggestion-meta">Seen ${c.total_occurrences} times across ${c.distinct_property_count} properties</div>
+        <div class="rule-pattern-description">${(c.pattern_description || '').replace(/\n/g, '<br>')}</div>
         <div class="rule-suggestion-options">
           ${optionsHtml}
           ${writeOwnHtml}

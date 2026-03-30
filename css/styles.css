@@ -1315,6 +1315,16 @@ input[type="file"] { display: none; }
   font-size: 11px;
   color: #64748b;
 }
+.rule-pattern-description {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.7;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 4px;
+  border-left: 2px solid rgba(255,255,255,0.08);
+}
 .rule-suggestion-options {
   display: flex;
   flex-direction: column;
@@ -1393,6 +1403,7 @@ input[type="file"] { display: none; }
 }
 [data-theme="light"] .rule-suggestion-title  { color: #1e293b; }
 [data-theme="light"] .rule-suggestion-meta   { color: #64748b; }
+[data-theme="light"] .rule-pattern-description { color: #475569; background: rgba(0,0,0,0.02); border-left-color: rgba(0,0,0,0.08); }
 [data-theme="light"] .rule-suggestion-options { color: #334155; }
 [data-theme="light"] .rule-custom-input {
   background: #f8fafc;
