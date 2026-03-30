@@ -211,7 +211,7 @@ function generateReason(metricName, section, patternType, typicalMonths, anomaly
   const reasons = [];
 
   // Check weather context for seasonal patterns
-  if (patternType === 'seasonal_spike' || patternType === 'operational_drift') {
+  if (section === 'EXPENSES' && (patternType === 'seasonal_spike' || patternType === 'operational_drift')) {
     const avgHDD = monthLabels.reduce((sum, m) => {
       const vals = Object.entries(context.hdd || {})
         .filter(([k]) => k.startsWith(m))
@@ -236,12 +236,25 @@ function generateReason(metricName, section, patternType, typicalMonths, anomaly
 
   // Check rent CPI for income metrics
   if (section === 'INCOME' && context.rentCPI) {
-    const rentVals = Object.values(context.rentCPI).filter(Boolean);
-    if (rentVals.length > 1) {
-      const first = rentVals[0], last = rentVals[rentVals.length-1];
-      const change = ((last - first) / Math.abs(first) * 100).toFixed(1);
-      if (Math.abs(parseFloat(change)) > 2) {
-        reasons.push(`Rent CPI moved ${parseFloat(change) > 0 ? '+' : ''}${change}% over this period — ${parseFloat(change) > 0 ? 'rising market rents may explain upward income movement' : 'softening market rents may explain the income pressure'}.`);
+    const spikePeriodVals = Object.entries(context.rentCPI)
+      .filter(([k]) => monthLabels.some(m => k.startsWith(m)))
+      .map(([,v]) => v).filter(Boolean);
+
+    if (spikePeriodVals.length > 1) {
+      const avgRentCPI = (spikePeriodVals.reduce((a,b) => a+b,0) / spikePeriodVals.length).toFixed(1);
+      // Compare to non-spike months
+      const nonSpikePeriodVals = Object.entries(context.rentCPI)
+        .filter(([k]) => !monthLabels.some(m => k.startsWith(m)))
+        .map(([,v]) => v).filter(Boolean);
+
+      if (nonSpikePeriodVals.length > 0) {
+        const avgNonSpike = (nonSpikePeriodVals.reduce((a,b) => a+b,0) / nonSpikePeriodVals.length).toFixed(1);
+        const diff = ((parseFloat(avgRentCPI) - parseFloat(avgNonSpike)) / Math.abs(parseFloat(avgNonSpike)) * 100).toFixed(1);
+        if (Math.abs(parseFloat(diff)) > 1) {
+          reasons.push(`Rent CPI during ${monthLabels.join(', ')} averaged ${avgRentCPI} vs. ${avgNonSpike} in other months (${parseFloat(diff) > 0 ? '+' : ''}${diff}% higher) — ${parseFloat(diff) > 0 ? 'market rents are measurably higher in these months, supporting the seasonal income pattern' : 'market rents are slightly lower in these months, suggesting the income spike has a property-specific rather than market driver'}.`);
+        }
+      } else {
+        reasons.push(`Rent CPI averaged ${avgRentCPI} during ${monthLabels.join(', ')} — market rent data available but insufficient non-spike months for comparison.`);
       }
     }
   }
