@@ -1209,6 +1209,14 @@ const App = (() => {
       e.target.value = ''; // reset so same file can be re-selected
       state.fileNameA = file.name;
       setUploadLabel('upload-btn-a', '📂 ' + file.name);
+      // Auto-extract property name from file name pattern:
+      // "12_Month_Cash_Flow_[PropertyName]_Accrual.xlsx"
+      const nameMatch = file.name.match(/Cash_Flow_(.+?)_Accrual/i);
+      if (nameMatch && nameMatch[1]) {
+        const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
+        const propNameInput = document.getElementById('analyzer-property-name');
+        if (propNameInput) propNameInput.value = extractedName;
+      }
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
