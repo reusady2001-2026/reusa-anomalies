@@ -246,6 +246,7 @@ export default async function handler(req, res) {
       if (!pattern_type) continue;
 
       const anomaliesForKey   = anomaliesByKey.get(`${metricName}|${pattern_type}`) || [];
+      const typicalMonths     = getTypicalMonths(`${metricName}|${pattern_type}`);
       const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths);
 
       // ── Fetch existing row ─────────────────────────────────────────────────
@@ -263,7 +264,6 @@ export default async function handler(req, res) {
       const rows = await fetchRes.json();
       const existing = rows && rows.length > 0 ? rows[0] : null;
 
-      const typicalMonths   = getTypicalMonths(`${metricName}|${pattern_type}`);
       const suggested_rules = generateSuggestedRules(metricName, section, pattern_type, typicalMonths);
 
       if (!existing) {
