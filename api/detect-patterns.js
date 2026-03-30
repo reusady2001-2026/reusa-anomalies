@@ -252,7 +252,7 @@ export default async function handler(req, res) {
     let processed = 0;
 
     for (const anomaly of anomalies) {
-      const { metricName, angle, propertyName, section } = anomaly;
+      const { metricName, angle, propertyName, section, monthLabel, effectiveZ, stateAbbr } = anomaly;
 
       const pattern_type = ANGLE_TO_PATTERN[angle];
       if (!pattern_type) continue;
@@ -265,10 +265,11 @@ export default async function handler(req, res) {
       const currentEntry = {
         metricName,
         section,
-        monthLabel: anomaly.monthLabel || '',
+        monthLabel: monthLabel || '',
         propertyName: propertyName || '',
-        effectiveZ: anomaly.effectiveZ || 0,
+        effectiveZ: effectiveZ || 0,
         patternType: pattern_type,
+        stateAbbr: stateAbbr || '',
       };
 
       // ── Fetch existing row ─────────────────────────────────────────────────
@@ -304,6 +305,7 @@ export default async function handler(req, res) {
             dismissal_count:                  0,
             suggested_rules,
             anomaly_history:                  JSON.stringify([currentEntry]),
+            state_abbr:                       stateAbbr || '',
           }),
         });
 
@@ -347,6 +349,7 @@ export default async function handler(req, res) {
               pattern_description:              newPatternDescription,
               suggested_rules:                  newSuggestedRules,
               anomaly_history:                  JSON.stringify(newHistory),
+              state_abbr:                       stateAbbr || '',
               updated_at:                       new Date().toISOString(),
             }),
           }

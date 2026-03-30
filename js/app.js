@@ -715,6 +715,7 @@ const App = (() => {
             angle: sp.angle,
             propertyName: state.propertyNameA || 'unknown',
             effectiveZ: rd.effectiveZ || 0,
+            stateAbbr: state.selectedState || '',
           });
         });
       });
