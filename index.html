@@ -370,7 +370,16 @@
   <div class="app-body">
     <div class="control-panel">
       <div class="ea-controls-row">
-        <span class="ea-label">Load a file from the Operational Analysis tab first, then click Run.</span>
+        <div class="ea-upload-row">
+          <label class="upload-btn" id="ea-upload-label">
+            📂 Upload P&amp;L File
+            <input type="file" id="file-ea" accept=".xlsx,.xls,.csv" style="display:none">
+          </label>
+          <div class="price-wrap">
+            <input type="text" id="price-ea" value="150,000,000"
+              title="Purchase price — used to compute materiality threshold">
+          </div>
+        </div>
         <button id="btn-run-executive" class="btn-secondary" disabled>
           Run Executive Analysis
         </button>

@@ -282,6 +282,14 @@ input[type="file"] { display: none; }
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* ── EXECUTIVE ANALYSIS ── */
+.ea-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ── EXECUTIVE DETAIL PANEL ── */
 .ea-detail { padding: 16px; }
 .ea-detail-title {

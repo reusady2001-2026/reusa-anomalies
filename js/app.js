@@ -41,6 +41,8 @@ const App = (() => {
     ruleCandidates: [],
     isSaved: false,
     executiveResult: null,
+    resultEA: null,
+    propertyNameEA: '',
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -215,6 +217,8 @@ const App = (() => {
     document.getElementById('save-analysis-btn')?.classList.add('hidden');
     state.isSaved = false;
     state.executiveResult = null;
+    state.resultEA = null;
+    state.propertyNameEA = '';
     const runExecBtn = document.getElementById('btn-run-executive');
     if (runExecBtn) runExecBtn.disabled = true;
   }
@@ -853,8 +857,6 @@ const App = (() => {
         state.summaryStats.seasonalAnomalies;
 
       renderAnalyzerTable();
-      const runExecBtn = document.getElementById('btn-run-executive');
-      if (runExecBtn) runExecBtn.disabled = false;
       const _saveBtn = document.getElementById('save-analysis-btn');
       if (_saveBtn) {
         _saveBtn.textContent = '💾 Save';
@@ -1302,6 +1304,23 @@ const App = (() => {
       });
     });
 
+    // ── Executive Analysis file upload ──
+    document.getElementById('file-ea')?.addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      e.target.value = '';
+      setUploadLabel('ea-upload-label', '📂 ' + file.name);
+      const nameMatch = file.name.match(/Cash_Flow_(.+?)_Accrual/i);
+      if (nameMatch && nameMatch[1]) {
+        state.propertyNameEA = nameMatch[1].replace(/_/g, ' ').trim();
+      }
+      try {
+        const rows = await readFileAsRows(file);
+        state.resultEA = Engine.parseSheet(rows);
+        const runExecBtn = document.getElementById('btn-run-executive');
+        if (runExecBtn) runExecBtn.disabled = false;
+      } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
+    });
+
     // ── Price inputs: re-run analysis on any value change ──
     let _priceATimer, _priceCompTimer;
     const priceA = document.getElementById('price-a');
@@ -1367,23 +1386,23 @@ const App = (() => {
       }
     });
     document.getElementById('btn-run-executive')?.addEventListener('click', () => {
-      if (!state.resultA) return;
+      if (!state.resultEA) return;
 
-      const priceRaw = document.getElementById('price-a')?.value?.replace(/[^0-9.]/g, '');
+      const priceRaw = document.getElementById('price-ea')?.value?.replace(/[^0-9.]/g, '');
       const purchasePrice = parseFloat(priceRaw) || 0;
 
       if (!purchasePrice) {
-        alert('Please enter a purchase price in the Operational Analysis tab first.');
+        alert('Please enter a purchase price.');
         return;
       }
 
       state.executiveResult = Executive.analyse(
-        state.resultA.metrics,
-        state.resultA.months,
+        state.resultEA.metrics,
+        state.resultEA.months,
         purchasePrice
       );
 
-      UI.renderExecutiveTable(state.executiveResult, state.resultA.months);
+      UI.renderExecutiveTable(state.executiveResult, state.resultEA.months);
     });
 
     document.getElementById('section-filter')?.addEventListener('change', e => {
