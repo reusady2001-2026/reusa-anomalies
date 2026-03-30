@@ -1232,6 +1232,42 @@ input[type="file"] { display: none; }
 [data-theme="dark"] .ev-alt { border-color: #333; }
 [data-theme="dark"] .ev-disclaimer { color: #666; border-top-color: #333; }
 
+/* ── ANALYZER PROPERTY NAME ROW ── */
+.property-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.property-name-label {
+  font-family: 'JetBrains Mono','Fira Mono',monospace;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+.property-name-input {
+  border: 1px solid var(--grey-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text-primary);
+  width: 100%;
+}
+.property-name-input:focus {
+  outline: none;
+  border-color: var(--blue-dark);
+}
+[data-theme="dark"] .property-name-label { color: #94a3b8; }
+[data-theme="dark"] .property-name-input {
+  background: #252540;
+  color: #e0e0e0;
+  border-color: #444;
+}
+[data-theme="dark"] .property-name-input:focus { border-color: #90caf9; }
+[data-theme="light"] .property-name-label { color: #64748b; }
+[data-theme="light"] .property-name-input { background: #fff; color: #1e293b; border-color: #cbd5e1; }
+
 /* ── RULE SUGGESTION PANEL ── */
 .rule-suggestion-panel {
   background: #0c1322;
