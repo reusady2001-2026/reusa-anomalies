@@ -848,7 +848,12 @@ const App = (() => {
         state.summaryStats.seasonalAnomalies;
 
       renderAnalyzerTable();
-      document.getElementById('save-analysis-btn')?.classList.remove('hidden');
+      const _saveBtn = document.getElementById('save-analysis-btn');
+      if (_saveBtn) {
+        _saveBtn.textContent = '💾 Save';
+        _saveBtn.disabled = false;
+        _saveBtn.classList.remove('hidden');
+      }
     } catch (err) {
       console.error(err);
       alert('Analysis error: ' + err.message);
