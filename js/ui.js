@@ -617,16 +617,30 @@ const UI = (() => {
 
     const cardsHtml = candidates.map(c => {
       const pt = c.pattern_type.replace(/_/g, ' ');
-      const opt1Text = `When ${c.metric_name} shows a ${pt} pattern, flag as expected behavior`;
-      const opt2Text = `When ${c.metric_name} shows a ${pt} pattern, reduce anomaly severity by one tier`;
+      const rules = c.suggested_rules || [];
+      const optionsHtml = rules.map((ruleText, i) => `
+        <label class="rule-option-label">
+          <input type="radio" name="rule_${escHtml(c.id)}" value="${i}">
+          <span>${escHtml(ruleText)}</span>
+        </label>
+      `).join('');
+      const writeOwnHtml = `
+        <label class="rule-option-label">
+          <input type="radio" name="rule_${escHtml(c.id)}" value="custom">
+          <span>Write my own:</span>
+        </label>
+        <input type="text"
+          class="rule-custom-input"
+          id="custom_${escHtml(c.id)}"
+          placeholder="Describe the rule..."
+          style="display:none; width:100%; margin-top:4px;">
+      `;
       return `<div class="rule-suggestion-card" data-id="${escHtml(c.id)}">
         <div class="rule-suggestion-title">${escHtml(c.metric_name)} — ${escHtml(pt)}</div>
         <div class="rule-suggestion-meta">Seen ${c.total_occurrences} times across ${c.distinct_property_count} properties</div>
         <div class="rule-suggestion-options">
-          <label><input type="radio" name="rule_${escHtml(c.id)}" value="opt1"> ${escHtml(opt1Text)}</label>
-          <label><input type="radio" name="rule_${escHtml(c.id)}" value="opt2"> ${escHtml(opt2Text)}</label>
-          <label><input type="radio" name="rule_${escHtml(c.id)}" value="custom"> Write my own:</label>
-          <input type="text" class="rule-custom-input" placeholder="Describe the rule..." style="display:none">
+          ${optionsHtml}
+          ${writeOwnHtml}
         </div>
         <div class="rule-suggestion-actions">
           <button class="rule-btn-approve" data-id="${escHtml(c.id)}">Add Rule</button>
@@ -644,29 +658,33 @@ const UI = (() => {
       const candidateId = card.dataset.id;
       const candidate   = candidates.find(x => x.id === candidateId);
       const radios      = card.querySelectorAll('input[type="radio"]');
-      const customInput = card.querySelector('.rule-custom-input');
+      const customInput = document.getElementById(`custom_${candidateId}`);
 
       // Show/hide custom text input based on radio selection
       radios.forEach(radio => {
         radio.addEventListener('change', () => {
-          customInput.style.display = radio.value === 'custom' ? 'block' : 'none';
+          if (customInput) customInput.style.display = radio.value === 'custom' ? 'block' : 'none';
         });
       });
 
       // Approve
       card.querySelector('.rule-btn-approve').addEventListener('click', () => {
-        const selected = card.querySelector('input[type="radio"]:checked');
-        if (!selected) return;
-        const pt = candidate ? candidate.pattern_type.replace(/_/g, ' ') : '';
-        let ruleText;
-        if (selected.value === 'opt1') {
-          ruleText = `When ${candidate.metric_name} shows a ${pt} pattern, flag as expected behavior`;
-        } else if (selected.value === 'opt2') {
-          ruleText = `When ${candidate.metric_name} shows a ${pt} pattern, reduce anomaly severity by one tier`;
-        } else {
-          ruleText = customInput.value.trim();
+        const selected = document.querySelector(`input[name="rule_${candidateId}"]:checked`);
+        if (!selected) {
+          alert('Please select a rule option first.');
+          return;
         }
-        if (!ruleText) return;
+        let ruleText;
+        if (selected.value === 'custom') {
+          ruleText = customInput?.value.trim();
+          if (!ruleText) {
+            alert('Please write your rule in the text box.');
+            return;
+          }
+        } else {
+          const idx = parseInt(selected.value);
+          ruleText = (candidate?.suggested_rules || [])[idx] || '';
+        }
         onApprove(candidateId, ruleText);
       });
 

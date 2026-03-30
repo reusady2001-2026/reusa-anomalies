@@ -1329,6 +1329,22 @@ input[type="file"] { display: none; }
   gap: 6px;
   cursor: pointer;
 }
+.rule-option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+.rule-option-label input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.rule-option-label span {
+  color: #cbd5e1;
+  font-size: 12px;
+}
+[data-theme="light"] .rule-option-label span { color: #334155; }
 .rule-custom-input {
   width: 100%;
   margin-top: 4px;
