@@ -208,86 +208,89 @@ function computeTypicalMonths(historyArray) {
 function generateReason(metricName, section, patternType, typicalMonths, anomalyHistory, context) {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthLabels = (typicalMonths || []).map(m => monthNames[m-1]).filter(Boolean);
-  const reasons = [];
 
-  // Check weather context for seasonal patterns
+  const candidates = []; // { score, text }
+
+  // Weather — only for expenses
   if (section === 'EXPENSES' && (patternType === 'seasonal_spike' || patternType === 'operational_drift')) {
     const avgHDD = monthLabels.reduce((sum, m) => {
       const vals = Object.entries(context.hdd || {})
-        .filter(([k]) => k.startsWith(m))
-        .map(([,v]) => v);
-      return sum + (vals.length > 0 ? vals.reduce((a,b) => a+b,0)/vals.length : 0);
+        .filter(([k]) => k.startsWith(m)).map(([,v]) => v);
+      return sum + (vals.length > 0 ? vals.reduce((a,b)=>a+b,0)/vals.length : 0);
     }, 0) / (monthLabels.length || 1);
 
     const avgCDD = monthLabels.reduce((sum, m) => {
       const vals = Object.entries(context.cdd || {})
-        .filter(([k]) => k.startsWith(m))
-        .map(([,v]) => v);
-      return sum + (vals.length > 0 ? vals.reduce((a,b) => a+b,0)/vals.length : 0);
+        .filter(([k]) => k.startsWith(m)).map(([,v]) => v);
+      return sum + (vals.length > 0 ? vals.reduce((a,b)=>a+b,0)/vals.length : 0);
     }, 0) / (monthLabels.length || 1);
 
-    if (avgHDD > 400) {
-      reasons.push(`Weather data confirms: heating degree days average ${Math.round(avgHDD)} during ${monthLabels.join(', ')} — well above the 65°F baseline, driving elevated heating demand and related maintenance costs.`);
-    }
-    if (avgCDD > 150) {
-      reasons.push(`Weather data confirms: cooling degree days average ${Math.round(avgCDD)} during ${monthLabels.join(', ')} — consistent with elevated cooling demand, pool operations, and summer maintenance costs.`);
-    }
+    if (avgHDD > 600) candidates.push({ score: 3, text: `Weather data strongly supports this: heating degree days average ${Math.round(avgHDD)} during ${monthLabels.join(', ')} — well above the 65°F baseline, driving elevated heating demand and related maintenance costs.` });
+    else if (avgHDD > 400) candidates.push({ score: 2, text: `Weather data supports this: heating degree days average ${Math.round(avgHDD)} during ${monthLabels.join(', ')} — above the 65°F baseline, consistent with elevated heating and weatherization demand.` });
+
+    if (avgCDD > 300) candidates.push({ score: 3, text: `Weather data strongly supports this: cooling degree days average ${Math.round(avgCDD)} during ${monthLabels.join(', ')} — consistent with peak cooling demand, pool operations, and summer maintenance costs.` });
+    else if (avgCDD > 150) candidates.push({ score: 2, text: `Weather data supports this: cooling degree days average ${Math.round(avgCDD)} during ${monthLabels.join(', ')} — above baseline, consistent with elevated cooling demand.` });
   }
 
-  // Check rent CPI for income metrics
+  // Rent CPI — only for income
   if (section === 'INCOME' && context.rentCPI) {
     const spikePeriodVals = Object.entries(context.rentCPI)
-      .filter(([k]) => monthLabels.some(m => k.startsWith(m)))
-      .map(([,v]) => v).filter(Boolean);
+      .filter(([k]) => monthLabels.some(m => k.startsWith(m))).map(([,v]) => v).filter(Boolean);
+    const nonSpikePeriodVals = Object.entries(context.rentCPI)
+      .filter(([k]) => !monthLabels.some(m => k.startsWith(m))).map(([,v]) => v).filter(Boolean);
 
-    if (spikePeriodVals.length > 1) {
-      const avgRentCPI = (spikePeriodVals.reduce((a,b) => a+b,0) / spikePeriodVals.length).toFixed(1);
-      // Compare to non-spike months
-      const nonSpikePeriodVals = Object.entries(context.rentCPI)
-        .filter(([k]) => !monthLabels.some(m => k.startsWith(m)))
-        .map(([,v]) => v).filter(Boolean);
-
-      if (nonSpikePeriodVals.length > 0) {
-        const avgNonSpike = (nonSpikePeriodVals.reduce((a,b) => a+b,0) / nonSpikePeriodVals.length).toFixed(1);
-        const diff = ((parseFloat(avgRentCPI) - parseFloat(avgNonSpike)) / Math.abs(parseFloat(avgNonSpike)) * 100).toFixed(1);
-        if (Math.abs(parseFloat(diff)) > 1) {
-          reasons.push(`Rent CPI during ${monthLabels.join(', ')} averaged ${avgRentCPI} vs. ${avgNonSpike} in other months (${parseFloat(diff) > 0 ? '+' : ''}${diff}% higher) — ${parseFloat(diff) > 0 ? 'market rents are measurably higher in these months, supporting the seasonal income pattern' : 'market rents are slightly lower in these months, suggesting the income spike has a property-specific rather than market driver'}.`);
-        }
-      } else {
-        reasons.push(`Rent CPI averaged ${avgRentCPI} during ${monthLabels.join(', ')} — market rent data available but insufficient non-spike months for comparison.`);
+    if (spikePeriodVals.length > 0 && nonSpikePeriodVals.length > 0) {
+      const avgSpike = spikePeriodVals.reduce((a,b)=>a+b,0)/spikePeriodVals.length;
+      const avgNon = nonSpikePeriodVals.reduce((a,b)=>a+b,0)/nonSpikePeriodVals.length;
+      const diff = ((avgSpike - avgNon) / Math.abs(avgNon) * 100);
+      if (Math.abs(diff) > 2) {
+        const score = Math.abs(diff) > 5 ? 3 : 2;
+        candidates.push({ score, text: `Rent CPI during ${monthLabels.join(', ')} averaged ${avgSpike.toFixed(1)} vs. ${avgNon.toFixed(1)} in other months (${diff > 0 ? '+' : ''}${diff.toFixed(1)}% ${diff > 0 ? 'higher' : 'lower'}) — ${diff > 0 ? 'market rents are measurably higher in these months, supporting the seasonal income pattern' : 'market rents are slightly softer in these months, suggesting the income movement has a property-specific driver'}.` });
       }
     }
   }
 
-  // Check unemployment for operational patterns
+  // Lease cycle — only for income, specific months
+  if (section === 'INCOME') {
+    const hasSep = typicalMonths?.includes(9);
+    const hasOct = typicalMonths?.includes(10);
+    const hasJan = typicalMonths?.includes(1);
+    const hasFeb = typicalMonths?.includes(2);
+
+    if ((hasSep || hasOct) && (hasJan || hasFeb)) {
+      candidates.push({ score: 3, text: `The spike months align with the academic lease cycle: September/October mark the start of new leases, and January/February mark common renewal or step-up dates. In markets like New Jersey with large university and corporate populations, this creates a predictable annual income rhythm.` });
+    } else if (hasSep || hasOct) {
+      candidates.push({ score: 2, text: `September/October align with the start of the academic year — a peak leasing period in most US markets, particularly in states with large university populations. New leases signed at higher rates drive income spikes in these months.` });
+    } else if (hasJan || hasFeb) {
+      candidates.push({ score: 2, text: `January/February are common lease renewal months — many leases signed in September/October come up for renewal or step-up, which can drive income movement at the start of the calendar year.` });
+    }
+  }
+
+  // Unemployment context — only add if no strong explanation found yet
   if (context.stateUR) {
     const urVals = Object.entries(context.stateUR)
       .filter(([k]) => monthLabels.some(m => k.startsWith(m)))
       .map(([,v]) => v).filter(Boolean);
     if (urVals.length > 0) {
-      const avgUR = (urVals.reduce((a,b)=>a+b,0)/urVals.length).toFixed(1);
-      reasons.push(`State unemployment averaged ${avgUR}% during these months — ${parseFloat(avgUR) < 4 ? 'a tight labor market that supports rental demand and may explain income strength' : 'elevated unemployment that may be suppressing rental demand'}.`);
+      const avgUR = (urVals.reduce((a,b)=>a+b,0)/urVals.length);
+      const topScore = candidates.length > 0 ? Math.max(...candidates.map(c => c.score)) : 0;
+      // Only add unemployment context if no strong explanation found yet
+      if (topScore < 3) {
+        if (avgUR < 3.5) candidates.push({ score: 1, text: `State unemployment averaged ${avgUR.toFixed(1)}% during these months — an exceptionally tight labor market that strongly supports rental demand and may explain income strength.` });
+        else if (avgUR > 6) candidates.push({ score: 1, text: `State unemployment averaged ${avgUR.toFixed(1)}% during these months — elevated unemployment that may be creating rental demand pressure worth monitoring.` });
+      }
     }
   }
 
-  // Lease cycle reasoning for Sep/Oct/Jan patterns on income metrics
-  if (section === 'INCOME') {
-    const hasSep = typicalMonths?.includes(9);
-    const hasOct = typicalMonths?.includes(10);
-    const hasJan = typicalMonths?.includes(1);
-    if (hasSep || hasOct) {
-      reasons.push(`September and October align with the start of the academic year — a peak leasing period in most US markets, particularly in states like New Jersey with large university populations. Income spikes in these months often reflect new lease signings at higher rates.`);
-    }
-    if (hasJan) {
-      reasons.push(`January is a common lease renewal month — many leases signed in September/October come up for renewal or step-up in January, which can drive income movement.`);
-    }
+  // Sort by score descending, take top 2 max
+  candidates.sort((a,b) => b.score - a.score);
+  const selected = candidates.slice(0, 2);
+
+  if (selected.length === 0) {
+    return `No clear external factor identified from available market data. The pattern's consistency across ${[...new Set((anomalyHistory || []).map(a => a.propertyName))].length} properties and ${[...new Set((anomalyHistory || []).map(a => a.monthLabel?.split(' ')?.[1]))].filter(Boolean).length} years suggests it reflects a structural characteristic of your portfolio.`;
   }
 
-  if (reasons.length === 0) {
-    reasons.push(`No clear external factor identified from available market data. The pattern's consistency across properties and years suggests it reflects a structural characteristic of your portfolio rather than a random anomaly.`);
-  }
-
-  return reasons.join('\n\n');
+  return selected.map(c => c.text).join('\n\n');
 }
 
 function generatePatternDescription(metricName, section, patternType, anomaliesForKey, typicalMonths, context) {
