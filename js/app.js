@@ -1235,6 +1235,12 @@ const App = (() => {
       showFileHistoryDropdown(this, (name, data) => {
         state.parsedA = data; state.fileNameA = name;
         setUploadLabel('upload-btn-a', '📂 ' + name);
+        const nameMatch = name.match(/Cash_Flow_(.+?)_Accrual/i);
+        if (nameMatch && nameMatch[1]) {
+          const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
+          const propNameInput = document.getElementById('analyzer-property-name');
+          if (propNameInput) propNameInput.value = extractedName;
+        }
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
         if (state.selectedState && state.selectedCity) fetchContextIfReady();
