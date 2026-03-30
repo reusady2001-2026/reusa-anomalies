@@ -331,6 +331,32 @@ function generatePatternDescription(metricName, section, patternType, anomaliesF
     lines.push(propBreakdown);
   }
 
+  // Check if months form a coherent seasonal pattern
+  const WINTER_MONTHS = new Set([12, 1, 2]);
+  const SPRING_MONTHS = new Set([3, 4, 5]);
+  const SUMMER_MONTHS = new Set([6, 7, 8]);
+  const FALL_MONTHS = new Set([9, 10, 11]);
+
+  const seasons = {
+    winter: (typicalMonths || []).filter(m => WINTER_MONTHS.has(m)).length,
+    spring: (typicalMonths || []).filter(m => SPRING_MONTHS.has(m)).length,
+    summer: (typicalMonths || []).filter(m => SUMMER_MONTHS.has(m)).length,
+    fall: (typicalMonths || []).filter(m => FALL_MONTHS.has(m)).length,
+  };
+
+  const dominantSeason = Object.entries(seasons).sort((a,b) => b[1]-a[1])[0];
+  const totalMonths = (typicalMonths || []).length;
+  const isCoherent = totalMonths <= 3 && dominantSeason[1] >= totalMonths - 1;
+  const isSpread = totalMonths >= 4 ||
+    Object.values(seasons).filter(v => v > 0).length >= 3;
+
+  if (isSpread) {
+    lines.push('');
+    lines.push('⚠ Note: The spike months span multiple seasons (' +
+      Object.entries(seasons).filter(([,v]) => v > 0).map(([s,v]) => `${v} in ${s}`).join(', ') +
+      '). This may indicate the pattern is not purely seasonal — it could reflect a recurring operational cycle, billing pattern, or data artifact. Review the per-property breakdown above to see if different properties are driving different months.');
+  }
+
   switch (patternType) {
     case 'seasonal_spike':
       lines.push(`${metricName} spikes every year during ${monthStr || 'specific months'} — this has happened ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
