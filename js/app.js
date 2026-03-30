@@ -1328,14 +1328,32 @@ const App = (() => {
       setUploadLabel('ea-upload-label', '📂 ' + file.name);
       const nameMatch = file.name.match(/Cash_Flow_(.+?)_Accrual/i);
       if (nameMatch && nameMatch[1]) {
-        state.propertyNameEA = nameMatch[1].replace(/_/g, ' ').trim();
+        const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
+        const propNameInput = document.getElementById('ea-property-name');
+        if (propNameInput) propNameInput.value = extractedName;
       }
       try {
         const rows = await readFileAsRows(file);
         state.resultEA = Engine.parseSheet(rows);
+        saveFileToHistory(file.name, state.resultEA);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
+    });
+
+    document.getElementById('file-hist-btn-ea')?.addEventListener('click', function() {
+      showFileHistoryDropdown(this, (name, data) => {
+        state.resultEA = data;
+        setUploadLabel('ea-upload-label', '📂 ' + name);
+        const nameMatch = name.match(/Cash_Flow_(.+?)_Accrual/i);
+        if (nameMatch && nameMatch[1]) {
+          const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
+          const propNameInput = document.getElementById('ea-property-name');
+          if (propNameInput) propNameInput.value = extractedName;
+        }
+        const runExecBtn = document.getElementById('btn-run-executive');
+        if (runExecBtn) runExecBtn.disabled = false;
+      });
     });
 
     // ── Price inputs: re-run analysis on any value change ──
@@ -1404,6 +1422,8 @@ const App = (() => {
     });
     document.getElementById('btn-run-executive')?.addEventListener('click', () => {
       if (!state.resultEA) return;
+
+      state.propertyNameEA = document.getElementById('ea-property-name')?.value.trim() || 'Unknown Property';
 
       const priceRaw = document.getElementById('price-ea')?.value?.replace(/[^0-9.]/g, '');
       const purchasePrice = parseFloat(priceRaw) || 0;
