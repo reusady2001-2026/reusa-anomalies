@@ -97,6 +97,88 @@ function generateSuggestedRules(metricName, section, patternType, typicalMonths)
   }
 }
 
+function generatePatternDescription(metricName, section, patternType, anomaliesForKey, typicalMonths) {
+  // ── Data computation ───────────────────────────────────────────────────────
+  const properties = [...new Set((anomaliesForKey || []).map(a => a.propertyName).filter(Boolean))];
+  const years = [...new Set(
+    (anomaliesForKey || [])
+      .map(a => (a.monthLabel || '').split(' ')[1])
+      .filter(Boolean)
+  )].sort();
+  const zScores = (anomaliesForKey || []).map(a => Math.abs(a.effectiveZ || 0)).filter(z => z > 0);
+  const avgZ = zScores.length
+    ? (zScores.reduce((s, z) => s + z, 0) / zScores.length).toFixed(1)
+    : '?';
+  const maxZ = zScores.length ? Math.max(...zScores).toFixed(1) : '?';
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthStr = (typicalMonths || []).map(m => monthNames[m - 1]).filter(Boolean).join(', ');
+  const anomalies = anomaliesForKey || [];
+
+  const lines = [];
+
+  switch (patternType) {
+    case 'seasonal_spike':
+      lines.push(`${metricName} spikes every year during ${monthStr || 'specific months'} — this has happened ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
+      lines.push(`The average statistical deviation is ${avgZ}x the baseline, peaking at ${maxZ}x — a strong, consistent signal.`);
+      lines.push(`This is not a problem. This is your business cycle.`);
+      lines.push(`${section === 'INCOME' ? 'This income metric follows a predictable seasonal revenue pattern that repeats across your entire portfolio.' : 'This expense category follows a predictable seasonal cost pattern that repeats across your entire portfolio.'}`);
+      lines.push(`The engine is currently flagging this as an anomaly every time it occurs — meaning it competes for your attention alongside real problems.`);
+      lines.push(`Adding a rule here tells the engine: "I already know about this. Stop flagging it as an anomaly during these months, and focus my attention on deviations that exceed the seasonal norm instead."`);
+      lines.push(`Without this rule: every summer/winter you will see these flagged as anomalies, burying actual issues in noise.`);
+      lines.push(`With this rule: only unexpected deviations from the seasonal pattern will surface — the engine works harder for you.`);
+      break;
+
+    case 'operational_drift':
+      lines.push(`${metricName} has been gradually drifting ${section === 'INCOME' ? 'below' : 'above'} baseline across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) for ${years.length} year(s) (${years.join(', ')}).`);
+      lines.push(`This has occurred ${anomalies.length} times with an average deviation of ${avgZ}x baseline, peaking at ${maxZ}x.`);
+      lines.push(`${section === 'INCOME'
+        ? 'A drift this persistent across multiple properties is not a random fluctuation — it suggests a structural revenue gap. This could mean lease terms below market rate, a systematic billing issue, or a portfolio-wide income leak that no one has addressed because it moves slowly.'
+        : 'A drift this persistent across multiple properties is not a random fluctuation — it suggests vendor contract escalation, usage creep, or an unreviewed recurring charge that has been quietly growing for years.'}`);
+      lines.push(`The engine is currently treating each occurrence as a separate anomaly — ${anomalies.length} individual flags for what is actually one ongoing pattern.`);
+      lines.push(`Adding a rule here changes the response: instead of ${anomalies.length} individual property-level flags, the engine escalates this once at the portfolio level and recommends a ${section === 'INCOME' ? 'lease audit' : 'vendor contract review'}.`);
+      lines.push(`Without this rule: the drift continues to generate noise across all properties with no clear action path.`);
+      lines.push(`With this rule: the engine identifies this as a portfolio-level structural issue and directs your attention to the right fix.`);
+      break;
+
+    case 'cost_shock':
+      lines.push(`${metricName} has spiked suddenly ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
+      lines.push(`Average deviation: ${avgZ}x baseline. Peak deviation: ${maxZ}x baseline.`);
+      lines.push(`Recurring cost shocks on the same metric are rarely random — they usually indicate a vendor with unpredictable billing, an irregular service cycle, or an unmanaged variable cost that spikes when triggered.`);
+      lines.push(`The fact that this has happened ${anomalies.length} times across ${properties.length} properties means this is a known risk, not a surprise. Yet the engine treats each spike as a new anomaly requiring fresh investigation.`);
+      lines.push(`Adding a rule here changes the response: when ${metricName} spikes, the engine immediately flags it for vendor contract review rather than generic investigation — saving you the time of rediscovering the same root cause repeatedly.`);
+      lines.push(`Without this rule: every spike triggers a full anomaly investigation that likely reaches the same conclusion each time.`);
+      lines.push(`With this rule: the engine routes directly to the right action — vendor review — and tracks whether the pattern is getting better or worse over time.`);
+      break;
+
+    case 'market_pressure':
+      lines.push(`${metricName} has moved with broader market conditions ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s).`);
+      lines.push(`Average deviation: ${avgZ}x baseline. Peak: ${maxZ}x. These movements correlate with elevated CPI, Fed Funds Rate, or mortgage rate environments.`);
+      lines.push(`When a metric moves because the entire market moved, investigating it at the property level is wasted effort — there is nothing a property manager can do about national interest rates.`);
+      lines.push(`The engine is currently flagging these as property-level anomalies, implying there is something wrong at the property that needs fixing. There isn't.`);
+      lines.push(`Adding a rule here tells the engine: "When macro indicators explain this movement, classify it as market-driven and lower the investigation priority. Only flag it if the movement exceeds what market conditions would predict."`);
+      lines.push(`Without this rule: your team investigates market-driven movements as if they were property problems — wasting time and creating false urgency.`);
+      lines.push(`With this rule: the engine distinguishes between market noise and genuine property-level issues, making every flag more meaningful.`);
+      break;
+
+    case 'unexplained':
+      lines.push(`${metricName} has shown ${anomalies.length} unexplained anomalies across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s).`);
+      lines.push(`Average deviation: ${avgZ}x baseline. Peak: ${maxZ}x. The engine cannot identify a causal pattern from available data.`);
+      lines.push(`${section === 'INCOME'
+        ? 'Recurring unexplained income anomalies that the engine cannot explain are a red flag. When the same income metric drops repeatedly with no identifiable cause, it often points to a lease audit issue, a systematic billing error, or a tenant arrangement that is not being captured in the data.'
+        : 'Recurring unexplained expense anomalies that the engine cannot explain are a red flag. When the same cost spikes repeatedly with no identifiable cause, it often points to invoice coding errors, a vendor billing irregularity, or an unreviewed contract with automatic escalation clauses.'}`);
+      lines.push(`The engine has flagged this ${anomalies.length} times and reached the same conclusion each time: unknown cause, manual review recommended. That recommendation has clearly not led to a resolution.`);
+      lines.push(`Adding a rule here escalates the response: instead of repeating the same "manual review" flag, the engine triggers a ${section === 'INCOME' ? 'lease audit recommendation' : 'vendor invoice reconciliation'} and tracks whether the pattern resolves after that action.`);
+      lines.push(`Without this rule: the engine keeps flagging and recommending manual review with no progress.`);
+      lines.push(`With this rule: the engine escalates to the right action and monitors for resolution.`);
+      break;
+
+    default:
+      lines.push(`${metricName} shows a recurring ${patternType.replace(/_/g, ' ')} pattern across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} — ${anomalies.length} occurrences over ${years.length} year(s). Average deviation: ${avgZ}x baseline.`);
+  }
+
+  return lines.join('\n\n');
+}
+
 export default async function handler(req, res) {
   // ── Preflight ────────────────────────────────────────────────────────────────
   if (req.method === 'OPTIONS') {
@@ -128,17 +210,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ── Pre-compute typical months per (metricName, pattern_type) ─────────────
-    const monthFreq = new Map(); // key -> Map<monthNum, count>
+    // ── Pre-compute per-key data ───────────────────────────────────────────────
+    const monthFreq     = new Map(); // key -> Map<monthNum, count>
+    const anomaliesByKey = new Map(); // key -> anomaly[]
     for (const a of anomalies) {
       const pt = ANGLE_TO_PATTERN[a.angle];
       if (!pt) continue;
       const key = `${a.metricName}|${pt}`;
+      // month frequency
       const monthNum = MONTH_ABBR_TO_NUM[(a.monthLabel || '').split(' ')[0]];
-      if (!monthNum) continue;
-      if (!monthFreq.has(key)) monthFreq.set(key, new Map());
-      const freq = monthFreq.get(key);
-      freq.set(monthNum, (freq.get(monthNum) || 0) + 1);
+      if (monthNum) {
+        if (!monthFreq.has(key)) monthFreq.set(key, new Map());
+        const freq = monthFreq.get(key);
+        freq.set(monthNum, (freq.get(monthNum) || 0) + 1);
+      }
+      // anomalies by key
+      if (!anomaliesByKey.has(key)) anomaliesByKey.set(key, []);
+      anomaliesByKey.get(key).push(a);
     }
     function getTypicalMonths(key) {
       const freq = monthFreq.get(key);
@@ -157,7 +245,8 @@ export default async function handler(req, res) {
       const pattern_type = ANGLE_TO_PATTERN[angle];
       if (!pattern_type) continue;
 
-      const pattern_description = `${metricName} shows ${pattern_type} pattern`;
+      const anomaliesForKey   = anomaliesByKey.get(`${metricName}|${pattern_type}`) || [];
+      const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths);
 
       // ── Fetch existing row ─────────────────────────────────────────────────
       const fetchRes = await sbFetch(
