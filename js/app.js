@@ -40,6 +40,7 @@ const App = (() => {
     summaryStats: null,
     ruleCandidates: [],
     isSaved: false,
+    executiveResult: null,
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -213,6 +214,9 @@ const App = (() => {
 
     document.getElementById('save-analysis-btn')?.classList.add('hidden');
     state.isSaved = false;
+    state.executiveResult = null;
+    const runExecBtn = document.getElementById('btn-run-executive');
+    if (runExecBtn) runExecBtn.disabled = true;
   }
 
   // ── FILE PARSING ──────────────────────────────────────
@@ -849,6 +853,8 @@ const App = (() => {
         state.summaryStats.seasonalAnomalies;
 
       renderAnalyzerTable();
+      const runExecBtn = document.getElementById('btn-run-executive');
+      if (runExecBtn) runExecBtn.disabled = false;
       const _saveBtn = document.getElementById('save-analysis-btn');
       if (_saveBtn) {
         _saveBtn.textContent = '💾 Save';
@@ -1360,6 +1366,26 @@ const App = (() => {
         btn.disabled = false;
       }
     });
+    document.getElementById('btn-run-executive')?.addEventListener('click', () => {
+      if (!state.resultA) return;
+
+      const priceRaw = document.getElementById('price-a')?.value?.replace(/[^0-9.]/g, '');
+      const purchasePrice = parseFloat(priceRaw) || 0;
+
+      if (!purchasePrice) {
+        alert('Please enter a purchase price in the Operational Analysis tab first.');
+        return;
+      }
+
+      state.executiveResult = Executive.analyse(
+        state.resultA.metrics,
+        state.resultA.months,
+        purchasePrice
+      );
+
+      UI.renderExecutiveTable(state.executiveResult, state.resultA.months);
+    });
+
     document.getElementById('section-filter')?.addEventListener('change', e => {
       state.sectionFilter = e.target.value;
       if (state.mode === 'analyzer') renderAnalyzerTable();
