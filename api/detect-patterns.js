@@ -28,6 +28,102 @@ function sbFetch(supabaseUrl, anonKey, path, opts = {}) {
   });
 }
 
+async function fetchContextForPattern(stateAbbr, months) {
+  const FRED_KEY = process.env.FRED_KEY;
+  const STATE_CENTROIDS = {
+    'AL':[32.8,-86.8],'AK':[64.2,-153.4],'AZ':[34.3,-111.1],'AR':[34.9,-92.4],
+    'CA':[36.8,-119.4],'CO':[39.0,-105.5],'CT':[41.6,-72.7],'DE':[39.0,-75.5],
+    'FL':[28.7,-82.5],'GA':[32.2,-83.4],'HI':[20.3,-156.4],'ID':[44.4,-114.6],
+    'IL':[40.0,-89.2],'IN':[39.8,-86.1],'IA':[42.1,-93.5],'KS':[38.5,-98.4],
+    'KY':[37.5,-85.3],'LA':[31.1,-91.9],'ME':[45.4,-69.2],'MD':[39.1,-76.8],
+    'MA':[42.2,-71.5],'MI':[44.3,-85.4],'MN':[46.4,-93.1],'MS':[32.7,-89.7],
+    'MO':[38.5,-92.5],'MT':[47.0,-109.6],'NE':[41.5,-99.9],'NV':[39.3,-116.6],
+    'NH':[43.7,-71.6],'NJ':[40.1,-74.7],'NM':[34.4,-106.1],'NY':[42.9,-75.5],
+    'NC':[35.5,-79.8],'ND':[47.5,-100.5],'OH':[40.4,-82.8],'OK':[35.6,-96.9],
+    'OR':[44.6,-122.1],'PA':[40.6,-77.2],'RI':[41.7,-71.5],'SC':[33.9,-80.9],
+    'SD':[44.4,-100.2],'TN':[35.8,-86.3],'TX':[31.5,-99.3],'UT':[39.3,-111.1],
+    'VT':[44.1,-72.7],'VA':[37.8,-78.2],'WA':[47.4,-120.4],'WV':[38.6,-80.6],
+    'WI':[44.3,-89.8],'WY':[43.0,-107.6]
+  };
+
+  const FRED_UR = {
+    'NJ':'NJUR','NY':'NYUR','CA':'CAUR','TX':'TXUR','FL':'FLUR','PA':'PAUR',
+    'IL':'ILUR','OH':'OHUR','GA':'GAUR','NC':'NCUR','MI':'MIUR','VA':'VAUR',
+    'WA':'WAUR','AZ':'AZUR','MA':'MAUR','TN':'TNUR','IN':'INUR','MO':'MOUR',
+    'MD':'MDUR','WI':'WIUR','CO':'COUR','MN':'MNUR','SC':'SCUR','AL':'ALUR',
+    'LA':'LAUR','KY':'KYUR','OR':'ORUR','OK':'OKUR','CT':'CTUR','IA':'IAUR',
+    'UT':'UTUR','NV':'NVUR','AR':'ARUR','MS':'MSUR','KS':'KSUR','NM':'NMUR',
+    'NE':'NEUR','WV':'WVUR','ID':'IDUR','HI':'HIUR','NH':'NHUR','ME':'MEUR',
+    'RI':'RIUR','MT':'MTUR','DE':'DEUR','SD':'SDUR','ND':'NDUR','AK':'AKUR',
+    'VT':'VTUR','WY':'WYUR',
+  };
+
+  // Get date range from months array
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const parsedDates = months.map(m => {
+    const parts = m.split(' ');
+    const mo = monthNames.indexOf(parts[0]);
+    const yr = parseInt(parts[1]);
+    return mo >= 0 && !isNaN(yr) ? new Date(yr, mo, 1) : null;
+  }).filter(Boolean).sort((a,b) => a-b);
+
+  if (parsedDates.length === 0) return {};
+
+  const startDate = `${parsedDates[0].getFullYear()}-${String(parsedDates[0].getMonth()+1).padStart(2,'0')}-01`;
+  const lastDate = parsedDates[parsedDates.length-1];
+  const endDate = `${lastDate.getFullYear()}-${String(lastDate.getMonth()+1).padStart(2,'0')}-01`;
+
+  const results = {};
+
+  try {
+    // Fetch rent CPI
+    const rentRes = await fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=CUUR0000SEHA&observation_start=${startDate}&observation_end=${endDate}&api_key=${FRED_KEY}&file_type=json`);
+    const rentData = await rentRes.json();
+    results.rentCPI = {};
+    (rentData.observations || []).forEach(o => {
+      const d = new Date(o.date);
+      results.rentCPI[`${monthNames[d.getMonth()]} ${d.getFullYear()}`] = parseFloat(o.value);
+    });
+  } catch(e) {}
+
+  try {
+    // Fetch state unemployment
+    const urCode = FRED_UR[stateAbbr];
+    if (urCode) {
+      const urRes = await fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=${urCode}&observation_start=${startDate}&observation_end=${endDate}&api_key=${FRED_KEY}&file_type=json`);
+      const urData = await urRes.json();
+      results.stateUR = {};
+      (urData.observations || []).forEach(o => {
+        const d = new Date(o.date);
+        results.stateUR[`${monthNames[d.getMonth()]} ${d.getFullYear()}`] = parseFloat(o.value);
+      });
+    }
+  } catch(e) {}
+
+  try {
+    // Fetch weather HDD/CDD
+    const coords = STATE_CENTROIDS[stateAbbr];
+    if (coords) {
+      const weatherRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${coords[0]}&longitude=${coords[1]}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min&timezone=auto&temperature_unit=fahrenheit`);
+      const weatherData = await weatherRes.json();
+      const dates = weatherData?.daily?.time || [];
+      const maxT = weatherData?.daily?.temperature_2m_max || [];
+      const minT = weatherData?.daily?.temperature_2m_min || [];
+      results.hdd = {};
+      results.cdd = {};
+      dates.forEach((dateStr, i) => {
+        const d = new Date(dateStr);
+        const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        const avg = ((maxT[i]||0) + (minT[i]||0)) / 2;
+        results.hdd[label] = (results.hdd[label] || 0) + Math.max(0, 65 - avg);
+        results.cdd[label] = (results.cdd[label] || 0) + Math.max(0, avg - 65);
+      });
+    }
+  } catch(e) {}
+
+  return results;
+}
+
 const MONTH_ABBR_TO_NUM = {
   Jan:1, Feb:2, Mar:3, Apr:4,  May:5,  Jun:6,
   Jul:7, Aug:8, Sep:9, Oct:10, Nov:11, Dec:12,
@@ -109,7 +205,79 @@ function computeTypicalMonths(historyArray) {
     .map(([m]) => m);
 }
 
-function generatePatternDescription(metricName, section, patternType, anomaliesForKey, typicalMonths) {
+function generateReason(metricName, section, patternType, typicalMonths, anomalyHistory, context) {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthLabels = (typicalMonths || []).map(m => monthNames[m-1]).filter(Boolean);
+  const reasons = [];
+
+  // Check weather context for seasonal patterns
+  if (patternType === 'seasonal_spike' || patternType === 'operational_drift') {
+    const avgHDD = monthLabels.reduce((sum, m) => {
+      const vals = Object.entries(context.hdd || {})
+        .filter(([k]) => k.startsWith(m))
+        .map(([,v]) => v);
+      return sum + (vals.length > 0 ? vals.reduce((a,b) => a+b,0)/vals.length : 0);
+    }, 0) / (monthLabels.length || 1);
+
+    const avgCDD = monthLabels.reduce((sum, m) => {
+      const vals = Object.entries(context.cdd || {})
+        .filter(([k]) => k.startsWith(m))
+        .map(([,v]) => v);
+      return sum + (vals.length > 0 ? vals.reduce((a,b) => a+b,0)/vals.length : 0);
+    }, 0) / (monthLabels.length || 1);
+
+    if (avgHDD > 400) {
+      reasons.push(`Weather data confirms: heating degree days average ${Math.round(avgHDD)} during ${monthLabels.join(', ')} — well above the 65°F baseline, driving elevated heating demand and related maintenance costs.`);
+    }
+    if (avgCDD > 150) {
+      reasons.push(`Weather data confirms: cooling degree days average ${Math.round(avgCDD)} during ${monthLabels.join(', ')} — consistent with elevated cooling demand, pool operations, and summer maintenance costs.`);
+    }
+  }
+
+  // Check rent CPI for income metrics
+  if (section === 'INCOME' && context.rentCPI) {
+    const rentVals = Object.values(context.rentCPI).filter(Boolean);
+    if (rentVals.length > 1) {
+      const first = rentVals[0], last = rentVals[rentVals.length-1];
+      const change = ((last - first) / Math.abs(first) * 100).toFixed(1);
+      if (Math.abs(parseFloat(change)) > 2) {
+        reasons.push(`Rent CPI moved ${parseFloat(change) > 0 ? '+' : ''}${change}% over this period — ${parseFloat(change) > 0 ? 'rising market rents may explain upward income movement' : 'softening market rents may explain the income pressure'}.`);
+      }
+    }
+  }
+
+  // Check unemployment for operational patterns
+  if (context.stateUR) {
+    const urVals = Object.entries(context.stateUR)
+      .filter(([k]) => monthLabels.some(m => k.startsWith(m)))
+      .map(([,v]) => v).filter(Boolean);
+    if (urVals.length > 0) {
+      const avgUR = (urVals.reduce((a,b)=>a+b,0)/urVals.length).toFixed(1);
+      reasons.push(`State unemployment averaged ${avgUR}% during these months — ${parseFloat(avgUR) < 4 ? 'a tight labor market that supports rental demand and may explain income strength' : 'elevated unemployment that may be suppressing rental demand'}.`);
+    }
+  }
+
+  // Lease cycle reasoning for Sep/Oct/Jan patterns on income metrics
+  if (section === 'INCOME') {
+    const hasSep = typicalMonths?.includes(9);
+    const hasOct = typicalMonths?.includes(10);
+    const hasJan = typicalMonths?.includes(1);
+    if (hasSep || hasOct) {
+      reasons.push(`September and October align with the start of the academic year — a peak leasing period in most US markets, particularly in states like New Jersey with large university populations. Income spikes in these months often reflect new lease signings at higher rates.`);
+    }
+    if (hasJan) {
+      reasons.push(`January is a common lease renewal month — many leases signed in September/October come up for renewal or step-up in January, which can drive income movement.`);
+    }
+  }
+
+  if (reasons.length === 0) {
+    reasons.push(`No clear external factor identified from available market data. The pattern's consistency across properties and years suggests it reflects a structural characteristic of your portfolio rather than a random anomaly.`);
+  }
+
+  return reasons.join('\n\n');
+}
+
+function generatePatternDescription(metricName, section, patternType, anomaliesForKey, typicalMonths, context) {
   // ── Data computation ───────────────────────────────────────────────────────
   const properties = [...new Set((anomaliesForKey || []).map(a => a.propertyName).filter(Boolean))];
   const years = [...new Set(
@@ -188,6 +356,16 @@ function generatePatternDescription(metricName, section, patternType, anomaliesF
       lines.push(`${metricName} shows a recurring ${patternType.replace(/_/g, ' ')} pattern across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} — ${anomalies.length} occurrences over ${years.length} year(s). Average deviation: ${avgZ}x baseline.`);
   }
 
+  if (context) {
+    const reason = generateReason(metricName, section, patternType, typicalMonths, anomaliesForKey, context);
+    if (reason) {
+      lines.push('');
+      lines.push('Why this pattern occurs:');
+      lines.push('');
+      lines.push(reason);
+    }
+  }
+
   return lines.join('\n\n');
 }
 
@@ -249,6 +427,10 @@ export default async function handler(req, res) {
         .map(([m]) => m);
     }
 
+    const allMonthLabels = [...new Set(anomalies.map(a => a.monthLabel).filter(Boolean))];
+    const stateAbbrForContext = anomalies[0]?.stateAbbr || 'NJ';
+    const externalContext = await fetchContextForPattern(stateAbbrForContext, allMonthLabels);
+
     let processed = 0;
 
     for (const anomaly of anomalies) {
@@ -259,7 +441,7 @@ export default async function handler(req, res) {
 
       const anomaliesForKey   = anomaliesByKey.get(`${metricName}|${pattern_type}`) || [];
       const typicalMonths     = getTypicalMonths(`${metricName}|${pattern_type}`);
-      const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths);
+      const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths, externalContext);
 
       // Current anomaly entry for history accumulation
       const currentEntry = {
@@ -333,7 +515,7 @@ export default async function handler(req, res) {
           : [];
         const newHistory = [...existingHistory, currentEntry];
         const newTypicalMonths = computeTypicalMonths(newHistory);
-        const newPatternDescription = generatePatternDescription(metricName, section, pattern_type, newHistory, newTypicalMonths);
+        const newPatternDescription = generatePatternDescription(metricName, section, pattern_type, newHistory, newTypicalMonths, externalContext);
         const newSuggestedRules = generateSuggestedRules(metricName, section, pattern_type, newTypicalMonths);
 
         const patchRes = await sbFetch(
