@@ -359,7 +359,7 @@ function generatePatternDescription(metricName, section, patternType, anomaliesF
 
   switch (patternType) {
     case 'seasonal_spike':
-      lines.push(`${metricName} spikes every year during ${monthStr || 'specific months'} — this has happened ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
+      lines.push(`${metricName} spikes consistently in ${monthStr ? monthStr + ' across 3+ properties' : 'specific months'} — this has happened ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
       lines.push(`The average statistical deviation is ${avgZ}x the baseline, peaking at ${maxZ}x — a strong, consistent signal.`);
       lines.push(`This is not a problem. This is your business cycle.`);
       lines.push(`${section === 'INCOME' ? 'This income metric follows a predictable seasonal revenue pattern that repeats across your entire portfolio.' : 'This expense category follows a predictable seasonal cost pattern that repeats across your entire portfolio.'}`);
@@ -462,30 +462,13 @@ export default async function handler(req, res) {
 
   try {
     // ── Pre-compute per-key data ───────────────────────────────────────────────
-    const monthFreq     = new Map(); // key -> Map<monthNum, count>
     const anomaliesByKey = new Map(); // key -> anomaly[]
     for (const a of anomalies) {
       const pt = ANGLE_TO_PATTERN[a.angle];
       if (!pt) continue;
       const key = `${a.metricName}|${pt}`;
-      // month frequency
-      const monthNum = MONTH_ABBR_TO_NUM[(a.monthLabel || '').split(' ')[0]];
-      if (monthNum) {
-        if (!monthFreq.has(key)) monthFreq.set(key, new Map());
-        const freq = monthFreq.get(key);
-        freq.set(monthNum, (freq.get(monthNum) || 0) + 1);
-      }
-      // anomalies by key
       if (!anomaliesByKey.has(key)) anomaliesByKey.set(key, []);
       anomaliesByKey.get(key).push(a);
-    }
-    function getTypicalMonths(key) {
-      const freq = monthFreq.get(key);
-      if (!freq) return [];
-      return [...freq.entries()]
-        .sort((a, b) => b[1] - a[1] || a[0] - b[0])
-        .slice(0, 3)
-        .map(([m]) => m);
     }
 
     const allMonthLabels = [...new Set(anomalies.map(a => a.monthLabel).filter(Boolean))];
@@ -500,9 +483,27 @@ export default async function handler(req, res) {
       const pattern_type = ANGLE_TO_PATTERN[angle];
       if (!pattern_type) continue;
 
-      const anomaliesForKey   = anomaliesByKey.get(`${metricName}|${pattern_type}`) || [];
-      const typicalMonths     = getTypicalMonths(`${metricName}|${pattern_type}`);
-      const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths, externalContext);
+      const anomaliesForKey = anomaliesByKey.get(`${metricName}|${pattern_type}`) || [];
+
+      // Only proceed if at least one month appears in 3+ distinct properties
+      const monthPropertyMap = {};
+      anomaliesForKey.forEach(a => {
+        if (!a.monthLabel || !a.propertyName) return;
+        const parts = a.monthLabel.split(' ');
+        const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(parts[0]) + 1;
+        if (mo <= 0) return;
+        if (!monthPropertyMap[mo]) monthPropertyMap[mo] = new Set();
+        monthPropertyMap[mo].add(a.propertyName);
+      });
+
+      const consensusMonths = Object.entries(monthPropertyMap)
+        .filter(([, props]) => props.size >= 3)
+        .map(([mo]) => parseInt(mo));
+
+      // Skip this pattern entirely if no consensus months found
+      if (consensusMonths.length === 0) continue;
+
+      const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, consensusMonths, externalContext);
 
       // Current anomaly entry for history accumulation
       const currentEntry = {
@@ -530,7 +531,7 @@ export default async function handler(req, res) {
       const rows = await fetchRes.json();
       const existing = rows && rows.length > 0 ? rows[0] : null;
 
-      const suggested_rules = generateSuggestedRules(metricName, section, pattern_type, typicalMonths);
+      const suggested_rules = generateSuggestedRules(metricName, section, pattern_type, consensusMonths);
 
       if (!existing) {
         // ── Insert new row ───────────────────────────────────────────────────
@@ -575,9 +576,20 @@ export default async function handler(req, res) {
               : existing.anomaly_history)
           : [];
         const newHistory = [...existingHistory, currentEntry];
-        const newTypicalMonths = computeTypicalMonths(newHistory);
-        const newPatternDescription = generatePatternDescription(metricName, section, pattern_type, newHistory, newTypicalMonths, externalContext);
-        const newSuggestedRules = generateSuggestedRules(metricName, section, pattern_type, newTypicalMonths);
+        const newMonthPropertyMap = {};
+        newHistory.forEach(a => {
+          if (!a.monthLabel || !a.propertyName) return;
+          const parts = a.monthLabel.split(' ');
+          const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(parts[0]) + 1;
+          if (mo <= 0) return;
+          if (!newMonthPropertyMap[mo]) newMonthPropertyMap[mo] = new Set();
+          newMonthPropertyMap[mo].add(a.propertyName);
+        });
+        const newConsensusMonths = Object.entries(newMonthPropertyMap)
+          .filter(([, props]) => props.size >= 3)
+          .map(([mo]) => parseInt(mo));
+        const newPatternDescription = generatePatternDescription(metricName, section, pattern_type, newHistory, newConsensusMonths, externalContext);
+        const newSuggestedRules = generateSuggestedRules(metricName, section, pattern_type, newConsensusMonths);
 
         const patchRes = await sbFetch(
           SUPABASE_URL, SUPABASE_ANON_KEY,
