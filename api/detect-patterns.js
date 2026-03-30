@@ -97,6 +97,18 @@ function generateSuggestedRules(metricName, section, patternType, typicalMonths)
   }
 }
 
+function computeTypicalMonths(historyArray) {
+  const freq = new Map();
+  for (const h of historyArray) {
+    const monthNum = MONTH_ABBR_TO_NUM[(h.monthLabel || '').split(' ')[0]];
+    if (monthNum) freq.set(monthNum, (freq.get(monthNum) || 0) + 1);
+  }
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+    .slice(0, 3)
+    .map(([m]) => m);
+}
+
 function generatePatternDescription(metricName, section, patternType, anomaliesForKey, typicalMonths) {
   // ── Data computation ───────────────────────────────────────────────────────
   const properties = [...new Set((anomaliesForKey || []).map(a => a.propertyName).filter(Boolean))];
@@ -249,10 +261,20 @@ export default async function handler(req, res) {
       const typicalMonths     = getTypicalMonths(`${metricName}|${pattern_type}`);
       const pattern_description = generatePatternDescription(metricName, section, pattern_type, anomaliesForKey, typicalMonths);
 
+      // Current anomaly entry for history accumulation
+      const currentEntry = {
+        metricName,
+        section,
+        monthLabel: anomaly.monthLabel || '',
+        propertyName: propertyName || '',
+        effectiveZ: anomaly.effectiveZ || 0,
+        patternType: pattern_type,
+      };
+
       // ── Fetch existing row ─────────────────────────────────────────────────
       const fetchRes = await sbFetch(
         SUPABASE_URL, SUPABASE_ANON_KEY,
-        `/rule_candidates?metric_name=eq.${encodeURIComponent(metricName)}&pattern_type=eq.${encodeURIComponent(pattern_type)}&select=id,status,dismissal_count,total_occurrences,occurrences_since_last_dismissal,distinct_properties&limit=1`,
+        `/rule_candidates?metric_name=eq.${encodeURIComponent(metricName)}&pattern_type=eq.${encodeURIComponent(pattern_type)}&select=id,status,dismissal_count,total_occurrences,occurrences_since_last_dismissal,distinct_properties,anomaly_history&limit=1`,
         { method: 'GET' }
       );
 
@@ -281,6 +303,7 @@ export default async function handler(req, res) {
             status:                           'candidate',
             dismissal_count:                  0,
             suggested_rules,
+            anomaly_history:                  JSON.stringify([currentEntry]),
           }),
         });
 
@@ -300,6 +323,17 @@ export default async function handler(req, res) {
           ? [...prevProps, propertyName]
           : prevProps;
 
+        // Build full accumulated history and recompute descriptions from it
+        const existingHistory = existing.anomaly_history
+          ? (typeof existing.anomaly_history === 'string'
+              ? JSON.parse(existing.anomaly_history)
+              : existing.anomaly_history)
+          : [];
+        const newHistory = [...existingHistory, currentEntry];
+        const newTypicalMonths = computeTypicalMonths(newHistory);
+        const newPatternDescription = generatePatternDescription(metricName, section, pattern_type, newHistory, newTypicalMonths);
+        const newSuggestedRules = generateSuggestedRules(metricName, section, pattern_type, newTypicalMonths);
+
         const patchRes = await sbFetch(
           SUPABASE_URL, SUPABASE_ANON_KEY,
           `/rule_candidates?id=eq.${existing.id}`,
@@ -310,8 +344,9 @@ export default async function handler(req, res) {
               occurrences_since_last_dismissal: (existing.occurrences_since_last_dismissal || 0) + 1,
               distinct_properties:              newProps,
               distinct_property_count:          newProps.length,
-              pattern_description,
-              suggested_rules,
+              pattern_description:              newPatternDescription,
+              suggested_rules:                  newSuggestedRules,
+              anomaly_history:                  JSON.stringify(newHistory),
               updated_at:                       new Date().toISOString(),
             }),
           }
