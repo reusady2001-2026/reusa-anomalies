@@ -1210,6 +1210,8 @@ const App = (() => {
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
+        state.isSaved = false;
+        document.getElementById('save-analysis-btn')?.classList.add('hidden');
         // Auto-fetch context if location already selected
         if (state.selectedState && state.selectedCity) fetchContextIfReady();
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
