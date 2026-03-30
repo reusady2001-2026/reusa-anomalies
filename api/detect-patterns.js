@@ -312,6 +312,25 @@ function generatePatternDescription(metricName, section, patternType, anomaliesF
 
   const lines = [];
 
+  // Per-property breakdown
+  const propMonthMap = {};
+  anomalies.forEach(a => {
+    if (!a.propertyName || !a.monthLabel) return;
+    const mo = a.monthLabel.split(' ')[0]; // e.g. "Jan"
+    if (!propMonthMap[a.propertyName]) propMonthMap[a.propertyName] = new Set();
+    propMonthMap[a.propertyName].add(mo);
+  });
+
+  const propBreakdown = Object.entries(propMonthMap)
+    .map(([prop, months]) => `  • ${prop}: spikes in ${[...months].join(', ')}`)
+    .join('\n');
+
+  if (propBreakdown) {
+    lines.push('');
+    lines.push('Per-property breakdown:');
+    lines.push(propBreakdown);
+  }
+
   switch (patternType) {
     case 'seasonal_spike':
       lines.push(`${metricName} spikes every year during ${monthStr || 'specific months'} — this has happened ${anomalies.length} times across ${properties.length} propert${properties.length === 1 ? 'y' : 'ies'} (${properties.join(', ')}) over ${years.length} year(s) (${years.join(', ')}).`);
