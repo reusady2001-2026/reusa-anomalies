@@ -780,7 +780,7 @@ const UI = (() => {
   // ── EA DETAIL PANEL (called via inline onclick) ───────
 
   function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
-    const cardEl = document.getElementById('detail-card');
+    const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
 
     function fmtLocal(n) {

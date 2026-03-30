@@ -618,7 +618,8 @@ input[type="file"] { display: none; }
 
 /* ── DETAIL CARD (fixed right panel) ── */
 #detail-card,
-#detail-card-comp {
+#detail-card-comp,
+#detail-card-ea {
   position: fixed;
   top: 0;
   right: 0;
@@ -633,7 +634,8 @@ input[type="file"] { display: none; }
   transition: transform 0.25s ease;
 }
 #detail-card.open,
-#detail-card-comp.open {
+#detail-card-comp.open,
+#detail-card-ea.open {
   transform: translateX(0);
 }
 .anomaly-card-header {
@@ -988,7 +990,8 @@ input[type="file"] { display: none; }
 
 /* ── LIGHT MODE OVERRIDES — detail panel & reason boxes ── */
 [data-theme="light"] #detail-card,
-[data-theme="light"] #detail-card-comp {
+[data-theme="light"] #detail-card-comp,
+[data-theme="light"] #detail-card-ea {
   background: #ffffff;
   color: #1e293b;
   box-shadow: -4px 0 24px rgba(0,0,0,0.12);
