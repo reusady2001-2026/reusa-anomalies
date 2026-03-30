@@ -43,6 +43,8 @@ const App = (() => {
     executiveResult: null,
     resultEA: null,
     propertyNameEA: '',
+    stateEA: '',
+    cityEA: '',
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -219,6 +221,8 @@ const App = (() => {
     state.executiveResult = null;
     state.resultEA = null;
     state.propertyNameEA = '';
+    state.stateEA = '';
+    state.cityEA = '';
     const runExecBtn = document.getElementById('btn-run-executive');
     if (runExecBtn) runExecBtn.disabled = true;
   }
@@ -1130,6 +1134,7 @@ const App = (() => {
     // ── Populate location dropdowns ──
     populateStateDropdown('state-select');
     populateStateDropdown('state-select-comp');
+    populateStateDropdown('state-ea');
 
     // Wire city autocomplete widgets
     setupCityAutocomplete('city-input', 'city-dropdown-list', city => {
@@ -1149,6 +1154,10 @@ const App = (() => {
         saveLocation(state.selectedState, city);
         fetchContextIfReady('status-msg-comp');
       }
+    });
+
+    setupCityAutocomplete('city-ea', 'city-dropdown-list-ea', city => {
+      state.cityEA = city;
     });
 
     // Restore last-used location
@@ -1200,6 +1209,14 @@ const App = (() => {
         loadCityAutocomplete('city-input-comp', 'city-dropdown-list-comp', abbr),
         loadCityAutocomplete('city-input',      'city-dropdown-list',      abbr),
       ]);
+    });
+
+    // EA state change → reload EA cities
+    document.getElementById('state-ea')?.addEventListener('change', async e => {
+      const abbr = e.target.value;
+      state.stateEA = abbr;
+      state.cityEA  = '';
+      await loadCityAutocomplete('city-ea', 'city-dropdown-list-ea', abbr);
     });
 
     // Mode selection (onclick on the cards already handles this via
@@ -1399,7 +1416,9 @@ const App = (() => {
       state.executiveResult = Executive.analyse(
         state.resultEA.metrics,
         state.resultEA.months,
-        purchasePrice
+        purchasePrice,
+        state.stateEA,
+        state.cityEA
       );
 
       UI.renderExecutiveTable(state.executiveResult, state.resultEA.months);

@@ -384,6 +384,18 @@
           Run Executive Analysis
         </button>
       </div>
+      <div class="control-group location-group" style="margin-top:8px;">
+        <label>Property Location <span class="req-star">*</span></label>
+        <div class="location-wrap">
+          <select id="state-ea" class="location-select">
+            <option value="">Select State…</option>
+          </select>
+          <div class="city-autocomplete-wrapper">
+            <input type="text" id="city-ea" placeholder="Select a state first…" autocomplete="off" disabled>
+            <ul id="city-dropdown-list-ea" hidden></ul>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="ea-summary-badges"></div>
     <div id="ea-table-container"></div>

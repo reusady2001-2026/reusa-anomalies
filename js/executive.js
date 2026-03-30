@@ -3,7 +3,7 @@
 const THRESHOLD_RATE    = 0.001; // 0.1% of purchase price
 const MIN_MONTHS_REQUIRED = 12;  // first 12 months immune
 
-function analyse(metrics, months, purchasePrice) {
+function analyse(metrics, months, purchasePrice, stateAbbr, city) {
   const threshold = (purchasePrice || 0) * THRESHOLD_RATE;
   const results = [];
 
@@ -68,7 +68,7 @@ function analyse(metrics, months, purchasePrice) {
     }
   });
 
-  return { results, months, threshold };
+  return { results, months, threshold, stateAbbr: stateAbbr || '', city: city || '' };
 }
 
 const Executive = { analyse };
