@@ -761,7 +761,8 @@ const UI = (() => {
         const isUp      = flag.direction === 'up';
         const cellClass  = (isIncome ? isUp : !isUp) ? 'cell-material-positive' : 'cell-material-negative';
         const displayVal = fmt(result.values[i]);
-        html += `<td class="${cellClass}" data-ea-month-idx="${i}" data-ea-metric="${escHtml(result.name)}" style="cursor:pointer;text-align:center"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
+        const onclickAttr = `UI.openEADetail('${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}')`;
+        html += `<td class="${cellClass}" style="cursor:pointer;text-align:center" onclick="${escHtml(onclickAttr)}"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
       });
 
       html += '</tr>';
@@ -769,66 +770,41 @@ const UI = (() => {
 
     html += '</tbody></table></div>';
     container.innerHTML = html;
+  }
 
-    // ── Cell click → detail panel ─────────────────────
-    container.querySelectorAll('td[data-ea-month-idx]').forEach(cell => {
-      cell.addEventListener('click', () => {
-        const metricName = cell.dataset.eaMetric;
-        const monthIdx   = parseInt(cell.dataset.eaMonthIdx);
-        const result     = results.find(r => r.name === metricName);
-        const flag       = result && result.flags[monthIdx];
-        if (!flag) return;
+  // ── EA DETAIL PANEL (called via inline onclick) ───────
 
-        const cardEl = document.getElementById('detail-card');
-        if (!cardEl) return;
+  function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction) {
+    const cardEl = document.getElementById('detail-card');
+    if (!cardEl) return;
 
-        const d = {
-          metricName,
-          monthLabel:       flag.monthLabel,
-          T3_current:       flag.T3_current,
-          T3_prior:         flag.T3_prior,
-          T12:              flag.T12,
-          threshold:        flag.threshold,
-          movementFromPrior: flag.movementFromPrior,
-          movementFromT12:  flag.movementFromT12,
-          flaggedByPrior:   flag.flaggedByPrior,
-          flaggedByT12:     flag.flaggedByT12,
-          direction:        flag.direction,
-        };
+    function fmtLocal(n) {
+      if (n == null) return '—';
+      return '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
 
-        cardEl.innerHTML = `<button class="close-card" title="Close">✕</button>
-          <div class="ea-detail">
-            <div class="ea-detail-title">${escHtml(d.metricName)} — ${escHtml(d.monthLabel)}</div>
-            <div class="ea-detail-body">
-              <div class="ea-detail-row">
-                <span>T3 Current (annualized)</span>
-                <span>${fmt(d.T3_current)}</span>
-              </div>
-              <div class="ea-detail-row">
-                <span>T3 Prior (annualized)</span>
-                <span>${fmt(d.T3_prior)}</span>
-              </div>
-              <div class="ea-detail-row">
-                <span>T12</span>
-                <span>${fmt(d.T12)}</span>
-              </div>
-              <div class="ea-detail-row">
-                <span>Threshold (0.1% of purchase price)</span>
-                <span>${fmt(d.threshold)}</span>
-              </div>
-              <div class="ea-detail-row ${d.flaggedByPrior ? 'ea-detail-flagged' : ''}">
-                <span>Movement vs T3 Prior</span>
-                <span>${fmt(d.movementFromPrior)} ${d.flaggedByPrior ? '⚠ exceeds threshold' : ''}</span>
-              </div>
-              <div class="ea-detail-row ${d.flaggedByT12 ? 'ea-detail-flagged' : ''}">
-                <span>Movement vs T12</span>
-                <span>${fmt(d.movementFromT12)} ${d.flaggedByT12 ? '⚠ exceeds threshold' : ''}</span>
-              </div>
-            </div>
-          </div>`;
-        cardEl.classList.add('open');
-      });
-    });
+    const content = `
+      <div class="ea-detail">
+        <div class="ea-detail-title">${escHtml(metricName)} — ${escHtml(monthLabel)}</div>
+        <div class="ea-detail-body">
+          <div class="ea-detail-row"><span>T3 Current (annualized)</span><span>${fmtLocal(t3Current)}</span></div>
+          <div class="ea-detail-row"><span>T3 Prior (annualized)</span><span>${fmtLocal(t3Prior)}</span></div>
+          <div class="ea-detail-row"><span>T12</span><span>${fmtLocal(t12)}</span></div>
+          <div class="ea-detail-row"><span>Threshold (0.1% of purchase price)</span><span>${fmtLocal(threshold)}</span></div>
+          <div class="ea-detail-row ${flaggedByPrior ? 'ea-detail-flagged' : ''}">
+            <span>Movement vs T3 Prior</span>
+            <span>${fmtLocal(movementFromPrior)} ${flaggedByPrior ? '⚠ exceeds threshold' : ''}</span>
+          </div>
+          <div class="ea-detail-row ${flaggedByT12 ? 'ea-detail-flagged' : ''}">
+            <span>Movement vs T12</span>
+            <span>${fmtLocal(movementFromT12)} ${flaggedByT12 ? '⚠ exceeds threshold' : ''}</span>
+          </div>
+          <div class="ea-detail-row"><span>Direction</span><span>${direction === 'up' ? '▲ Up' : '▼ Down'}</span></div>
+        </div>
+      </div>`;
+
+    cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
+    cardEl.classList.add('open');
   }
 
   // ── HELPERS ───────────────────────────────────────────
@@ -849,6 +825,7 @@ const UI = (() => {
     renderSummaryBadges,
     renderRuleCandidates,
     renderExecutiveTable,
+    openEADetail,
     getCellClass,
     fmt,
     fmtPct,
