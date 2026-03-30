@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         '&distinct_property_count=gte.3' +
         '&occurrences_since_last_dismissal=gte.20' +
         '&dismissal_count=lt.5' +
-        '&select=id,metric_name,section,pattern_type,pattern_description,total_occurrences,distinct_property_count,dismissal_count' +
+        '&select=id,metric_name,section,pattern_type,pattern_description,total_occurrences,distinct_property_count,dismissal_count,suggested_rules' +
         '&order=total_occurrences.desc' +
         '&limit=5',
       { method: 'GET' }
