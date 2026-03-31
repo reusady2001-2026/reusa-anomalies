@@ -708,12 +708,13 @@ const UI = (() => {
 
     // ── Summary badges ────────────────────────────────
     if (badgesEl) {
-      const incomeFlags   = results.filter(r => r.section === 'INCOME').length;
-      const expenseFlags  = results.filter(r => r.section === 'EXPENSES').length;
+      const incomeCount  = results.filter(r => r.section === 'INCOME')
+        .reduce((sum, r) => sum + Object.keys(r.flags).length, 0);
+      const expenseCount = results.filter(r => r.section === 'EXPENSES')
+        .reduce((sum, r) => sum + Object.keys(r.flags).length, 0);
       badgesEl.innerHTML =
-        `<span class="summary-badge summary-badge--total">⚠ Flagged Metrics <strong>${results.length}</strong></span>` +
-        `<span class="summary-badge summary-badge--income">▲ Income <strong>${incomeFlags}</strong></span>` +
-        `<span class="summary-badge summary-badge--expense">▼ Expenses <strong>${expenseFlags}</strong></span>`;
+        `<span class="summary-badge summary-badge--income">▲ Income Anomalies <strong>${incomeCount}</strong></span>` +
+        `<span class="summary-badge summary-badge--expense">▼ Expense Anomalies <strong>${expenseCount}</strong></span>`;
       badgesEl.classList.remove('hidden');
     }
 
