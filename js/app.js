@@ -1452,6 +1452,9 @@ const App = (() => {
       }
       state.dataContextEA = eaDataContext;
 
+      // Run Engine.analyse to populate zScores, trends, quarters etc. on metrics
+      state.resultEA = Engine.analyse(state.resultEA, purchasePrice, null, null);
+
       // ── Step 2: Populate metric.anomalies from EA flags ─
       state.executiveResult.results.forEach(flaggedMetric => {
         const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
@@ -1468,13 +1471,6 @@ const App = (() => {
       });
 
       // ── Step 3: Run enrichment pipeline ────────────────
-      state.resultEA.metrics.forEach(metric => {
-        const trends   = Engine.calcTrends(metric.values, state.resultEA.months);
-        const quarters = Engine.calcQuarters(metric.values, state.resultEA.months);
-        metric.trends   = trends;
-        metric.quarters = quarters;
-      });
-
       const eaReasons = RuleEngine.analyse(
         state.resultEA.metrics,
         state.resultEA.months,
