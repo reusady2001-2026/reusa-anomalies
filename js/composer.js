@@ -158,7 +158,7 @@ const SENTENCE_LIBRARY = {
       const dev = _deviation(ap), ref = _refLabel(ap);
       return `${_metricLabel(m)} was ${dev} vs. ${ref} in ${_monthLabel(anomaly)} — movement consistent with broader market conditions rather than a property-specific event.`;
     },
-    context: (anomaly, metric, dataContext, ap) => {
+    context: (anomaly, metric, dataContext, ap, m) => {
       const month = _monthLabel(anomaly);
       const parts = [];
       const ff = _fredValue(dataContext, 'fedfunds', month);
