@@ -104,8 +104,8 @@ const UI = (() => {
     html += '<thead><tr>';
     html += '<th class="metric-name-col">Metric</th>';
     dispLabels.forEach((m, ri) => {
-      const skipped = skippedRelIdxs.includes(ri);
-      html += `<th class="${skipped ? 'col-skipped' : ''}">${m}</th>`;
+      if (skippedRelIdxs.includes(ri)) return;
+      html += `<th>${m}</th>`;
     });
     html += '<th class="trend-col">Trend</th>';
     html += '<th class="trend-col">12M</th>';
@@ -131,8 +131,9 @@ const UI = (() => {
       // Section divider
       if (metric.section !== lastSection) {
         lastSection = metric.section;
+        const visibleColCount = dispLabels.length - skippedRelIdxs.length;
         html += `<tr class="section-header-row">
-          <td colspan="${dispLabels.length + 6}" class="section-header">${metric.section}</td>
+          <td colspan="${visibleColCount + 6}" class="section-header">${metric.section}</td>
         </tr>`;
       }
 
@@ -147,12 +148,7 @@ const UI = (() => {
       html += `<td class="metric-name">${escHtml(metric.name)}${_previewShort ? `<div class="reason-preview">${_previewShort}</div>` : ''}</td>`;
 
       dispLabels.forEach((_, ri) => {
-        const skipped = skippedRelIdxs.includes(ri);
-        if (skipped) {
-          const val = metric.displayValues ? metric.displayValues[ri] : 0;
-          html += `<td class="cell-skipped">${fmt(val)}</td>`;
-          return;
-        }
+        if (skippedRelIdxs.includes(ri)) return;
 
         const val = metric.displayValues ? metric.displayValues[ri] : 0;
         const z = metric.zScores && metric.zScores[ri];
@@ -731,7 +727,7 @@ const UI = (() => {
         if (parseInt(i) > lastFlaggedIdx) lastFlaggedIdx = parseInt(i);
       });
     });
-    const visibleMonths = months.slice(0, lastFlaggedIdx + 1);
+    const visibleMonths = months.slice(0, Math.min(lastFlaggedIdx + 1, months.length - 2));
 
     // ── Build table ───────────────────────────────────
     let html = '<div style="overflow-x:auto"><table class="anomaly-table ea-exec-table">';
