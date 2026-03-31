@@ -699,6 +699,7 @@ const UI = (() => {
   // ── EXECUTIVE TABLE ───────────────────────────────────
 
   function renderExecutiveTable(executiveResult, months) {
+    window._eaResult = executiveResult;
     const container = document.getElementById('ea-table-container');
     const badgesEl  = document.getElementById('ea-summary-badges');
     if (!container) return;
@@ -766,7 +767,7 @@ const UI = (() => {
           .replace(/'/g, "\\'")
           .replace(/\r/g, '')
           .replace(/\n/g, '\\n');
-        const onclickAttr = `UI.openEADetail(event,'${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}','${reasoningEscaped}')`;
+        const onclickAttr = `UI.openEADetail(event,'${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}','${reasoningEscaped}',${i})`;
         html += `<td class="${cellClass}" style="cursor:pointer;text-align:center" onclick="${escHtml(onclickAttr)}"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
       });
 
@@ -779,7 +780,7 @@ const UI = (() => {
 
   // ── EA DETAIL PANEL (called via inline onclick) ───────
 
-  function openEADetail(event, metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
+  function openEADetail(event, metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning, monthIdx) {
     if (event) event.stopPropagation();
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
@@ -789,29 +790,69 @@ const UI = (() => {
       return '$' + Math.round(Math.abs(n)).toLocaleString();
     }
 
-    const reasoningHtml = reasoning
-      ? `<div class="ea-detail-reasoning">${escHtml(reasoning).replace(/\n\n/g, '<br><br>')}</div>`
-      : '';
+    // Look up enriched reasonData from the stored result
+    const reasonData = window._eaResult?.results
+      ?.find(r => r.name === metricName)
+      ?.flags?.[monthIdx]?.reasonData;
+
+    // ── Reason boxes ──────────────────────────────────────
+    let reasonBoxHtml = '';
+    if (reasonData?.enrichedPrimary) {
+      reasonBoxHtml += `<div class="reason-box reason-box--primary">
+        <div class="reason-box-header">
+          <span class="reason-box-label">PRIMARY REASON</span>
+        </div>
+        <div class="reason-box-narrative">${escHtml(reasonData.enrichedPrimary)}</div>
+      </div>`;
+    } else if (reasoning) {
+      // Fallback to EA-generated reasoning if no enriched narrative
+      reasonBoxHtml += `<div class="reason-box reason-box--primary">
+        <div class="reason-box-header">
+          <span class="reason-box-label">PRIMARY REASON</span>
+        </div>
+        <div class="reason-box-narrative ea-detail-reasoning">${escHtml(reasoning).replace(/\n\n/g, '<br><br>')}</div>
+      </div>`;
+    }
+
+    if (reasonData?.enrichedAlternatives?.length > 0) {
+      reasonData.enrichedAlternatives.forEach((altText, idx) => {
+        if (!altText) return;
+        const altPreview = escHtml(altText.length > 80 ? altText.slice(0, 80) + '…' : altText);
+        reasonBoxHtml += `<details class="reason-box reason-box--alt">
+          <summary class="reason-box-summary">
+            <span class="reason-box-label">Alt ${idx + 1}</span>
+            <span class="reason-box-preview">${altPreview}</span>
+          </summary>
+          <div class="reason-box-body">
+            <div class="reason-box-narrative">${escHtml(altText)}</div>
+          </div>
+        </details>`;
+      });
+    }
+
+    // ── T3 / T12 data rows ────────────────────────────────
+    const dataRowsHtml = `
+      <div class="ea-detail-body" style="margin-top:12px;">
+        <div class="ea-detail-row"><span>T3 Current (annualized)</span><span>${fmtLocal(t3Current)}</span></div>
+        <div class="ea-detail-row"><span>T3 Prior (annualized)</span><span>${fmtLocal(t3Prior)}</span></div>
+        <div class="ea-detail-row"><span>T12</span><span>${fmtLocal(t12)}</span></div>
+        <div class="ea-detail-row"><span>Threshold (0.1% of purchase price)</span><span>${fmtLocal(threshold)}</span></div>
+        <div class="ea-detail-row ${flaggedByPrior ? 'ea-detail-flagged' : ''}">
+          <span>Movement vs T3 Prior</span>
+          <span>${fmtLocal(movementFromPrior)} ${flaggedByPrior ? '⚠ exceeds threshold' : ''}</span>
+        </div>
+        <div class="ea-detail-row ${flaggedByT12 ? 'ea-detail-flagged' : ''}">
+          <span>Movement vs T12</span>
+          <span>${fmtLocal(movementFromT12)} ${flaggedByT12 ? '⚠ exceeds threshold' : ''}</span>
+        </div>
+        <div class="ea-detail-row"><span>Direction</span><span>${direction === 'up' ? '▲ Up' : '▼ Down'}</span></div>
+      </div>`;
 
     const content = `
       <div class="ea-detail">
         <div class="ea-detail-title">${escHtml(metricName)} — ${escHtml(monthLabel)}</div>
-        ${reasoningHtml}
-        <div class="ea-detail-body">
-          <div class="ea-detail-row"><span>T3 Current (annualized)</span><span>${fmtLocal(t3Current)}</span></div>
-          <div class="ea-detail-row"><span>T3 Prior (annualized)</span><span>${fmtLocal(t3Prior)}</span></div>
-          <div class="ea-detail-row"><span>T12</span><span>${fmtLocal(t12)}</span></div>
-          <div class="ea-detail-row"><span>Threshold (0.1% of purchase price)</span><span>${fmtLocal(threshold)}</span></div>
-          <div class="ea-detail-row ${flaggedByPrior ? 'ea-detail-flagged' : ''}">
-            <span>Movement vs T3 Prior</span>
-            <span>${fmtLocal(movementFromPrior)} ${flaggedByPrior ? '⚠ exceeds threshold' : ''}</span>
-          </div>
-          <div class="ea-detail-row ${flaggedByT12 ? 'ea-detail-flagged' : ''}">
-            <span>Movement vs T12</span>
-            <span>${fmtLocal(movementFromT12)} ${flaggedByT12 ? '⚠ exceeds threshold' : ''}</span>
-          </div>
-          <div class="ea-detail-row"><span>Direction</span><span>${direction === 'up' ? '▲ Up' : '▼ Down'}</span></div>
-        </div>
+        ${reasonBoxHtml}
+        ${dataRowsHtml}
       </div>`;
 
     cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
