@@ -754,7 +754,7 @@ const UI = (() => {
       visibleMonths.forEach((_, i) => {
         const flag = result.flags[i];
         if (!flag) {
-          html += '<td class="cell-normal"></td>';
+          html += `<td class="cell-normal" style="font-size:10px;color:#64748b;text-align:right;padding:2px 4px;">${fmt(result.values[i])}</td>`;
           return;
         }
         const isIncome  = result.section === 'INCOME';
