@@ -913,22 +913,18 @@ const UI = (() => {
                            (!isIncome && flag.direction === 'down');
         const borderColor = isPositive ? '#22c55e' : '#f87171';
         const arrow = flag.direction === 'up' ? '▲' : '▼';
-        const triggerLabel = flag.flaggedByPrior && flag.flaggedByT12 ? 'T3 momentum + T12 drift'
+        const triggerLabel = flag.flaggedByPrior && flag.flaggedByT12 ? 'T3 + T12'
           : flag.flaggedByPrior ? 'T3 momentum'
           : 'T12 drift';
 
         return `
           <div class="ea-card"
             style="border-left: 4px solid ${borderColor};"
-            onclick="UI.openEACard(${idx})">
-            <div class="ea-card-header">
-              <span class="ea-card-name">${escHtml(flag.categoryName)}</span>
-              <span class="ea-card-section" style="color:${borderColor}">${escHtml(flag.section)}</span>
-            </div>
-            <div class="ea-card-meta">
-              <span>${arrow} ${fmtCard(flag.maxMovement)} in ${escHtml(flag.monthLabel)} — ${triggerLabel}</span>
-              <span style="color:#64748b">${escHtml(flag.monthLabel)}</span>
-            </div>
+            onclick="UI.openEACard(${idx}, event)">
+            <div class="ea-card-category">${escHtml(flag.categoryName)}</div>
+            <div class="ea-card-month">${escHtml(flag.monthLabel)}</div>
+            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.maxMovement)}</div>
+            <div class="ea-card-trigger">${triggerLabel}</div>
           </div>
         `;
       }).join('');
@@ -953,7 +949,7 @@ const UI = (() => {
     if (window._setEALimit) window._setEALimit(n);
   }
 
-  function openEACard(idx) {
+  function openEACard(idx, event) {
     const flag = window._eaCategoryResult?.flags?.[idx];
     if (!flag) return;
     const cardEl = document.getElementById('detail-card-ea');

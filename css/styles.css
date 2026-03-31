@@ -1526,43 +1526,49 @@ input[type="file"] { display: none; }
   border-color: rgba(255,255,255,0.3);
 }
 .ea-cards-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding-top: 8px;
 }
 .ea-card {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: background 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 100px;
 }
 .ea-card:hover {
   background: rgba(255,255,255,0.06);
 }
-.ea-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+.ea-card-category {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-.ea-card-name {
+.ea-card-month {
   font-size: 13px;
   font-weight: 600;
   color: #e2e8f0;
   font-family: 'JetBrains Mono', monospace;
 }
-.ea-card-section {
-  font-size: 11px;
+.ea-card-movement {
+  font-size: 16px;
+  font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
+  margin-top: 4px;
 }
-.ea-card-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #94a3b8;
+.ea-card-trigger {
+  font-size: 10px;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
 }
 [data-theme="light"] .ea-card {
   background: rgba(0,0,0,0.02);
@@ -1571,6 +1577,8 @@ input[type="file"] { display: none; }
 [data-theme="light"] .ea-card:hover {
   background: rgba(0,0,0,0.04);
 }
-[data-theme="light"] .ea-card-name { color: #1e293b; }
+[data-theme="light"] .ea-card-category { color: #94a3b8; }
+[data-theme="light"] .ea-card-month { color: #1e293b; }
+[data-theme="light"] .ea-card-trigger { color: #64748b; }
 [data-theme="light"] .ea-filter-btn { color: #475569; border-color: rgba(0,0,0,0.12); }
 [data-theme="light"] .ea-filter-btn.active { background: rgba(0,0,0,0.06); color: #1e293b; }
