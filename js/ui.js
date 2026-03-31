@@ -766,7 +766,7 @@ const UI = (() => {
           .replace(/'/g, "\\'")
           .replace(/\r/g, '')
           .replace(/\n/g, '\\n');
-        const onclickAttr = `UI.openEADetail('${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}','${reasoningEscaped}')`;
+        const onclickAttr = `UI.openEADetail(event,'${escHtml(result.name).replace(/'/g,"\\'")}','${flag.monthLabel}',${flag.T3_current},${flag.T3_prior},${flag.T12},${flag.threshold},${flag.movementFromPrior},${flag.movementFromT12},${flag.flaggedByPrior},${flag.flaggedByT12},'${flag.direction}','${reasoningEscaped}')`;
         html += `<td class="${cellClass}" style="cursor:pointer;text-align:center" onclick="${escHtml(onclickAttr)}"><span style="font-size:10px">${isUp ? '▲' : '▼'} ${displayVal}</span></td>`;
       });
 
@@ -779,7 +779,8 @@ const UI = (() => {
 
   // ── EA DETAIL PANEL (called via inline onclick) ───────
 
-  function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
+  function openEADetail(event, metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
+    if (event) event.stopPropagation();
     console.log('[EA] openEADetail called', document.getElementById('detail-card-ea'));
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
