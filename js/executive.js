@@ -350,4 +350,24 @@ function analyseCategories(metrics, months, purchasePrice) {
   return { flags: allFlags, threshold, months };
 }
 
-const Executive = { analyse, generateEANarrative, computeCategoryTotals, analyseCategories };
+function computeMetricT3T12(metric, monthIdx) {
+  const values = metric.values || [];
+  const i = monthIdx;
+
+  const t3Vals = [values[i-2], values[i-1], values[i]];
+  if (t3Vals.some(v => v == null)) return null;
+  const T3_current = t3Vals.reduce((a,b) => a+b, 0) * 4;
+
+  const t3PriorVals = [values[i-3], values[i-2], values[i-1]];
+  if (t3PriorVals.some(v => v == null)) return null;
+  const T3_prior = t3PriorVals.reduce((a,b) => a+b, 0) * 4;
+
+  if (i < 11) return null;
+  const t12Vals = values.slice(i-11, i+1);
+  if (t12Vals.some(v => v == null)) return null;
+  const T12 = t12Vals.reduce((a,b) => a+b, 0);
+
+  return { T3_current, T3_prior, T12 };
+}
+
+const Executive = { analyse, generateEANarrative, computeCategoryTotals, analyseCategories, computeMetricT3T12, CATEGORY_MAP };

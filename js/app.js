@@ -1442,6 +1442,8 @@ const App = (() => {
         state.resultEA.months,
         purchasePrice
       );
+      state.executiveResult.metrics = state.resultEA.metrics;
+      state.executiveResult.months  = state.resultEA.months;
       UI.renderEACards(state.executiveResult);
     });
 

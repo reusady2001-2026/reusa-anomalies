@@ -950,17 +950,75 @@ const UI = (() => {
   }
 
   function openEACard(idx, event) {
+    if (event) event.stopPropagation();
     const flag = window._eaCategoryResult?.flags?.[idx];
     if (!flag) return;
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
-    cardEl.innerHTML = `<button class="close-card" title="Close">✕</button>
+
+    const metrics  = window._eaCategoryResult?.metrics || [];
+    const monthIdx = flag.monthIdx;
+
+    const categoryMetricNames = Executive.CATEGORY_MAP?.[flag.categoryName] || [];
+    const categoryMetrics = metrics.filter(m => categoryMetricNames.includes(m.name));
+
+    function fmtDetail(n) {
+      if (n == null) return '—';
+      return (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
+
+    let totalT3 = 0, totalT3Prior = 0, totalT12 = 0;
+    const rows = categoryMetrics.map(metric => {
+      const t = Executive.computeMetricT3T12(metric, monthIdx);
+      if (!t) return null;
+      totalT3      += t.T3_current;
+      totalT3Prior += t.T3_prior;
+      totalT12     += t.T12;
+      return { name: metric.name, ...t };
+    }).filter(Boolean);
+
+    const rowsHtml = rows.map(r => `
+      <tr>
+        <td class="ea-detail-td">${escHtml(r.name)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_current)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_prior)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T12)}</td>
+      </tr>
+    `).join('');
+
+    const isIncome  = flag.section === 'INCOME';
+    const isPositive = (isIncome && flag.direction === 'up') || (!isIncome && flag.direction === 'down');
+    const arrow = flag.direction === 'up' ? '▲' : '▼';
+
+    const content = `
       <div style="padding:16px">
-        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:8px;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">${escHtml(flag.monthLabel)} — detail coming soon</div>
-      </div>`;
-    if (event) event.stopPropagation();
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th class="ea-detail-th">Metric</th>
+              <th class="ea-detail-th ea-detail-num">T3 Current</th>
+              <th class="ea-detail-th ea-detail-num">T3 Prior</th>
+              <th class="ea-detail-th ea-detail-num">T12</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr class="ea-detail-total-row">
+              <td class="ea-detail-td" style="font-weight:700">Total</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3)}</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3Prior)}</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT12)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
     cardEl.classList.add('open');
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   return {

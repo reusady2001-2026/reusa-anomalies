@@ -1582,3 +1582,32 @@ input[type="file"] { display: none; }
 [data-theme="light"] .ea-card-trigger { color: #64748b; }
 [data-theme="light"] .ea-filter-btn { color: #475569; border-color: rgba(0,0,0,0.12); }
 [data-theme="light"] .ea-filter-btn.active { background: rgba(0,0,0,0.06); color: #1e293b; }
+
+/* ── EA DETAIL TABLE ── */
+.ea-detail-th {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #64748b;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  text-transform: uppercase;
+}
+.ea-detail-td {
+  font-size: 12px;
+  color: #cbd5e1;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ea-detail-num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ea-detail-total-row td {
+  border-top: 1px solid rgba(255,255,255,0.12);
+  border-bottom: none;
+  color: #e2e8f0;
+}
+[data-theme="light"] .ea-detail-th { color: #475569; border-bottom-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .ea-detail-td { color: #334155; border-bottom-color: rgba(0,0,0,0.04); }
+[data-theme="light"] .ea-detail-total-row td { border-top-color: rgba(0,0,0,0.12); color: #1e293b; }
