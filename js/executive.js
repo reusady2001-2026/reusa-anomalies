@@ -55,6 +55,10 @@ function generateReasoning(metricName, section, flag) {
   return lines.join('\n\n');
 }
 
+function isSporadic(metric) {
+  return metric.type === 'sporadic';
+}
+
 function analyse(metrics, months, purchasePrice, stateAbbr, city) {
   const threshold = (purchasePrice || 0) * THRESHOLD_RATE;
   const results = [];
@@ -62,6 +66,7 @@ function analyse(metrics, months, purchasePrice, stateAbbr, city) {
   metrics.forEach(metric => {
     const values = metric.values || [];
     const flags = {}; // monthIdx → flag details
+    const sporadic = isSporadic(metric);
 
     months.forEach((monthLabel, i) => {
       // Skip first 12 months
@@ -72,19 +77,21 @@ function analyse(metrics, months, purchasePrice, stateAbbr, city) {
       const v = values[i];
       if (v == null) return;
 
+      const nullIfSporadic = val => (sporadic && val === 0) ? null : val;
+
       // T3_current: sum of values[i-2], values[i-1], values[i], annualized ×4
-      const t3Vals = [values[i-2], values[i-1], values[i]];
+      const t3Vals = [values[i-2], values[i-1], values[i]].map(nullIfSporadic);
       if (t3Vals.some(v => v == null)) return;
       const T3_current = t3Vals.reduce((a,b) => a+b, 0) * 4;
 
       // T3_prior: sum of values[i-3], values[i-2], values[i-1], annualized ×4
-      const t3PriorVals = [values[i-3], values[i-2], values[i-1]];
+      const t3PriorVals = [values[i-3], values[i-2], values[i-1]].map(nullIfSporadic);
       if (t3PriorVals.some(v => v == null)) return;
       const T3_prior = t3PriorVals.reduce((a,b) => a+b, 0) * 4;
 
       // T12: sum of values[i-11] through values[i]
       if (i < 11) return;
-      const t12Vals = values.slice(i-11, i+1);
+      const t12Vals = values.slice(i-11, i+1).map(nullIfSporadic);
       if (t12Vals.some(v => v == null)) return;
       const T12 = t12Vals.reduce((a,b) => a+b, 0);
 
