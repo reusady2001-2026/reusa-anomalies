@@ -134,7 +134,6 @@ function generateEANarrative(metricName, section, flag, dataContext, monthLabel,
   const isIncome = section === 'INCOME';
   const isUp = direction === 'up' || (T3_current > T3_prior);
   const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString();
-  console.log('[EA-DEBUG] direction param:', direction, 'T3_current:', T3_current, 'T3_prior:', T3_prior, 'isUp:', isUp);
 
   // Pull actual data points from context
   const fred = dataContext?.fred || {};

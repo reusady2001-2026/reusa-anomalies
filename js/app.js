@@ -1468,7 +1468,7 @@ const App = (() => {
         state.cloudHistory
       );
 
-      // ── Step 3: Seed metric.anomalies + _eaOverride AFTER enrichAll ────
+      // ── Step 3: Seed metric.anomalies AFTER enrichAll ────
       state.executiveResult.results.forEach(flaggedMetric => {
         const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
         if (!metric) return;
@@ -1478,10 +1478,7 @@ const App = (() => {
           const flag = state.executiveResult.results
             .find(r => r.name === metric.name)?.flags?.[idx];
 
-          const t3Movement  = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
-          const t12Movement = flag ? Math.abs(flag.T3_current - flag.T12) : 0;
-          const deviation   = flag ? t3Movement : 0;
-          const direction   = flag?.direction === 'up' ? 'above' : 'below';
+          const deviation = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
 
           if (!metric.reasonData[idx]) metric.reasonData[idx] = {
             monthLabel: state.resultEA.months[idx],
@@ -1489,14 +1486,6 @@ const App = (() => {
             alternatives: [],
           };
           metric.reasonData[idx].effectiveZ = deviation / (flag?.threshold || 1);
-          metric.reasonData[idx]._eaOverride = {
-            deviation,
-            direction,
-            T3_current: flag?.T3_current,
-            T3_prior:   flag?.T3_prior,
-            T12:        flag?.T12,
-            threshold:  flag?.threshold,
-          };
           metric.reasonData[idx]._eaMode = true;
         });
       });
@@ -1520,17 +1509,14 @@ const App = (() => {
           metric.reasonData[relIdx].situationProfile  = situationProfile;
           metric.reasonData[relIdx].narrativeResult   = narrativeResult;
           // Use EA-specific narrative instead of OA composer output
-          const eaFlag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
-          console.log('[EA-DEBUG] flag keys:', eaFlag ? Object.keys(eaFlag) : 'null');
-          console.log('[EA-DEBUG] flag._eaOverride:', JSON.stringify(eaFlag?._eaOverride));
-          const flagData = {
-            T3_current: eaFlag?._eaOverride?.T3_current,
-            T3_prior:   eaFlag?._eaOverride?.T3_prior,
-            T12:        eaFlag?._eaOverride?.T12,
-            deviation:  eaFlag?._eaOverride?.deviation,
-            direction:  eaFlag?._eaOverride?.direction,
-          };
-          console.log('[EA-DEBUG] flagData:', JSON.stringify(flagData));
+          const flag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
+          const flagData = flag ? {
+            T3_current: flag.T3_current,
+            T3_prior:   flag.T3_prior,
+            T12:        flag.T12,
+            deviation:  flag.movementFromPrior,
+            direction:  flag.direction,
+          } : {};
           const eaNarrative = Executive.generateEANarrative(
             metric.name,
             metric.section,
@@ -1559,7 +1545,6 @@ const App = (() => {
               .filter(n => n.length > 0)
               .slice(0, 4);
           }
-          console.log('[EA-DEBUG] enrichedAlternatives:', metric.reasonData[relIdx]?.enrichedAlternatives);
           flaggedMetric.flags[relIdx].reasonData = metric.reasonData[relIdx];
         });
       });
