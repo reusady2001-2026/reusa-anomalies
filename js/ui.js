@@ -901,7 +901,7 @@ const UI = (() => {
           <span class="ea-label">Show top:</span>
           ${filterOptions.map(n => `
             <button class="ea-filter-btn ${n === limit ? 'active' : ''}"
-              onclick="UI.setEALimit(${n})">${n}</button>
+              onclick="window._setEALimit(${n})">${n}</button>
           `).join('')}
           <span class="ea-label" style="margin-left:12px;">of ${results.length} anomalies detected</span>
         </div>
@@ -938,15 +938,16 @@ const UI = (() => {
 
     window._eaCategoryResult = executiveResult;
     window._eaCurrentLimit = filterOptions[0];
+    window._setEALimit = function(n) {
+      window._eaCurrentLimit = n;
+      renderCards(n);
+    };
 
     renderCards(window._eaCurrentLimit);
-
-    UI._renderEACards = renderCards;
   }
 
   function setEALimit(n) {
-    window._eaCurrentLimit = n;
-    if (UI._renderEACards) UI._renderEACards(n);
+    if (window._setEALimit) window._setEALimit(n);
   }
 
   function openEACard(idx) {

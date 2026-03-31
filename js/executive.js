@@ -265,6 +265,7 @@ function analyseCategories(metrics, months, purchasePrice) {
     const flags = {};
 
     months.forEach((monthLabel, i) => {
+      if (i >= months.length - 2) return; // skip last 2 months
       if (i < MIN_MONTHS_REQUIRED) return;
       if (i < 3) return;
 
