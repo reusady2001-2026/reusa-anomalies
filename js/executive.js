@@ -180,7 +180,7 @@ function generateEANarrative(metricName, section, flag, dataContext, monthLabel,
   let narrative = `${metricName}'s annualized run rate ${movementWord} ${fmt(deviation)} vs. the prior quarter in ${monthLabel}.`;
 
   if (evidence.length > 0) {
-    narrative += ` ${evidence.slice(0, 2).join('; ')}.`;
+    narrative += ` ${evidence.slice(0, 2).join('. ')}.`;
   }
 
   // Add interpretation

@@ -1521,10 +1521,17 @@ const App = (() => {
           metric.reasonData[relIdx].narrativeResult   = narrativeResult;
           // Use EA-specific narrative instead of OA composer output
           const eaFlag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
+          const flagData = {
+            T3_current: eaFlag?._eaOverride?.T3_current,
+            T3_prior:   eaFlag?._eaOverride?.T3_prior,
+            T12:        eaFlag?._eaOverride?.T12,
+            deviation:  eaFlag?._eaOverride?.deviation,
+            direction:  eaFlag?._eaOverride?.direction,
+          };
           const eaNarrative = Executive.generateEANarrative(
             metric.name,
             metric.section,
-            eaFlag,
+            flagData,
             eaDataContext,
             state.resultEA.months[relIdx],
             state.stateEA
