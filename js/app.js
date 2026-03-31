@@ -45,6 +45,7 @@ const App = (() => {
     propertyNameEA: '',
     stateEA: '',
     cityEA: '',
+    dataContextEA: {},
   };
 
   // ── LOCATION STORAGE KEYS ─────────────────────────────
@@ -223,6 +224,7 @@ const App = (() => {
     state.propertyNameEA = '';
     state.stateEA = '';
     state.cityEA = '';
+    state.dataContextEA = {};
     const runExecBtn = document.getElementById('btn-run-executive');
     if (runExecBtn) runExecBtn.disabled = true;
   }
@@ -1420,7 +1422,7 @@ const App = (() => {
         btn.disabled = false;
       }
     });
-    document.getElementById('btn-run-executive')?.addEventListener('click', () => {
+    document.getElementById('btn-run-executive')?.addEventListener('click', async () => {
       if (!state.resultEA) return;
 
       state.propertyNameEA = document.getElementById('ea-property-name')?.value.trim() || 'Unknown Property';
@@ -1440,6 +1442,90 @@ const App = (() => {
         state.stateEA,
         state.cityEA
       );
+
+      // ── Step 1: Fetch data context ──────────────────────
+      let eaDataContext = {};
+      if (state.stateEA && state.cityEA) {
+        eaDataContext = await Context.fetchDataContext(
+          state.stateEA, state.cityEA, state.resultEA.months
+        );
+      }
+      state.dataContextEA = eaDataContext;
+
+      // ── Step 2: Populate metric.anomalies from EA flags ─
+      state.executiveResult.results.forEach(flaggedMetric => {
+        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
+        if (!metric) return;
+        metric.anomalies = Object.keys(flaggedMetric.flags).map(Number);
+        if (!metric.reasonData) metric.reasonData = {};
+        metric.anomalies.forEach(idx => {
+          if (!metric.reasonData[idx]) metric.reasonData[idx] = {
+            monthLabel: state.resultEA.months[idx],
+            primary: { label: 'EA flag' },
+            alternatives: [],
+          };
+        });
+      });
+
+      // ── Step 3: Run enrichment pipeline ────────────────
+      state.resultEA.metrics.forEach(metric => {
+        const trends   = Engine.calcTrends(metric.values, state.resultEA.months);
+        const quarters = Engine.calcQuarters(metric.values, state.resultEA.months);
+        metric.trends   = trends;
+        metric.quarters = quarters;
+      });
+
+      const eaReasons = RuleEngine.analyse(
+        state.resultEA.metrics,
+        state.resultEA.months,
+        getAssetInfo('a')
+      );
+
+      const eaEnriched = Enrichment.enrichAll(
+        state.resultEA,
+        eaReasons,
+        eaDataContext,
+        state.cloudHistory
+      );
+
+      state.executiveResult.results.forEach(flaggedMetric => {
+        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
+        if (!metric) return;
+        (metric.anomalies || []).forEach(relIdx => {
+          if (!metric.reasonData?.[relIdx]) return;
+          metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
+            metric, relIdx, state.resultEA.metrics, state.resultEA.months,
+            [], state.cloudHistory
+          );
+          const situationProfile = Narrator.profile(
+            metric.reasonData[relIdx], metric, eaDataContext
+          );
+          const narrativeResult = Composer.compose(
+            metric.reasonData[relIdx], metric, eaDataContext, situationProfile
+          );
+          metric.reasonData[relIdx].situationProfile  = situationProfile;
+          metric.reasonData[relIdx].narrativeResult   = narrativeResult;
+          if (narrativeResult?.narrative) {
+            metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+          }
+          if (situationProfile?.rankedAngles) {
+            const altAngles     = situationProfile.rankedAngles.slice(1);
+            const existingAlts  = metric.reasonData[relIdx].alternatives || [];
+            metric.reasonData[relIdx].enrichedAlternatives = altAngles
+              .slice(0, Math.max(existingAlts.length || 3, 2))
+              .filter(angle => angle !== 'ANOMALY_ALERT')
+              .map(altAngle => {
+                const altResult = Composer.compose(
+                  metric.reasonData[relIdx], metric, eaDataContext, situationProfile, altAngle
+                );
+                return altResult?.narrative || '';
+              })
+              .filter(n => n.length > 0)
+              .slice(0, 4);
+          }
+          flaggedMetric.flags[relIdx].reasonData = metric.reasonData[relIdx];
+        });
+      });
 
       UI.renderExecutiveTable(state.executiveResult, state.resultEA.months);
     });
