@@ -304,6 +304,32 @@ const Enricher = (() => {
   // Then computes the dollar deviation and optional % of NOI context.
 
   function _dollarImpactAndReference(metric, monthIdx, allMetrics) {
+    // EA override — use T3 movement as deviation instead of Z-score based deviation
+    if (metric.reasonData?.[monthIdx]?._eaOverride) {
+      const ov = metric.reasonData[monthIdx]._eaOverride;
+      const absDeviation = ov.deviation;
+      return {
+        referencePoint: {
+          type:             'ea_t3',
+          value:            ov.T3_prior,
+          humanLabel:       'prior T3 (annualized)',
+          deltaPct:         ov.T3_prior !== 0 ? (ov.T3_current - ov.T3_prior) / Math.abs(ov.T3_prior) : 0,
+          formattedDeltaPct: ov.T3_prior !== 0
+            ? `${((ov.T3_current - ov.T3_prior) / Math.abs(ov.T3_prior) * 100).toFixed(1)}%`
+            : '—',
+        },
+        dollarImpact: {
+          deviation:          ov.T3_current - ov.T3_prior,
+          absDeviation,
+          direction:          ov.direction,
+          pctOfNoi:           null,
+          formattedDeviation: '$' + Math.round(absDeviation).toLocaleString(),
+          formattedPctOfNoi:  null,
+          description:        `T3 moved $${Math.round(absDeviation).toLocaleString()} vs prior T3`,
+        },
+      };
+    }
+
     const vals  = metric.values || [];
     const mean  = metric.mean   || 0;
     const fmt   = new Intl.NumberFormat('en-US', {

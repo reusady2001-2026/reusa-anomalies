@@ -1462,11 +1462,30 @@ const App = (() => {
         metric.anomalies = Object.keys(flaggedMetric.flags).map(Number);
         if (!metric.reasonData) metric.reasonData = {};
         metric.anomalies.forEach(idx => {
-          if (!metric.reasonData[idx]) metric.reasonData[idx] = {
-            monthLabel: state.resultEA.months[idx],
-            primary: { label: 'EA flag' },
-            alternatives: [],
-          };
+          if (!metric.reasonData[idx]) {
+            const flag = state.executiveResult.results
+              .find(r => r.name === metric.name)?.flags?.[idx];
+
+            const t3Movement  = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
+            const t12Movement = flag ? Math.abs(flag.T3_current - flag.T12) : 0;
+            const deviation   = flag ? Math.max(t3Movement, t12Movement) : 0;
+            const direction   = flag?.direction === 'up' ? 'above' : 'below';
+
+            metric.reasonData[idx] = {
+              monthLabel: state.resultEA.months[idx],
+              effectiveZ: deviation / (flag?.threshold || 1),
+              primary: { label: 'EA flag' },
+              alternatives: [],
+              _eaOverride: {
+                deviation,
+                direction,
+                T3_current: flag?.T3_current,
+                T3_prior:   flag?.T3_prior,
+                T12:        flag?.T12,
+                threshold:  flag?.threshold,
+              },
+            };
+          }
         });
       });
 
