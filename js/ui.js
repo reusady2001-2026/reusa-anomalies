@@ -867,6 +867,102 @@ const UI = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  function renderEACards(executiveResult) {
+    const container = document.getElementById('ea-table-container');
+    if (!container) return;
+
+    const { results, threshold } = executiveResult;
+    if (!results || results.length === 0) {
+      container.innerHTML = '<div style="padding:24px;color:#64748b;">No category anomalies detected.</div>';
+      return;
+    }
+
+    const filterOptions = [10, 25, 50, 100];
+
+    function fmtCard(n) {
+      if (n == null) return '—';
+      return '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
+
+    function renderCards(limit) {
+      const shown = results.slice(0, limit);
+      const incomeCount  = shown.filter(r => r.section === 'INCOME').length;
+      const expenseCount = shown.filter(r => r.section === 'EXPENSES').length;
+
+      const badges = `
+        <div class="summary-badges" id="ea-summary-badges">
+          <span class="summary-badge badge-income">▲ Income Anomalies ${incomeCount}</span>
+          <span class="summary-badge badge-expense">▼ Expense Anomalies ${expenseCount}</span>
+        </div>
+      `;
+
+      const filterHtml = `
+        <div class="ea-filter-row">
+          <span class="ea-label">Show top:</span>
+          ${filterOptions.map(n => `
+            <button class="ea-filter-btn ${n === limit ? 'active' : ''}"
+              onclick="UI.setEALimit(${n})">${n}</button>
+          `).join('')}
+          <span class="ea-label" style="margin-left:12px;">of ${results.length} anomalies detected</span>
+        </div>
+      `;
+
+      const cardsHtml = shown.map((result, idx) => {
+        const isIncome  = result.section === 'INCOME';
+        const isPositive = (isIncome && result.worstDirection === 'up') ||
+                           (!isIncome && result.worstDirection === 'down');
+        const borderColor = isPositive ? '#22c55e' : '#f87171';
+        const arrow = result.worstDirection === 'up' ? '▲' : '▼';
+
+        return `
+          <div class="ea-card"
+            style="border-left: 4px solid ${borderColor};"
+            onclick="UI.openEACard(${idx})">
+            <div class="ea-card-header">
+              <span class="ea-card-name">${escHtml(result.name)}</span>
+              <span class="ea-card-section" style="color:${borderColor}">${escHtml(result.section)}</span>
+            </div>
+            <div class="ea-card-meta">
+              <span>${arrow} ${fmtCard(result.worstMovement)} movement in ${escHtml(result.worstMonthLabel)}</span>
+              <span style="color:#64748b">${Object.keys(result.flags).length} flagged month${Object.keys(result.flags).length > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = badges + filterHtml + `<div class="ea-cards-grid">${cardsHtml}</div>`;
+
+      const detailEl = document.getElementById('detail-card-ea');
+      if (detailEl) detailEl.classList.remove('open');
+    }
+
+    window._eaCategoryResult = executiveResult;
+    window._eaCurrentLimit = filterOptions[0];
+
+    renderCards(window._eaCurrentLimit);
+
+    UI._renderEACards = renderCards;
+  }
+
+  function setEALimit(n) {
+    window._eaCurrentLimit = n;
+    if (UI._renderEACards) UI._renderEACards(n);
+  }
+
+  function openEACard(idx) {
+    const result = window._eaCategoryResult?.results?.[idx];
+    if (!result) return;
+    const cardEl = document.getElementById('detail-card-ea');
+    if (!cardEl) return;
+    cardEl.innerHTML = `<button class="close-card" title="Close">✕</button>
+      <div style="padding:16px">
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:8px;">${escHtml(result.name)}</div>
+        <div style="font-size:12px;color:#94a3b8">${Object.keys(result.flags).length} flagged months — detail coming soon</div>
+      </div>`;
+    if (event) event.stopPropagation();
+    cardEl.classList.add('open');
+  }
+
   return {
     renderTable,
     renderComparisonTable,
@@ -876,6 +972,9 @@ const UI = (() => {
     renderRuleCandidates,
     renderExecutiveTable,
     openEADetail,
+    renderEACards,
+    setEALimit,
+    openEACard,
     getCellClass,
     fmt,
     fmtPct,

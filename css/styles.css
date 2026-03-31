@@ -1502,3 +1502,75 @@ input[type="file"] { display: none; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #bdbdbd; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9e9e9e; }
+
+/* ── EA CARDS ── */
+.ea-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 16px;
+}
+.ea-filter-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ea-filter-btn.active {
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.3);
+}
+.ea-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ea-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ea-card:hover {
+  background: rgba(255,255,255,0.06);
+}
+.ea-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ea-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ea-card-section {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+.ea-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}
+[data-theme="light"] .ea-card {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .ea-card:hover {
+  background: rgba(0,0,0,0.04);
+}
+[data-theme="light"] .ea-card-name { color: #1e293b; }
+[data-theme="light"] .ea-filter-btn { color: #475569; border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .ea-filter-btn.active { background: rgba(0,0,0,0.06); color: #1e293b; }

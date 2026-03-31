@@ -41,6 +41,7 @@ const App = (() => {
     ruleCandidates: [],
     isSaved: false,
     executiveResult: null,
+    executiveCategoryResult: null,
     resultEA: null,
     propertyNameEA: '',
     stateEA: '',
@@ -220,6 +221,7 @@ const App = (() => {
     document.getElementById('save-analysis-btn')?.classList.add('hidden');
     state.isSaved = false;
     state.executiveResult = null;
+    state.executiveCategoryResult = null;
     state.resultEA = null;
     state.propertyNameEA = '';
     state.stateEA = '';
@@ -1435,128 +1437,12 @@ const App = (() => {
         return;
       }
 
-      state.executiveResult = Executive.analyse(
+      state.executiveResult = Executive.analyseCategories(
         state.resultEA.metrics,
         state.resultEA.months,
-        purchasePrice,
-        state.stateEA,
-        state.cityEA
+        purchasePrice
       );
-
-      // ── Step 1: Fetch data context ──────────────────────
-      let eaDataContext = {};
-      if (state.stateEA && state.cityEA) {
-        eaDataContext = await Context.fetchDataContext(
-          state.stateEA, state.cityEA, state.resultEA.months
-        );
-      }
-      state.dataContextEA = eaDataContext;
-
-      // ── Step 2: Engine.analyse → RuleEngine → Enrichment (must run before seeding _eaOverride) ──
-      state.resultEA = Engine.analyse(state.resultEA, purchasePrice, null, null);
-
-      const eaReasons = RuleEngine.analyse(
-        state.resultEA.metrics,
-        state.resultEA.months,
-        getAssetInfo('a')
-      );
-
-      const eaEnriched = Enrichment.enrichAll(
-        state.resultEA,
-        eaReasons,
-        eaDataContext,
-        state.cloudHistory
-      );
-
-      // ── Step 3: Seed metric.anomalies AFTER enrichAll ────
-      state.executiveResult.results.forEach(flaggedMetric => {
-        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
-        if (!metric) return;
-        metric.anomalies = Object.keys(flaggedMetric.flags).map(Number);
-        if (!metric.reasonData) metric.reasonData = {};
-        metric.anomalies.forEach(idx => {
-          const flag = state.executiveResult.results
-            .find(r => r.name === metric.name)?.flags?.[idx];
-
-          const deviation = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
-
-          if (!metric.reasonData[idx]) metric.reasonData[idx] = {
-            monthLabel: state.resultEA.months[idx],
-            primary: { label: 'EA flag' },
-            alternatives: [],
-          };
-          metric.reasonData[idx].effectiveZ = deviation / (flag?.threshold || 1);
-          metric.reasonData[idx]._eaMode = true;
-          metric.reasonData[idx]._eaFlagData = {
-            T3_current: flag?.T3_current,
-            T3_prior:   flag?.T3_prior,
-            T12:        flag?.T12,
-            deviation:  flag?.movementFromPrior,
-            direction:  flag?.direction,
-          };
-        });
-      });
-
-      // ── Step 4: Enricher.enrichAnomaly loop ─────────────
-      state.executiveResult.results.forEach(flaggedMetric => {
-        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
-        if (!metric) return;
-        (metric.anomalies || []).forEach(relIdx => {
-          if (!metric.reasonData?.[relIdx]) return;
-          metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
-            metric, relIdx, state.resultEA.metrics, state.resultEA.months,
-            [], state.cloudHistory
-          );
-          const situationProfile = Narrator.profile(
-            metric.reasonData[relIdx], metric, eaDataContext
-          );
-          const narrativeResult = Composer.compose(
-            metric.reasonData[relIdx], metric, eaDataContext, situationProfile
-          );
-          metric.reasonData[relIdx].situationProfile  = situationProfile;
-          metric.reasonData[relIdx].narrativeResult   = narrativeResult;
-          // Use EA-specific narrative instead of OA composer output
-          const flag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
-          const flagData = flag ? {
-            T3_current: flag.T3_current,
-            T3_prior:   flag.T3_prior,
-            T12:        flag.T12,
-            deviation:  flag.movementFromPrior,
-            direction:  flag.direction,
-          } : {};
-          const eaNarrative = Executive.generateEANarrative(
-            metric.name,
-            metric.section,
-            flagData,
-            eaDataContext,
-            state.resultEA.months[relIdx],
-            state.stateEA
-          );
-          if (eaNarrative) {
-            metric.reasonData[relIdx].enrichedPrimary = eaNarrative;
-          } else if (narrativeResult?.narrative) {
-            metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
-          }
-          if (situationProfile?.rankedAngles) {
-            const altAngles     = situationProfile.rankedAngles.slice(1);
-            const existingAlts  = metric.reasonData[relIdx].alternatives || [];
-            metric.reasonData[relIdx].enrichedAlternatives = altAngles
-              .slice(0, Math.max(existingAlts.length || 3, 2))
-              .filter(angle => angle !== 'ANOMALY_ALERT')
-              .map(altAngle => {
-                const altResult = Composer.compose(
-                  metric.reasonData[relIdx], metric, eaDataContext, situationProfile, altAngle
-                );
-                return altResult?.narrative || '';
-              })
-              .filter(n => n.length > 0)
-              .slice(0, 4);
-          }
-          flaggedMetric.flags[relIdx].reasonData = metric.reasonData[relIdx];
-        });
-      });
-
-      UI.renderExecutiveTable(state.executiveResult, state.resultEA.months);
+      UI.renderEACards(state.executiveResult);
     });
 
     document.getElementById('section-filter')?.addEventListener('change', e => {
