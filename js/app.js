@@ -1521,6 +1521,8 @@ const App = (() => {
           metric.reasonData[relIdx].narrativeResult   = narrativeResult;
           // Use EA-specific narrative instead of OA composer output
           const eaFlag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
+          console.log('[EA-DEBUG] flag keys:', eaFlag ? Object.keys(eaFlag) : 'null');
+          console.log('[EA-DEBUG] flag._eaOverride:', JSON.stringify(eaFlag?._eaOverride));
           const flagData = {
             T3_current: eaFlag?._eaOverride?.T3_current,
             T3_prior:   eaFlag?._eaOverride?.T3_prior,
@@ -1528,6 +1530,7 @@ const App = (() => {
             deviation:  eaFlag?._eaOverride?.deviation,
             direction:  eaFlag?._eaOverride?.direction,
           };
+          console.log('[EA-DEBUG] flagData:', JSON.stringify(flagData));
           const eaNarrative = Executive.generateEANarrative(
             metric.name,
             metric.section,
@@ -1556,6 +1559,7 @@ const App = (() => {
               .filter(n => n.length > 0)
               .slice(0, 4);
           }
+          console.log('[EA-DEBUG] enrichedAlternatives:', metric.reasonData[relIdx]?.enrichedAlternatives);
           flaggedMetric.flags[relIdx].reasonData = metric.reasonData[relIdx];
         });
       });

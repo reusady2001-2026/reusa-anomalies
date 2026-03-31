@@ -39,6 +39,7 @@ const Narrator = (() => {
   }
 
   function _scoreMarket(ap, metric, dataContext) {
+    console.log('[EA-DEBUG] _scoreMarket fema length:', dataContext?.fema?.length, 'metric:', metric?.name);
     let score = 0;
 
     if (ap.seasonalExpectation?.isSeasonalMonth === true) score += 2;
