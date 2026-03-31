@@ -255,4 +255,76 @@ function generateEANarrative(metricName, section, flag, dataContext, monthLabel,
   return narrative;
 }
 
-const Executive = { analyse, generateEANarrative, computeCategoryTotals };
+function analyseCategories(metrics, months, purchasePrice) {
+  const threshold = (purchasePrice || 0) * THRESHOLD_RATE;
+  const categories = computeCategoryTotals(metrics, months);
+  const results = [];
+
+  categories.forEach(category => {
+    const values = category.values;
+    const flags = {};
+
+    months.forEach((monthLabel, i) => {
+      if (i < MIN_MONTHS_REQUIRED) return;
+      if (i < 3) return;
+
+      const v = values[i];
+      if (v == null) return;
+
+      const t3Vals = [values[i-2], values[i-1], values[i]];
+      if (t3Vals.some(v => v == null)) return;
+      const T3_current = t3Vals.reduce((a,b) => a+b, 0) * 4;
+
+      const t3PriorVals = [values[i-3], values[i-2], values[i-1]];
+      if (t3PriorVals.some(v => v == null)) return;
+      const T3_prior = t3PriorVals.reduce((a,b) => a+b, 0) * 4;
+
+      if (i < 11) return;
+      const t12Vals = values.slice(i-11, i+1);
+      if (t12Vals.some(v => v == null)) return;
+      const T12 = t12Vals.reduce((a,b) => a+b, 0);
+
+      const movementFromPrior = Math.abs(T3_current - T3_prior);
+      const movementFromT12 = Math.abs(T3_current - T12);
+      const flaggedByPrior = movementFromPrior > threshold;
+      const flaggedByT12 = movementFromT12 > threshold;
+
+      if (flaggedByPrior || flaggedByT12) {
+        const direction = T3_current > T3_prior ? 'up' : 'down';
+        flags[i] = {
+          monthLabel,
+          T3_current,
+          T3_prior,
+          T12,
+          threshold,
+          movementFromPrior,
+          movementFromT12,
+          flaggedByPrior,
+          flaggedByT12,
+          direction,
+          maxMovement: Math.max(movementFromPrior, movementFromT12),
+        };
+      }
+    });
+
+    if (Object.keys(flags).length > 0) {
+      const worstFlag = Object.values(flags).sort((a,b) => b.maxMovement - a.maxMovement)[0];
+      results.push({
+        name: category.name,
+        section: category.section,
+        values: category.values,
+        flags,
+        worstMovement: worstFlag.maxMovement,
+        worstMonthLabel: worstFlag.monthLabel,
+        worstDirection: worstFlag.direction,
+        matchedMetricCount: category.matchedMetricCount,
+      });
+    }
+  });
+
+  results.sort((a, b) => b.worstMovement - a.worstMovement);
+
+  return { results, months, threshold };
+}
+
+const Executive = { analyse, generateEANarrative, computeCategoryTotals, analyseCategories };
