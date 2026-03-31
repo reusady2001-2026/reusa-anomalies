@@ -304,7 +304,6 @@ const Enricher = (() => {
   // Then computes the dollar deviation and optional % of NOI context.
 
   function _dollarImpactAndReference(metric, monthIdx, allMetrics) {
-    console.log('[Enricher] _dollarImpactAndReference called, _eaOverride:', metric.reasonData?.[monthIdx]?._eaOverride);
     // EA override — use T3 movement as deviation instead of Z-score based deviation
     if (metric.reasonData?.[monthIdx]?._eaOverride) {
       const ov = metric.reasonData[monthIdx]._eaOverride;

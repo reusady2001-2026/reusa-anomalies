@@ -1497,7 +1497,6 @@ const App = (() => {
             T12:        flag?.T12,
             threshold:  flag?.threshold,
           };
-          console.log('[EA] _eaOverride set:', metric.reasonData[idx]?._eaOverride);
         });
       });
 
