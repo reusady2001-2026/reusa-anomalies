@@ -618,8 +618,7 @@ input[type="file"] { display: none; }
 
 /* ── DETAIL CARD (fixed right panel) ── */
 #detail-card,
-#detail-card-comp,
-#detail-card-ea {
+#detail-card-comp {
   position: fixed;
   top: 0;
   right: 0;
@@ -634,9 +633,25 @@ input[type="file"] { display: none; }
   transition: transform 0.25s ease;
 }
 #detail-card.open,
-#detail-card-comp.open,
-#detail-card-ea.open {
+#detail-card-comp.open {
   transform: translateX(0);
+}
+
+/* ── EA DETAIL CARD (inline drawer below table) ── */
+#detail-card-ea {
+  position: relative;
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: #0c1322;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  margin-top: 12px;
+  border-radius: 6px;
+  padding: 0;
+}
+#detail-card-ea.open {
+  max-height: 800px;
 }
 .anomaly-card-header {
   display: flex;
@@ -990,11 +1005,15 @@ input[type="file"] { display: none; }
 
 /* ── LIGHT MODE OVERRIDES — detail panel & reason boxes ── */
 [data-theme="light"] #detail-card,
-[data-theme="light"] #detail-card-comp,
-[data-theme="light"] #detail-card-ea {
+[data-theme="light"] #detail-card-comp {
   background: #ffffff;
   color: #1e293b;
   box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+}
+[data-theme="light"] #detail-card-ea {
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 [data-theme="light"] .reason-box {
   background: rgba(0,0,0,0.02);

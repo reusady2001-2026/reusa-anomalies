@@ -816,6 +816,7 @@ const UI = (() => {
 
     cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
     cardEl.classList.add('open');
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   // ── HELPERS ───────────────────────────────────────────
