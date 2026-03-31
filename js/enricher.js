@@ -68,6 +68,9 @@ const Enricher = (() => {
   // Look forward up to 3 months. Compare values to metric.mean.
 
   function _recovery(metric, monthIdx) {
+    if (metric.reasonData?.[monthIdx]?._eaMode) {
+      return { status: 'unknown', monthsToResolve: null, description: 'Recovery tracking not applicable in executive analysis mode.' };
+    }
     const vals      = metric.values || [];
     const mean      = metric.mean   || 0;
     const available = vals.length - monthIdx - 1; // months of data after the anomaly

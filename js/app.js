@@ -1480,7 +1480,7 @@ const App = (() => {
 
           const t3Movement  = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
           const t12Movement = flag ? Math.abs(flag.T3_current - flag.T12) : 0;
-          const deviation   = flag ? Math.max(t3Movement, t12Movement) : 0;
+          const deviation   = flag ? t3Movement : 0;
           const direction   = flag?.direction === 'up' ? 'above' : 'below';
 
           if (!metric.reasonData[idx]) metric.reasonData[idx] = {
@@ -1497,6 +1497,7 @@ const App = (() => {
             T12:        flag?.T12,
             threshold:  flag?.threshold,
           };
+          metric.reasonData[idx]._eaMode = true;
         });
       });
 
