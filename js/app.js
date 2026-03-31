@@ -1487,6 +1487,13 @@ const App = (() => {
           };
           metric.reasonData[idx].effectiveZ = deviation / (flag?.threshold || 1);
           metric.reasonData[idx]._eaMode = true;
+          metric.reasonData[idx]._eaFlagData = {
+            T3_current: flag?.T3_current,
+            T3_prior:   flag?.T3_prior,
+            T12:        flag?.T12,
+            deviation:  flag?.movementFromPrior,
+            direction:  flag?.direction,
+          };
         });
       });
 

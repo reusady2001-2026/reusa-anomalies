@@ -126,6 +126,8 @@ const SENTENCE_LIBRARY = {
       return `${_metricLabel(m)} spiked ${dev} vs. ${ref} in ${_monthLabel(anomaly)}${_noiStr(ap)}${causeStr}.`;
     },
     context: (anomaly, metric, dataContext, ap, m) => {
+      const isIncome = (m?.section || '').toUpperCase() === 'INCOME';
+      if (dataContext?.fema?.length > 0 && isIncome) return ''; // FEMA doesn't explain income
       const month = _monthLabel(anomaly);
       const parts = [];
       const energyYoy = _yoyPct(dataContext, 'energyCPI', month, anomaly.allMonths || []);

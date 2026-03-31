@@ -307,6 +307,29 @@ const Enricher = (() => {
   // Then computes the dollar deviation and optional % of NOI context.
 
   function _dollarImpactAndReference(metric, monthIdx, allMetrics) {
+    if (metric.reasonData?.[monthIdx]?._eaFlagData) {
+      const f = metric.reasonData[monthIdx]._eaFlagData;
+      return {
+        referencePoint: {
+          type: 'ea_t3',
+          value: f.T3_prior,
+          humanLabel: 'prior T3 (annualized)',
+          deltaPct: f.T3_prior !== 0 ? (f.T3_current - f.T3_prior) / Math.abs(f.T3_prior) : 0,
+          formattedDeltaPct: f.T3_prior !== 0
+            ? `${((f.T3_current - f.T3_prior) / Math.abs(f.T3_prior) * 100).toFixed(1)}%`
+            : '—',
+        },
+        dollarImpact: {
+          deviation: f.deviation,
+          absDeviation: Math.abs(f.deviation),
+          direction: f.direction === 'up' ? 'above' : 'below',
+          pctOfNoi: null,
+          formattedDeviation: '$' + Math.round(Math.abs(f.deviation)).toLocaleString(),
+          formattedPctOfNoi: null,
+          description: `T3 moved $${Math.round(Math.abs(f.deviation)).toLocaleString()} vs prior T3`,
+        },
+      };
+    }
     const vals  = metric.values || [];
     const mean  = metric.mean   || 0;
     const fmt   = new Intl.NumberFormat('en-US', {
