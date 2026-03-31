@@ -323,9 +323,31 @@ function analyseCategories(metrics, months, purchasePrice) {
     }
   });
 
-  results.sort((a, b) => b.worstMovement - a.worstMovement);
+  const allFlags = [];
+  results.forEach(categoryResult => {
+    Object.entries(categoryResult.flags).forEach(([monthIdx, flag]) => {
+      allFlags.push({
+        categoryName: categoryResult.name,
+        section: categoryResult.section,
+        monthIdx: parseInt(monthIdx),
+        monthLabel: flag.monthLabel,
+        T3_current: flag.T3_current,
+        T3_prior: flag.T3_prior,
+        T12: flag.T12,
+        threshold: flag.threshold,
+        movementFromPrior: flag.movementFromPrior,
+        movementFromT12: flag.movementFromT12,
+        flaggedByPrior: flag.flaggedByPrior,
+        flaggedByT12: flag.flaggedByT12,
+        direction: flag.direction,
+        maxMovement: flag.maxMovement,
+      });
+    });
+  });
 
-  return { results, months, threshold };
+  allFlags.sort((a, b) => b.maxMovement - a.maxMovement);
+
+  return { flags: allFlags, threshold, months };
 }
 
 const Executive = { analyse, generateEANarrative, computeCategoryTotals, analyseCategories };
