@@ -1452,44 +1452,9 @@ const App = (() => {
       }
       state.dataContextEA = eaDataContext;
 
-      // Run Engine.analyse to populate zScores, trends, quarters etc. on metrics
+      // ── Step 2: Engine.analyse → RuleEngine → Enrichment (must run before seeding _eaOverride) ──
       state.resultEA = Engine.analyse(state.resultEA, purchasePrice, null, null);
 
-      // ── Step 2: Populate metric.anomalies from EA flags ─
-      state.executiveResult.results.forEach(flaggedMetric => {
-        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
-        if (!metric) return;
-        metric.anomalies = Object.keys(flaggedMetric.flags).map(Number);
-        if (!metric.reasonData) metric.reasonData = {};
-        metric.anomalies.forEach(idx => {
-          if (!metric.reasonData[idx]) {
-            const flag = state.executiveResult.results
-              .find(r => r.name === metric.name)?.flags?.[idx];
-
-            const t3Movement  = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
-            const t12Movement = flag ? Math.abs(flag.T3_current - flag.T12) : 0;
-            const deviation   = flag ? Math.max(t3Movement, t12Movement) : 0;
-            const direction   = flag?.direction === 'up' ? 'above' : 'below';
-
-            metric.reasonData[idx] = {
-              monthLabel: state.resultEA.months[idx],
-              effectiveZ: deviation / (flag?.threshold || 1),
-              primary: { label: 'EA flag' },
-              alternatives: [],
-              _eaOverride: {
-                deviation,
-                direction,
-                T3_current: flag?.T3_current,
-                T3_prior:   flag?.T3_prior,
-                T12:        flag?.T12,
-                threshold:  flag?.threshold,
-              },
-            };
-          }
-        });
-      });
-
-      // ── Step 3: Run enrichment pipeline ────────────────
       const eaReasons = RuleEngine.analyse(
         state.resultEA.metrics,
         state.resultEA.months,
@@ -1503,6 +1468,40 @@ const App = (() => {
         state.cloudHistory
       );
 
+      // ── Step 3: Seed metric.anomalies + _eaOverride AFTER enrichAll ────
+      state.executiveResult.results.forEach(flaggedMetric => {
+        const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
+        if (!metric) return;
+        metric.anomalies = Object.keys(flaggedMetric.flags).map(Number);
+        if (!metric.reasonData) metric.reasonData = {};
+        metric.anomalies.forEach(idx => {
+          const flag = state.executiveResult.results
+            .find(r => r.name === metric.name)?.flags?.[idx];
+
+          const t3Movement  = flag ? Math.abs(flag.T3_current - flag.T3_prior) : 0;
+          const t12Movement = flag ? Math.abs(flag.T3_current - flag.T12) : 0;
+          const deviation   = flag ? Math.max(t3Movement, t12Movement) : 0;
+          const direction   = flag?.direction === 'up' ? 'above' : 'below';
+
+          if (!metric.reasonData[idx]) metric.reasonData[idx] = {
+            monthLabel: state.resultEA.months[idx],
+            primary: { label: 'EA flag' },
+            alternatives: [],
+          };
+          metric.reasonData[idx].effectiveZ = deviation / (flag?.threshold || 1);
+          metric.reasonData[idx]._eaOverride = {
+            deviation,
+            direction,
+            T3_current: flag?.T3_current,
+            T3_prior:   flag?.T3_prior,
+            T12:        flag?.T12,
+            threshold:  flag?.threshold,
+          };
+          console.log('[EA] _eaOverride set:', metric.reasonData[idx]?._eaOverride);
+        });
+      });
+
+      // ── Step 4: Enricher.enrichAnomaly loop ─────────────
       state.executiveResult.results.forEach(flaggedMetric => {
         const metric = state.resultEA.metrics.find(m => m.name === flaggedMetric.name);
         if (!metric) return;
