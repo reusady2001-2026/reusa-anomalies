@@ -133,6 +133,11 @@ const Narrator = (() => {
       blocked.push('RECOVERY_STORY');
     }
 
+    const isIncome = (metric?.section || '').toUpperCase() === 'INCOME';
+    if (isIncome) {
+      blocked.push('COST_SHOCK');
+    }
+
     const metricName = (metric?.name || '').toLowerCase();
 
     const isEventDriven = /inspection|permit|legal|court|license|fee|registr|certif|violation|fine|application/.test(metricName);

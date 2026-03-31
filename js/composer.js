@@ -171,7 +171,9 @@ const SENTENCE_LIBRARY = {
       if (rentYoy != null) parts.push(`Rent CPI ${rentYoy} YoY`);
       const ur = _fredValue(dataContext, 'stateUR', month);
       if (ur != null) parts.push(`State unemployment ${ur.toFixed(1)}%`);
-      if (dataContext?.fema?.length > 0) parts.push(`FEMA declarations active in state`);
+      if (dataContext?.fema?.length > 0 && (m?.section || '').toUpperCase() !== 'INCOME') {
+        parts.push(`FEMA declarations active in state`);
+      }
       return parts.length > 0 ? `Market indicators for ${month}: ${parts.join(' · ')}.` : '';
     },
     portfolio: (anomaly, metric, dataContext, ap) => {
@@ -194,7 +196,13 @@ const SENTENCE_LIBRARY = {
       const dev = _deviation(ap), ref = _refLabel(ap);
       return `${_metricLabel(m)} has drifted ${_direction(ap)} baseline over ${months || 'several'} months — currently ${dev} vs. ${ref} in ${_monthLabel(anomaly)}.`;
     },
-    context: () => `No single triggering event identified. Likely reflects gradual contract escalation, usage creep, or unreported operational changes.`,
+    context: (anomaly, metric, dataContext, ap, m) => {
+      const isIncome = (m?.section || '').toUpperCase() === 'INCOME';
+      if (isIncome) {
+        return `No single triggering event identified. This may reflect gradual changes in lease terms, occupancy mix, or rent levels across the portfolio.`;
+      }
+      return `No single triggering event identified. Likely reflects gradual contract escalation, usage creep, or unreported operational changes.`;
+    },
     closing: (anomaly, metric, dataContext, ap) => {
       const status = ap.recovery?.status;
       if (status === 'worsening')  return `Drift is accelerating — formal review of this cost center recommended.`;
