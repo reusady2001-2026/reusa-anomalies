@@ -129,4 +129,78 @@ function analyse(metrics, months, purchasePrice, stateAbbr, city) {
   return { results, months, threshold, stateAbbr: stateAbbr || '', city: city || '' };
 }
 
-const Executive = { analyse };
+function generateEANarrative(metricName, section, flag, dataContext, monthLabel, stateAbbr) {
+  const { T3_current, T3_prior, T12, deviation, direction } = flag;
+  const isIncome = section === 'INCOME';
+  const isUp = direction === 'up' || (T3_current > T3_prior);
+  const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString();
+
+  // Pull actual data points from context
+  const fred = dataContext?.fred || {};
+  const weather = dataContext?.weather || {};
+
+  const fedfunds = fred.fedfunds?.[monthLabel];
+  const mortgage30 = fred.mortgage30?.[monthLabel];
+  const stateUR = fred.stateUR?.[monthLabel];
+  const rentCPI = fred.rentCPI?.[monthLabel];
+  const energyCPI = fred.energyCPI?.[monthLabel];
+  const hdd = weather.heatingDegreeDays?.[monthLabel];
+  const cdd = weather.coolingDegreeDays?.[monthLabel];
+
+  // Build data evidence sentences
+  const evidence = [];
+
+  if (stateUR != null) {
+    evidence.push(`${stateAbbr} unemployment was ${stateUR.toFixed(1)}% — ${stateUR < 4 ? 'a very tight labor market supporting demand' : stateUR < 5 ? 'a healthy labor market' : 'elevated unemployment that may be pressuring demand'}`);
+  }
+
+  if (fedfunds != null && mortgage30 != null && isIncome && metricName.toLowerCase().includes('rent')) {
+    evidence.push(`Fed Funds at ${fedfunds.toFixed(2)}% and 30yr mortgage at ${mortgage30.toFixed(2)}% — ${mortgage30 > 6 ? 'high financing costs keeping renters in place rather than buying' : 'moderate financing costs'}`);
+  }
+
+  if (rentCPI != null && isIncome) {
+    evidence.push(`Rent CPI at ${rentCPI.toFixed(1)} nationally`);
+  }
+
+  if (energyCPI != null && !isIncome && (metricName.toLowerCase().includes('gas') || metricName.toLowerCase().includes('electric') || metricName.toLowerCase().includes('util'))) {
+    evidence.push(`Energy CPI at ${energyCPI.toFixed(1)} nationally — ${isUp ? 'rising energy prices driving costs up' : 'easing energy prices'}`);
+  }
+
+  if (hdd != null && hdd > 400 && !isIncome) {
+    evidence.push(`${Math.round(hdd)} heating degree days in ${stateAbbr} — cold weather driving utility and maintenance costs`);
+  }
+
+  if (cdd != null && cdd > 150 && !isIncome) {
+    evidence.push(`${Math.round(cdd)} cooling degree days — summer heat driving utility demand`);
+  }
+
+  // Build the narrative
+  const movementWord = isUp ? 'increased' : 'decreased';
+
+  let narrative = `${metricName}'s annualized run rate ${movementWord} ${fmt(deviation)} vs. the prior quarter in ${monthLabel}.`;
+
+  if (evidence.length > 0) {
+    narrative += ` ${evidence.slice(0, 2).join('; ')}.`;
+  }
+
+  // Add interpretation
+  if (isIncome && isUp) {
+    narrative += ` This represents improving revenue performance.`;
+  } else if (isIncome && !isUp) {
+    narrative += ` This represents deteriorating revenue performance worth investigating.`;
+  } else if (!isIncome && isUp) {
+    narrative += ` Review whether this cost increase is expected or requires intervention.`;
+  } else {
+    narrative += ` Costs are running below the prior quarter baseline.`;
+  }
+
+  // Trim to ~75 words
+  const words = narrative.split(' ');
+  if (words.length > 80) {
+    narrative = words.slice(0, 75).join(' ') + '…';
+  }
+
+  return narrative;
+}
+
+const Executive = { analyse, generateEANarrative };

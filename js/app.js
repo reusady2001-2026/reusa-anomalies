@@ -1519,7 +1519,19 @@ const App = (() => {
           );
           metric.reasonData[relIdx].situationProfile  = situationProfile;
           metric.reasonData[relIdx].narrativeResult   = narrativeResult;
-          if (narrativeResult?.narrative) {
+          // Use EA-specific narrative instead of OA composer output
+          const eaFlag = state.executiveResult.results.find(r => r.name === metric.name)?.flags?.[relIdx];
+          const eaNarrative = Executive.generateEANarrative(
+            metric.name,
+            metric.section,
+            eaFlag,
+            eaDataContext,
+            state.resultEA.months[relIdx],
+            state.stateEA
+          );
+          if (eaNarrative) {
+            metric.reasonData[relIdx].enrichedPrimary = eaNarrative;
+          } else if (narrativeResult?.narrative) {
             metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
           }
           if (situationProfile?.rankedAngles) {
