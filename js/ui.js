@@ -780,6 +780,7 @@ const UI = (() => {
   // ── EA DETAIL PANEL (called via inline onclick) ───────
 
   function openEADetail(metricName, monthLabel, t3Current, t3Prior, t12, threshold, movementFromPrior, movementFromT12, flaggedByPrior, flaggedByT12, direction, reasoning) {
+    console.log('[EA] openEADetail called', document.getElementById('detail-card-ea'));
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
 
@@ -814,6 +815,7 @@ const UI = (() => {
       </div>`;
 
     cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
+    console.log('[EA] adding open class to', cardEl);
     cardEl.classList.add('open');
   }
 
