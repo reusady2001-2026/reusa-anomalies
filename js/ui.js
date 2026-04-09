@@ -1084,10 +1084,25 @@ const UI = (() => {
       const height = maxVal > 0 ? Math.round((Math.abs(v || 0) / maxVal) * 60) : 4;
       const isNeg = (v || 0) < 0;
       return `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;">
-          <div style="font-size:9px;color:#475569;height:14px;display:flex;align-items:flex-end;">${fmt(v)}</div>
-          <div style="width:100%;height:${height}px;background:${barColor};border-radius:2px;opacity:${isNeg?0.6:1};min-height:4px;"></div>
-          <div style="font-size:9px;color:#475569;text-align:center;writing-mode:vertical-rl;transform:rotate(180deg);height:32px;">${windowMonths[wi] || ''}</div>
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:80px;justify-content:flex-end;">
+          <div style="
+            width:100%;
+            height:${height}px;
+            background:${barColor};
+            border-radius:3px;
+            opacity:${isNeg?0.7:1};
+            min-height:28px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:space-between;
+            padding:3px 2px;
+            box-sizing:border-box;
+            overflow:hidden;
+          ">
+            <div style="font-size:8px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.2;word-break:break-all;">${fmt(v)}</div>
+            <div style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2;">${windowMonths[wi] || ''}</div>
+          </div>
         </div>
       `;
     }).join('');
@@ -1111,7 +1126,7 @@ const UI = (() => {
       <div style="padding:12px 16px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.04);">
 
         <!-- Bar chart -->
-        <div style="display:flex;align-items:flex-end;gap:4px;height:120px;margin-bottom:16px;">
+        <div style="display:flex;gap:4px;height:80px;margin-bottom:16px;">
           ${barsHtml}
         </div>
 
