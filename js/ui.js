@@ -913,18 +913,14 @@ const UI = (() => {
                            (!isIncome && flag.direction === 'down');
         const borderColor = isPositive ? '#22c55e' : '#f87171';
         const arrow = flag.direction === 'up' ? '▲' : '▼';
-        const triggerLabel = flag.flaggedByPrior && flag.flaggedByT12 ? 'T3 + T12'
-          : flag.flaggedByPrior ? 'T3 momentum'
-          : 'T12 drift';
-
         return `
           <div class="ea-card"
             style="border-left: 4px solid ${borderColor};"
             onclick="UI.openEACard(${idx}, event)">
             <div class="ea-card-category">${escHtml(flag.categoryName)}</div>
             <div class="ea-card-month">${escHtml(flag.monthLabel)}</div>
-            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.movementFromPrior)}</div>
-            <div class="ea-card-trigger">${triggerLabel}${flag.flaggedByT12 && flag.t12Movement != null ? ` · T12 Δ ${fmtCard(flag.t12Movement)}` : ''}</div>
+            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.displayMovement)}</div>
+            <div class="ea-card-trigger">${flag.displayTrigger}</div>
           </div>
         `;
       }).join('');
@@ -993,7 +989,7 @@ const UI = (() => {
     const content = `
       <div style="padding:16px">
         <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.displayMovement)} movement</div>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>

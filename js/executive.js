@@ -303,20 +303,20 @@ function analyseCategories(metrics, months, purchasePrice) {
           flaggedByPrior,
           flaggedByT12,
           direction,
-          maxMovement: movementFromPrior, // always T3 vs T3 prior
-          t12Movement: movementFromT12,   // keep for reference
+          displayMovement: Math.max(movementFromPrior, movementFromT12),
+          displayTrigger: movementFromPrior >= movementFromT12 ? 'T3 momentum' : 'T12 drift',
         };
       }
     });
 
     if (Object.keys(flags).length > 0) {
-      const worstFlag = Object.values(flags).sort((a,b) => b.maxMovement - a.maxMovement)[0];
+      const worstFlag = Object.values(flags).sort((a,b) => b.displayMovement - a.displayMovement)[0];
       results.push({
         name: category.name,
         section: category.section,
         values: category.values,
         flags,
-        worstMovement: worstFlag.maxMovement,
+        worstMovement: worstFlag.displayMovement,
         worstMonthLabel: worstFlag.monthLabel,
         worstDirection: worstFlag.direction,
         matchedMetricCount: category.matchedMetricCount,
@@ -341,8 +341,8 @@ function analyseCategories(metrics, months, purchasePrice) {
         flaggedByPrior: flag.flaggedByPrior,
         flaggedByT12: flag.flaggedByT12,
         direction: flag.direction,
-        maxMovement: flag.maxMovement,
-        t12Movement: flag.t12Movement,
+        displayMovement: flag.displayMovement,
+        displayTrigger: flag.displayTrigger,
       });
     });
   });
