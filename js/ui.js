@@ -908,21 +908,25 @@ const UI = (() => {
       `;
 
       const cardsHtml = shown.map((flag, idx) => {
-        const isIncome   = flag.section === 'INCOME';
-        const isPositive = (isIncome && flag.direction === 'up') ||
-                           (!isIncome && flag.direction === 'down');
-        const borderColor = isPositive ? '#22c55e' : '#f87171';
-        const arrow = flag.direction === 'up' ? '▲' : '▼';
-        const triggerLabel = flag.flaggedByPrior && flag.flaggedByT12 ? 'T3 + T12'
-          : flag.flaggedByPrior ? 'T3 momentum'
-          : 'T12 drift';
+        const isIncome = flag.section === 'INCOME';
+        const isUp = flag.direction === 'up';
+        const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
+        const borderColor = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+        const movementColor = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+        const arrow = isUp ? '▲' : '▼';
+
+        let triggerLabel = '';
+        if (flag.flaggedByPrior && flag.flaggedByT12) triggerLabel = flag.conflicting ? 'T3 + T12 · conflicting signals' : 'T3 + T12';
+        else if (flag.flaggedByPrior) triggerLabel = 'T3 momentum';
+        else triggerLabel = 'T12 drift';
+
         return `
           <div class="ea-card"
             style="border-left: 4px solid ${borderColor};"
             onclick="UI.openEACard(${idx}, event)">
             <div class="ea-card-category">${escHtml(flag.categoryName)}</div>
             <div class="ea-card-month">${escHtml(flag.monthLabel)}</div>
-            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.maxMovement)}</div>
+            <div class="ea-card-movement" style="color:${movementColor}">${arrow} ${fmtCard(flag.displayAmount)}</div>
             <div class="ea-card-trigger">${triggerLabel}</div>
           </div>
         `;
@@ -989,6 +993,15 @@ const UI = (() => {
     const isPositive = (isIncome && flag.direction === 'up') || (!isIncome && flag.direction === 'down');
     const arrow = flag.direction === 'up' ? '▲' : '▼';
 
+    const conflictNote = flag.conflicting ? `
+      <div style="margin-top:16px;padding:12px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+        T3 momentum and T12 drift are pointing in opposite directions.
+        The trailing 3-month run rate ${flag.T3_current > flag.T3_prior ? 'increased' : 'decreased'} $${Math.round(flag.movementFromPrior).toLocaleString()} vs the prior quarter,
+        while the annualized run rate is ${flag.T3_current > flag.T12 ? 'above' : 'below'} the trailing 12-month baseline by $${Math.round(flag.movementFromT12).toLocaleString()}.
+        This may indicate a recent reversal of a longer trend — review both timeframes before drawing conclusions.
+      </div>
+    ` : '';
+
     const content = `
       <div style="padding:16px">
         <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
@@ -1012,6 +1025,7 @@ const UI = (() => {
             </tr>
           </tbody>
         </table>
+        ${conflictNote}
       </div>
     `;
 

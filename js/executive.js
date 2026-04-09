@@ -291,7 +291,28 @@ function analyseCategories(metrics, months, purchasePrice) {
       const flaggedByT12 = movementFromT12 > threshold;
 
       if (flaggedByPrior || flaggedByT12) {
-        const direction = T3_current > T3_prior ? 'up' : 'down';
+        // Determine display amount and direction based on which comparison triggered
+        let displayAmount, displayDirection, conflicting = false;
+
+        if (flaggedByPrior && flaggedByT12) {
+          const dirFromPrior = T3_current > T3_prior ? 'up' : 'down';
+          const dirFromT12 = T3_current > T12 ? 'up' : 'down';
+          if (dirFromPrior !== dirFromT12) {
+            conflicting = true;
+            displayAmount = Math.max(movementFromPrior, movementFromT12);
+            displayDirection = dirFromPrior;
+          } else {
+            displayAmount = Math.max(movementFromPrior, movementFromT12);
+            displayDirection = dirFromPrior;
+          }
+        } else if (flaggedByPrior) {
+          displayAmount = movementFromPrior;
+          displayDirection = T3_current > T3_prior ? 'up' : 'down';
+        } else {
+          displayAmount = movementFromT12;
+          displayDirection = T3_current > T12 ? 'up' : 'down';
+        }
+
         flags[i] = {
           monthLabel,
           T3_current,
@@ -302,7 +323,9 @@ function analyseCategories(metrics, months, purchasePrice) {
           movementFromT12,
           flaggedByPrior,
           flaggedByT12,
-          direction,
+          direction: displayDirection,
+          displayAmount,
+          conflicting,
           maxMovement: Math.max(movementFromPrior, movementFromT12),
         };
       }
@@ -340,6 +363,8 @@ function analyseCategories(metrics, months, purchasePrice) {
         flaggedByPrior: flag.flaggedByPrior,
         flaggedByT12: flag.flaggedByT12,
         direction: flag.direction,
+        displayAmount: flag.displayAmount,
+        conflicting: flag.conflicting,
         maxMovement: flag.maxMovement,
       });
     });
