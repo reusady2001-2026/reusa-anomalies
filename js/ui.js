@@ -923,8 +923,8 @@ const UI = (() => {
             onclick="UI.openEACard(${idx}, event)">
             <div class="ea-card-category">${escHtml(flag.categoryName)}</div>
             <div class="ea-card-month">${escHtml(flag.monthLabel)}</div>
-            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.maxMovement)}</div>
-            <div class="ea-card-trigger">${triggerLabel}</div>
+            <div class="ea-card-movement" style="color:${borderColor}">${arrow} ${fmtCard(flag.movementFromPrior)}</div>
+            <div class="ea-card-trigger">${triggerLabel}${flag.flaggedByT12 && flag.t12Movement != null ? ` · T12 Δ ${fmtCard(flag.t12Movement)}` : ''}</div>
           </div>
         `;
       }).join('');

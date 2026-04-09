@@ -303,7 +303,8 @@ function analyseCategories(metrics, months, purchasePrice) {
           flaggedByPrior,
           flaggedByT12,
           direction,
-          maxMovement: Math.max(movementFromPrior, movementFromT12),
+          maxMovement: movementFromPrior, // always T3 vs T3 prior
+          t12Movement: movementFromT12,   // keep for reference
         };
       }
     });
@@ -341,11 +342,12 @@ function analyseCategories(metrics, months, purchasePrice) {
         flaggedByT12: flag.flaggedByT12,
         direction: flag.direction,
         maxMovement: flag.maxMovement,
+        t12Movement: flag.t12Movement,
       });
     });
   });
 
-  allFlags.sort((a, b) => b.maxMovement - a.maxMovement);
+  allFlags.sort((a, b) => Math.max(b.movementFromPrior, b.movementFromT12) - Math.max(a.movementFromPrior, a.movementFromT12));
 
   return { flags: allFlags, threshold, months };
 }
