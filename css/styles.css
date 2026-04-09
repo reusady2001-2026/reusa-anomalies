@@ -1611,3 +1611,13 @@ input[type="file"] { display: none; }
 [data-theme="light"] .ea-detail-th { color: #475569; border-bottom-color: rgba(0,0,0,0.08); }
 [data-theme="light"] .ea-detail-td { color: #334155; border-bottom-color: rgba(0,0,0,0.04); }
 [data-theme="light"] .ea-detail-total-row td { border-top-color: rgba(0,0,0,0.12); color: #1e293b; }
+
+.ea-metric-row:hover {
+  background: rgba(255,255,255,0.04);
+}
+.ea-metric-expand {
+  overflow: hidden;
+}
+[data-theme="light"] .ea-metric-row:hover {
+  background: rgba(0,0,0,0.03);
+}

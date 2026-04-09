@@ -980,12 +980,19 @@ const UI = (() => {
       return { name: metric.name, ...t };
     }).filter(Boolean);
 
-    const rowsHtml = rows.map(r => `
-      <tr>
+    const rowsHtml = rows.map((r, rowIdx) => `
+      <tr class="ea-metric-row" id="ea-metric-row-${idx}-${rowIdx}"
+        onclick="UI.toggleMetricDetail(${idx}, ${rowIdx}, '${escHtml(r.name).replace(/'/g, "\\'")}')"
+        style="cursor:pointer;">
         <td class="ea-detail-td">${escHtml(r.name)}</td>
         <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_current)}</td>
         <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_prior)}</td>
         <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T12)}</td>
+      </tr>
+      <tr id="ea-metric-detail-${idx}-${rowIdx}" style="display:none;">
+        <td colspan="4" style="padding:0;">
+          <div id="ea-metric-detail-content-${idx}-${rowIdx}" class="ea-metric-expand"></div>
+        </td>
       </tr>
     `).join('');
 
@@ -1034,6 +1041,111 @@ const UI = (() => {
     cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  function toggleMetricDetail(cardIdx, rowIdx, metricName) {
+    const detailRow = document.getElementById(`ea-metric-detail-${cardIdx}-${rowIdx}`);
+    const contentDiv = document.getElementById(`ea-metric-detail-content-${cardIdx}-${rowIdx}`);
+    if (!detailRow || !contentDiv) return;
+
+    // Toggle
+    if (detailRow.style.display !== 'none') {
+      detailRow.style.display = 'none';
+      return;
+    }
+
+    const flag = window._eaCategoryResult?.flags?.[cardIdx];
+    if (!flag) return;
+
+    const metrics = window._eaCategoryResult?.metrics || [];
+    const metric = metrics.find(m => m.name === metricName);
+    if (!metric) return;
+
+    const monthIdx = flag.monthIdx;
+    const values = metric.values || [];
+    const months = window._eaCategoryResult?.months || [];
+
+    // Get last 12 months ending at monthIdx
+    const startIdx = Math.max(0, monthIdx - 11);
+    const windowValues = values.slice(startIdx, monthIdx + 1);
+    const windowMonths = months.slice(startIdx, monthIdx + 1);
+
+    // Compute T3, T3 prior, T12 month indices (relative to window)
+    const winLen = windowValues.length;
+    const t3Indices = [winLen-3, winLen-2, winLen-1]; // i-2, i-1, i
+    const t3PriorIndices = [winLen-4, winLen-3, winLen-2]; // i-3, i-2, i-1
+
+    const fmt = n => (n == null ? '—' : (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString());
+
+    // Build bar chart
+    const maxVal = Math.max(...windowValues.filter(v => v != null).map(Math.abs));
+    const barsHtml = windowValues.map((v, wi) => {
+      const isT3 = t3Indices.includes(wi);
+      const isT3Prior = t3PriorIndices.includes(wi);
+      const barColor = isT3 ? '#3b82f6' : isT3Prior ? '#f97316' : 'rgba(255,255,255,0.15)';
+      const height = maxVal > 0 ? Math.round((Math.abs(v || 0) / maxVal) * 60) : 4;
+      const isNeg = (v || 0) < 0;
+      return `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;">
+          <div style="font-size:9px;color:#475569;height:14px;display:flex;align-items:flex-end;">${fmt(v)}</div>
+          <div style="width:100%;height:${height}px;background:${barColor};border-radius:2px;opacity:${isNeg?0.6:1};min-height:4px;"></div>
+          <div style="font-size:9px;color:#475569;text-align:center;writing-mode:vertical-rl;transform:rotate(180deg);height:32px;">${windowMonths[wi] || ''}</div>
+        </div>
+      `;
+    }).join('');
+
+    // T3 calculation
+    const t3Months = t3Indices.map(wi => windowValues[wi]);
+    const t3Sum = t3Months.reduce((a,b) => a + (b||0), 0);
+    const t3Annualized = t3Sum * 4;
+
+    const t3PriorMonths = t3PriorIndices.map(wi => windowValues[wi]);
+    const t3PriorSum = t3PriorMonths.reduce((a,b) => a + (b||0), 0);
+    const t3PriorAnnualized = t3PriorSum * 4;
+
+    const t12Sum = windowValues.reduce((a,b) => a + (b||0), 0);
+
+    // T3 months labels
+    const t3Labels = t3Indices.map(wi => windowMonths[wi] || '');
+    const t3PriorLabels = t3PriorIndices.map(wi => windowMonths[wi] || '');
+
+    contentDiv.innerHTML = `
+      <div style="padding:12px 16px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.04);">
+
+        <!-- Bar chart -->
+        <div style="display:flex;align-items:flex-end;gap:4px;height:120px;margin-bottom:16px;">
+          ${barsHtml}
+        </div>
+
+        <!-- Legend -->
+        <div style="display:flex;gap:16px;margin-bottom:12px;font-size:10px;font-family:'JetBrains Mono',monospace;">
+          <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:4px;"></span>T3 Current</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#f97316;border-radius:2px;margin-right:4px;"></span>T3 Prior</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(255,255,255,0.15);border-radius:2px;margin-right:4px;"></span>T12 window</span>
+        </div>
+
+        <!-- Calculations -->
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'JetBrains Mono',monospace;">
+          <tr>
+            <td style="padding:4px 8px;color:#64748b;width:120px;">T3 Current</td>
+            <td style="padding:4px 8px;color:#94a3b8;">${t3Labels[0]} ${fmt(t3Months[0])} + ${t3Labels[1]} ${fmt(t3Months[1])} + ${t3Labels[2]} ${fmt(t3Months[2])} = ${fmt(t3Sum)} × 4</td>
+            <td style="padding:4px 8px;color:#3b82f6;text-align:right;font-weight:700;">${fmt(t3Annualized)}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;color:#64748b;">T3 Prior</td>
+            <td style="padding:4px 8px;color:#94a3b8;">${t3PriorLabels[0]} ${fmt(t3PriorMonths[0])} + ${t3PriorLabels[1]} ${fmt(t3PriorMonths[1])} + ${t3PriorLabels[2]} ${fmt(t3PriorMonths[2])} = ${fmt(t3PriorSum)} × 4</td>
+            <td style="padding:4px 8px;color:#f97316;text-align:right;font-weight:700;">${fmt(t3PriorAnnualized)}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 8px;color:#64748b;">T12</td>
+            <td style="padding:4px 8px;color:#94a3b8;">Sum of ${windowMonths[0]} → ${windowMonths[winLen-1]}</td>
+            <td style="padding:4px 8px;color:#94a3b8;text-align:right;font-weight:700;">${fmt(t12Sum)}</td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    detailRow.style.display = '';
+  }
+
   return {
     renderTable,
     renderComparisonTable,
@@ -1046,6 +1158,7 @@ const UI = (() => {
     renderEACards,
     setEALimit,
     openEACard,
+    toggleMetricDetail,
     getCellClass,
     fmt,
     fmtPct,
