@@ -1085,7 +1085,7 @@ const UI = (() => {
       if (isT3Current) { bg = '#3b82f6'; textColor = '#fff'; }
       else if (isT3Prior) { bg = '#f97316'; textColor = '#fff'; }
       else if (isOverlap) { bg = 'linear-gradient(135deg, #f97316 50%, #3b82f6 50%)'; textColor = '#fff'; }
-      else { bg = 'rgba(236,72,153,0.15)'; textColor = '#f9a8d4'; }
+      else { bg = 'rgba(236,72,153,0.35)'; textColor = '#f9a8d4'; }
 
       return `
         <div style="
@@ -1133,7 +1133,7 @@ const UI = (() => {
         <div style="display:flex;gap:16px;margin-bottom:12px;font-size:10px;font-family:'JetBrains Mono',monospace;">
           <span><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;margin-right:4px;"></span>T3 Current</span>
           <span><span style="display:inline-block;width:10px;height:10px;background:#f97316;border-radius:2px;margin-right:4px;"></span>T3 Prior</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(255,255,255,0.15);border-radius:2px;margin-right:4px;"></span>T12 window</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:rgba(236,72,153,0.35);border-radius:2px;margin-right:4px;"></span>T12 window</span>
         </div>
 
         <!-- Calculations -->
