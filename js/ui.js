@@ -1085,7 +1085,7 @@ const UI = (() => {
       if (isT3Current) { bg = '#3b82f6'; textColor = '#fff'; }
       else if (isT3Prior) { bg = '#f97316'; textColor = '#fff'; }
       else if (isOverlap) { bg = 'linear-gradient(135deg, #f97316 50%, #3b82f6 50%)'; textColor = '#fff'; }
-      else { bg = 'rgba(255,255,255,0.07)'; textColor = '#94a3b8'; }
+      else { bg = 'rgba(236,72,153,0.15)'; textColor = '#f9a8d4'; }
 
       return `
         <div style="
