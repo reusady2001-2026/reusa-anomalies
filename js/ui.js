@@ -1075,34 +1075,34 @@ const UI = (() => {
 
     const fmt = n => (n == null ? '—' : (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString());
 
-    // Build bar chart
-    const maxVal = Math.max(...windowValues.filter(v => v != null).map(Math.abs));
-    const barsHtml = windowValues.map((v, wi) => {
-      const isT3 = t3Indices.includes(wi);
-      const isT3Prior = t3PriorIndices.includes(wi);
-      const barColor = isT3 ? '#3b82f6' : isT3Prior ? '#f97316' : 'rgba(255,255,255,0.15)';
-      const height = maxVal > 0 ? Math.round((Math.abs(v || 0) / maxVal) * 60) : 4;
-      const isNeg = (v || 0) < 0;
+    // Build month tiles
+    const boxesHtml = windowValues.map((v, wi) => {
+      const isT3Current = t3Indices.includes(wi) && !t3PriorIndices.includes(wi);
+      const isT3Prior = t3PriorIndices.includes(wi) && !t3Indices.includes(wi);
+      const isOverlap = t3Indices.includes(wi) && t3PriorIndices.includes(wi);
+
+      let bg, textColor;
+      if (isT3Current) { bg = '#3b82f6'; textColor = '#fff'; }
+      else if (isT3Prior) { bg = '#f97316'; textColor = '#fff'; }
+      else if (isOverlap) { bg = 'linear-gradient(135deg, #f97316 50%, #3b82f6 50%)'; textColor = '#fff'; }
+      else { bg = 'rgba(255,255,255,0.07)'; textColor = '#94a3b8'; }
+
       return `
-        <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:80px;justify-content:flex-end;">
-          <div style="
-            width:100%;
-            height:${height}px;
-            background:${barColor};
-            border-radius:3px;
-            opacity:${isNeg?0.7:1};
-            min-height:28px;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:space-between;
-            padding:3px 2px;
-            box-sizing:border-box;
-            overflow:hidden;
-          ">
-            <div style="font-size:8px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.2;word-break:break-all;">${fmt(v)}</div>
-            <div style="font-size:8px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.2;">${windowMonths[wi] || ''}</div>
-          </div>
+        <div style="
+          flex:1;
+          min-width:0;
+          background:${bg};
+          border-radius:6px;
+          padding:8px 4px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          gap:4px;
+          min-height:60px;
+        ">
+          <div style="font-size:10px;font-weight:700;color:${textColor};font-family:'JetBrains Mono',monospace;text-align:center;">${fmt(v)}</div>
+          <div style="font-size:9px;color:${textColor};opacity:0.8;font-family:'JetBrains Mono',monospace;text-align:center;">${windowMonths[wi] || ''}</div>
         </div>
       `;
     }).join('');
@@ -1125,9 +1125,8 @@ const UI = (() => {
     contentDiv.innerHTML = `
       <div style="padding:12px 16px;background:rgba(255,255,255,0.02);border-top:1px solid rgba(255,255,255,0.04);">
 
-        <!-- Bar chart -->
-        <div style="display:flex;gap:4px;height:80px;margin-bottom:16px;">
-          ${barsHtml}
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+          ${boxesHtml}
         </div>
 
         <!-- Legend -->
