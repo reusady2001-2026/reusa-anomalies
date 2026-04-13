@@ -1416,26 +1416,13 @@ const UI = (() => {
     const metric = prop.result.metrics.find(m => m.name === metricName);
     if (!metric) return;
 
-    const reasonData = metric.reasonData?.[monthIdx];
-    const value = metric.values?.[monthIdx];
+    // reasonData is keyed by relative display index, not absolute month index
+    const result = prop.result;
+    const ri = result.displayMonths ? result.displayMonths.indexOf(monthIdx) : monthIdx;
+    const reasonData = metric.reasonData?.[ri >= 0 ? ri : monthIdx];
 
-    function fmtVal(n) {
-      if (n == null) return '—';
-      return (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
-    }
-
-    const primaryReason = reasonData?.enrichedPrimary || reasonData?.primary?.label || 'No reasoning available';
-    const altReasons = reasonData?.enrichedAlternatives || [];
-
-    const altHtml = altReasons.map((alt, i) => {
-      const colors = ['#f97316', '#a855f7', '#06b6d4'];
-      return `
-        <div class="reason-box reason-box--alt" style="border-color:${colors[i] || colors[0]}">
-          <div class="reason-box-label">ALT ${i + 1}</div>
-          <div class="reason-box-narrative">${alt}</div>
-        </div>
-      `;
-    }).join('');
+    // Reuse the same renderer as the OA detail panel
+    const cardHtml = renderAnomalyCard(reasonData, metric, monthLabel);
 
     const card = document.createElement('div');
     card.className = 'portfolio-reason-card';
@@ -1445,16 +1432,12 @@ const UI = (() => {
       <div class="portfolio-reason-card-header">
         <div>
           <div class="portfolio-reason-card-title">${metricName}</div>
-          <div class="portfolio-reason-card-meta">${propertyName} · ${monthLabel} · ${fmtVal(value)}</div>
+          <div class="portfolio-reason-card-meta">${propertyName} · ${monthLabel}</div>
         </div>
         <button class="close-card" onclick="this.closest('.portfolio-reason-card').remove()">✕</button>
       </div>
       <div class="portfolio-reason-card-body">
-        <div class="reason-box reason-box--primary">
-          <div class="reason-box-label">PRIMARY REASON</div>
-          <div class="reason-box-narrative">${primaryReason}</div>
-        </div>
-        ${altHtml}
+        ${cardHtml}
       </div>
     `;
 
