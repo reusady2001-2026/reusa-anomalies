@@ -308,8 +308,13 @@ function generateReasoning(data) {
     sentences.push(`${categoryName} shows conflicting signals — short-term momentum and the annual baseline are pointing in opposite directions.`);
   }
 
+  // ── Materiality baseline ─────────────────────────────────────────────────
+  const totalCategoryMovement = Math.abs(flag.T3_current - (triggeredByT12 && !triggeredByPrior ? flag.T12 : flag.T3_prior));
+
   // ── First appearance drivers ──────────────────────────────────────────────
-  const firstAppearanceDrivers = topDrivers.filter(d => d.firstAppearance);
+  const firstAppearanceDrivers = topDrivers
+    .filter(d => d.firstAppearance)
+    .filter(d => totalCategoryMovement > 0 && (d.absMovement / totalCategoryMovement) >= 0.10);
   if (firstAppearanceDrivers.length > 0) {
     firstAppearanceDrivers.forEach(d => {
       const interp = METRIC_INTERPRETATIONS[d.name];
@@ -323,11 +328,14 @@ function generateReasoning(data) {
 
   // ── Dominant driver ───────────────────────────────────────────────────────
   const firstAppearanceNames = firstAppearanceDrivers.map(d => d.name);
-  const remainingDrivers = topDrivers.slice(0, 3).filter(d => !firstAppearanceNames.includes(d.name));
-  if (remainingDrivers.length >= 1) {
+  const materialDrivers = topDrivers
+    .slice(0, 3)
+    .filter(d => totalCategoryMovement > 0 && (d.absMovement / totalCategoryMovement) >= 0.10)
+    .filter(d => !firstAppearanceNames.includes(d.name));
+  if (materialDrivers.length >= 1) {
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
 
-    const driverSentences = remainingDrivers.map(d => {
+    const driverSentences = materialDrivers.map(d => {
       const interp = METRIC_INTERPRETATIONS[d.name];
       const interpText = interp ? (d.direction === 'up' ? interp.up : interp.down) : null;
       const verification = getVerificationStatus(d.name, d.direction, externalContext);
@@ -359,7 +367,7 @@ function generateReasoning(data) {
   const topThreeNames = topDrivers.slice(0, 3).map(d => d.name);
   const counterDrivers = (activeDrivers || [])
     .filter(d => d.direction !== categoryDir && !topThreeNames.includes(d.name))
-    .filter(d => dominantDriver && d.absMovement >= dominantDriver.absMovement * 0.10)
+    .filter(d => totalCategoryMovement > 0 && (d.absMovement / totalCategoryMovement) >= 0.10)
     .slice(0, 1);
   if (counterDrivers.length > 0) {
     const cd = counterDrivers[0];
