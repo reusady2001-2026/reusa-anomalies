@@ -84,7 +84,7 @@ const FRED_UR_MAP = {
 function generateReasoning(data) {
   const {
     categoryName, section, monthLabel, stateAbbr,
-    dominantDriver, dominantPct, topDrivers, compositionType,
+    dominantDriver, dominantPct, topDrivers, activeDrivers, compositionType,
     trendType, oaContext, portfolioContext, externalContext,
     seasonalPattern, flag,
   } = data;
@@ -135,7 +135,10 @@ function generateReasoning(data) {
 
   // ── Counter-movement driver ───────────────────────────────────────────────
   const categoryDir = flag.T3_current > (triggeredByT12 && !triggeredByPrior ? flag.T12 : flag.T3_prior) ? 'up' : 'down';
-  const counterDrivers = topDrivers.filter(d => d.direction !== categoryDir).slice(0, 1);
+  const topThreeNames = topDrivers.slice(0, 3).map(d => d.name);
+  const counterDrivers = (activeDrivers || [])
+    .filter(d => d.direction !== categoryDir && !topThreeNames.includes(d.name))
+    .slice(0, 1);
   if (counterDrivers.length > 0) {
     const cd = counterDrivers[0];
     const moved = cd.movement;
@@ -445,7 +448,7 @@ export default async function handler(req, res) {
   // ── Return structured reasoning data ─────────────────────────────────────
   const reasoning = generateReasoning({
     categoryName, section, monthLabel, stateAbbr,
-    dominantDriver, dominantPct, topDrivers, compositionType,
+    dominantDriver, dominantPct, topDrivers, activeDrivers, compositionType,
     trendType, oaContext, portfolioContext, externalContext,
     seasonalPattern, flag,
   });
