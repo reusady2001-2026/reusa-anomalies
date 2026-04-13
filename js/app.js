@@ -59,6 +59,24 @@ const App = (() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY_LOCATION) || 'null'); } catch { return null; }
   }
 
+  // ── PROPERTY PRICE MEMORY ─────────────────────────────
+  const PRICE_STORAGE_KEY = 'oaas_property_prices';
+
+  function getSavedPrice(propertyName) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PRICE_STORAGE_KEY) || '{}');
+      return saved[propertyName] || null;
+    } catch(e) { return null; }
+  }
+
+  function savePrice(propertyName, price) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PRICE_STORAGE_KEY) || '{}');
+      saved[propertyName] = price;
+      localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(saved));
+    } catch(e) {}
+  }
+
   // ── STORAGE ───────────────────────────────────────────
 
   const STORAGE_KEY_PRICES = 'anomaly_price_history';
@@ -786,6 +804,7 @@ const App = (() => {
     const price = parsePrice(document.getElementById('price-a')?.value) || 0;
     if (price) saveHistory(STORAGE_KEY_PRICES, price);
     state.purchasePriceA = price;
+    if (price && state.propertyNameA) savePrice(state.propertyNameA, document.getElementById('price-a')?.value);
 
     try {
       state.resultA  = Engine.analyse(state.parsedA, price, state.periodStart, state.periodEnd);
@@ -1247,6 +1266,8 @@ const App = (() => {
         const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
         const propNameInput = document.getElementById('analyzer-property-name');
         if (propNameInput) propNameInput.value = extractedName;
+        const savedPrice = getSavedPrice(extractedName);
+        if (savedPrice) { const priceInput = document.getElementById('price-a'); if (priceInput) priceInput.value = savedPrice; }
       }
       try {
         const rows = await readFileAsRows(file);
@@ -1271,6 +1292,8 @@ const App = (() => {
           const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
           const propNameInput = document.getElementById('analyzer-property-name');
           if (propNameInput) propNameInput.value = extractedName;
+          const savedPrice = getSavedPrice(extractedName);
+          if (savedPrice) { const priceInput = document.getElementById('price-a'); if (priceInput) priceInput.value = savedPrice; }
         }
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
@@ -1335,6 +1358,8 @@ const App = (() => {
         const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
         const propNameInput = document.getElementById('ea-property-name');
         if (propNameInput) propNameInput.value = extractedName;
+        const savedPrice = getSavedPrice(extractedName);
+        if (savedPrice) { const priceInput = document.getElementById('price-ea'); if (priceInput) priceInput.value = savedPrice; }
       }
       try {
         const rows = await readFileAsRows(file);
@@ -1354,6 +1379,8 @@ const App = (() => {
           const extractedName = nameMatch[1].replace(/_/g, ' ').trim();
           const propNameInput = document.getElementById('ea-property-name');
           if (propNameInput) propNameInput.value = extractedName;
+          const savedPrice = getSavedPrice(extractedName);
+          if (savedPrice) { const priceInput = document.getElementById('price-ea'); if (priceInput) priceInput.value = savedPrice; }
         }
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
@@ -1431,6 +1458,7 @@ const App = (() => {
 
       const priceRaw = document.getElementById('price-ea')?.value?.replace(/[^0-9.]/g, '');
       const purchasePrice = parseFloat(priceRaw) || 0;
+      if (purchasePrice && state.propertyNameEA) savePrice(state.propertyNameEA, document.getElementById('price-ea')?.value);
 
       if (!purchasePrice) {
         alert('Please enter a purchase price.');
