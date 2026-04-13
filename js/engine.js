@@ -18,6 +18,11 @@ const Engine = (() => {
    *   All other rows: individual metric rows
    */
   function parseSheet(rows) {
+    // ── extract city from title row ──
+    const titleRow0 = rows[0] ? String(rows[0][0] || rows[0][1] || '').trim() : '';
+    const cityMatch = titleRow0.match(/ at (.+?) \(/);
+    const extractedCity = cityMatch ? cityMatch[1].trim() : null;
+
     // ── find month header row ──
     let monthRowIdx = -1;
     let months = [];
@@ -127,7 +132,7 @@ const Engine = (() => {
       });
     }
 
-    return { months, metrics };
+    return { months, metrics, extractedCity };
   }
 
   function normalizeMonthLabel(cell) {

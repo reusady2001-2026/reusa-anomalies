@@ -77,6 +77,47 @@ const App = (() => {
     } catch(e) {}
   }
 
+  // ── CITY → STATE LOOKUP ───────────────────────────────
+  const CITY_STATE_MAP = {
+    // New Jersey
+    'Princeton Junction': 'NJ', 'Princeton Meadows': 'NJ', 'Middlesex': 'NJ',
+    'Newark': 'NJ', 'Jersey City': 'NJ', 'Trenton': 'NJ', 'Camden': 'NJ',
+    'Hoboken': 'NJ', 'Edison': 'NJ', 'Woodbridge': 'NJ', 'Lakewood': 'NJ',
+    'Toms River': 'NJ', 'Hamilton': 'NJ', 'Clifton': 'NJ', 'Cherry Hill': 'NJ',
+    'Paterson': 'NJ', 'Elizabeth': 'NJ', 'East Orange': 'NJ', 'Vineland': 'NJ',
+    'New Brunswick': 'NJ', 'Parsippany': 'NJ', 'Hackensack': 'NJ',
+    'Piscataway': 'NJ', 'Irvington': 'NJ', 'Plainfield': 'NJ',
+    // Connecticut
+    'Norwalk': 'CT', 'Bridgeport': 'CT', 'New Haven': 'CT', 'Hartford': 'CT',
+    'Stamford': 'CT', 'Waterbury': 'CT', 'Danbury': 'CT', 'Meriden': 'CT',
+    'New Britain': 'CT', 'West Haven': 'CT', 'Greenwich': 'CT', 'Fairfield': 'CT',
+    // New York
+    'New York': 'NY', 'Brooklyn': 'NY', 'Queens': 'NY', 'Bronx': 'NY',
+    'Buffalo': 'NY', 'Rochester': 'NY', 'Yonkers': 'NY', 'Syracuse': 'NY',
+    'Albany': 'NY', 'White Plains': 'NY', 'Hempstead': 'NY', 'Flushing': 'NY',
+    // Pennsylvania
+    'Philadelphia': 'PA', 'Pittsburgh': 'PA', 'Allentown': 'PA', 'Reading': 'PA',
+    'Scranton': 'PA', 'Erie': 'PA', 'Bethlehem': 'PA', 'Lancaster': 'PA',
+    // Florida
+    'Miami': 'FL', 'Orlando': 'FL', 'Tampa': 'FL', 'Jacksonville': 'FL',
+    'Fort Lauderdale': 'FL', 'Boca Raton': 'FL', 'West Palm Beach': 'FL',
+    // Texas
+    'Houston': 'TX', 'Dallas': 'TX', 'Austin': 'TX', 'San Antonio': 'TX',
+    'Fort Worth': 'TX', 'El Paso': 'TX', 'Arlington': 'TX', 'Plano': 'TX',
+    // California
+    'Los Angeles': 'CA', 'San Francisco': 'CA', 'San Diego': 'CA', 'San Jose': 'CA',
+    'Sacramento': 'CA', 'Oakland': 'CA', 'Irvine': 'CA', 'Anaheim': 'CA',
+    // Other common states
+    'Chicago': 'IL', 'Phoenix': 'AZ', 'Seattle': 'WA', 'Denver': 'CO',
+    'Atlanta': 'GA', 'Boston': 'MA', 'Nashville': 'TN', 'Charlotte': 'NC',
+    'Las Vegas': 'NV', 'Portland': 'OR', 'Minneapolis': 'MN', 'Baltimore': 'MD',
+    'Washington': 'DC', 'Louisville': 'KY', 'Memphis': 'TN', 'Columbus': 'OH',
+    'Cleveland': 'OH', 'Indianapolis': 'IN', 'Milwaukee': 'WI', 'Tucson': 'AZ',
+    'Albuquerque': 'NM', 'Kansas City': 'MO', 'Omaha': 'NE', 'Raleigh': 'NC',
+    'Virginia Beach': 'VA', 'Richmond': 'VA', 'Norfolk': 'VA',
+    'Salt Lake City': 'UT', 'Boise': 'ID', 'Anchorage': 'AK', 'Honolulu': 'HI',
+  };
+
   // ── STORAGE ───────────────────────────────────────────
 
   const STORAGE_KEY_PRICES = 'anomaly_price_history';
@@ -1272,6 +1313,20 @@ const App = (() => {
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
+        if (state.parsedA.extractedCity) {
+          const city = state.parsedA.extractedCity;
+          const stateAbbr = CITY_STATE_MAP[city];
+          if (stateAbbr) {
+            state.selectedState = stateAbbr;
+            const ss = document.getElementById('state-select');
+            if (ss) ss.value = stateAbbr;
+          }
+          loadCityAutocomplete('city-input', 'city-dropdown-list', stateAbbr || state.selectedState).then(() => {
+            const inp = document.getElementById('city-input');
+            if (inp) inp.value = city;
+            state.selectedCity = city;
+          });
+        }
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
@@ -1294,6 +1349,20 @@ const App = (() => {
           if (propNameInput) propNameInput.value = extractedName;
           const savedPrice = getSavedPrice(extractedName);
           if (savedPrice) { const priceInput = document.getElementById('price-a'); if (priceInput) priceInput.value = savedPrice; }
+        }
+        if (data.extractedCity) {
+          const city = data.extractedCity;
+          const stateAbbr = CITY_STATE_MAP[city];
+          if (stateAbbr) {
+            state.selectedState = stateAbbr;
+            const ss = document.getElementById('state-select');
+            if (ss) ss.value = stateAbbr;
+          }
+          loadCityAutocomplete('city-input', 'city-dropdown-list', stateAbbr || state.selectedState).then(() => {
+            const inp = document.getElementById('city-input');
+            if (inp) inp.value = city;
+            state.selectedCity = city;
+          });
         }
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
@@ -1364,6 +1433,20 @@ const App = (() => {
       try {
         const rows = await readFileAsRows(file);
         state.resultEA = Engine.parseSheet(rows);
+        if (state.resultEA.extractedCity) {
+          const city = state.resultEA.extractedCity;
+          const stateAbbr = CITY_STATE_MAP[city];
+          if (stateAbbr) {
+            state.stateEA = stateAbbr;
+            const ss = document.getElementById('state-ea');
+            if (ss) ss.value = stateAbbr;
+          }
+          loadCityAutocomplete('city-ea', 'city-dropdown-list-ea', stateAbbr || state.stateEA).then(() => {
+            const inp = document.getElementById('city-ea');
+            if (inp) inp.value = city;
+            state.cityEA = city;
+          });
+        }
         saveFileToHistory(file.name, state.resultEA);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
@@ -1381,6 +1464,20 @@ const App = (() => {
           if (propNameInput) propNameInput.value = extractedName;
           const savedPrice = getSavedPrice(extractedName);
           if (savedPrice) { const priceInput = document.getElementById('price-ea'); if (priceInput) priceInput.value = savedPrice; }
+        }
+        if (data.extractedCity) {
+          const city = data.extractedCity;
+          const stateAbbr = CITY_STATE_MAP[city];
+          if (stateAbbr) {
+            state.stateEA = stateAbbr;
+            const ss = document.getElementById('state-ea');
+            if (ss) ss.value = stateAbbr;
+          }
+          loadCityAutocomplete('city-ea', 'city-dropdown-list-ea', stateAbbr || state.stateEA).then(() => {
+            const inp = document.getElementById('city-ea');
+            if (inp) inp.value = city;
+            state.cityEA = city;
+          });
         }
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
