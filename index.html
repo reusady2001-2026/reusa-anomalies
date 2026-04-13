@@ -204,10 +204,13 @@
 
       <!-- File loader -->
       <div class="portfolio-file-section">
-        <label class="upload-btn" id="portfolio-upload-label">
-          📂 Add Property
-          <input type="file" id="portfolio-file-input" accept=".xlsx,.xls,.csv" style="display:none" multiple>
-        </label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label class="upload-btn" id="portfolio-upload-label">
+            📂 Add Property
+            <input type="file" id="portfolio-file-input" accept=".xlsx,.xls,.csv" style="display:none" multiple>
+          </label>
+          <button class="hist-btn" id="portfolio-hist-btn" title="Load from history">📁</button>
+        </div>
         <div id="portfolio-property-list" class="portfolio-property-list"></div>
       </div>
 

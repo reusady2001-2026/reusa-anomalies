@@ -1707,6 +1707,27 @@ const App = (() => {
       e.target.value = '';
     });
 
+    // ── Portfolio file history ──
+    document.getElementById('portfolio-hist-btn')?.addEventListener('click', function() {
+      showFileHistoryDropdown(this, async (fileName, data) => {
+        const nameMatch = fileName.match(/Cash_Flow_(.+?)_Accrual/i);
+        const propertyName = nameMatch ? nameMatch[1].replace(/_/g, ' ').trim() : fileName;
+
+        const city = data.extractedCity || '';
+        const stateAbbr = CITY_STATE_MAP[city] || '';
+        const savedPrice = getSavedPrice(propertyName) || '150,000,000';
+
+        const result = Portfolio.addProperty(data, fileName, propertyName, stateAbbr, city, savedPrice);
+        if (result.error) {
+          console.warn('[Portfolio]', result.error);
+          return;
+        }
+
+        UI.renderPortfolioPropertyList(Portfolio.state.properties);
+        document.getElementById('portfolio-run-btn').disabled = Portfolio.state.properties.length === 0;
+      });
+    });
+
     // ── Portfolio mode toggle ──
     document.getElementById('portfolio-mode-oa')?.addEventListener('click', () => {
       Portfolio.setMode('oa');
