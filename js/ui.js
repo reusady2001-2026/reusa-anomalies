@@ -1221,11 +1221,36 @@ const UI = (() => {
       return;
     }
 
-    el.innerHTML = properties.map(p => `
-      <div class="portfolio-property-tag">
-        <span>${p.name}</span>
-        ${p.stateAbbr ? `<span style="color:#64748b">${p.stateAbbr}</span>` : ''}
-        <button class="remove-btn" onclick="Portfolio.removeProperty('${p.name}'); UI.renderPortfolioPropertyList(Portfolio.state.properties); document.getElementById('portfolio-run-btn').disabled = Portfolio.state.properties.length === 0;">✕</button>
+    el.innerHTML = properties.map((p, i) => `
+      <div class="portfolio-prop-card">
+        <div class="portfolio-prop-card-header">
+          <span class="portfolio-prop-card-name">${p.name}</span>
+          <button class="remove-btn" onclick="Portfolio.removeProperty('${p.name}'); UI.renderPortfolioPropertyList(Portfolio.state.properties); document.getElementById('portfolio-run-btn').disabled = Portfolio.state.properties.length === 0;">✕</button>
+        </div>
+        <div class="portfolio-prop-card-fields">
+          <input
+            type="text"
+            class="portfolio-prop-input"
+            placeholder="Purchase price"
+            value="${p.purchasePrice ? p.purchasePrice.toLocaleString() : ''}"
+            onchange="Portfolio.updateProperty('${p.name}', 'purchasePrice', this.value)"
+          />
+          <input
+            type="text"
+            class="portfolio-prop-input"
+            placeholder="State (e.g. NJ)"
+            value="${p.stateAbbr || ''}"
+            onchange="Portfolio.updateProperty('${p.name}', 'stateAbbr', this.value.toUpperCase())"
+            style="width:60px"
+          />
+          <input
+            type="text"
+            class="portfolio-prop-input"
+            placeholder="City"
+            value="${p.city || ''}"
+            onchange="Portfolio.updateProperty('${p.name}', 'city', this.value)"
+          />
+        </div>
       </div>
     `).join('');
   }

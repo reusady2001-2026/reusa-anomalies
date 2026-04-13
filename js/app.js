@@ -76,6 +76,8 @@ const App = (() => {
       localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(saved));
     } catch(e) {}
   }
+  // Expose for portfolio.js (outside App IIFE scope)
+  window.savePrice = savePrice;
 
   // ── CITY → STATE LOOKUP ───────────────────────────────
   const CITY_STATE_MAP = {

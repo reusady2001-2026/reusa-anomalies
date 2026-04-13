@@ -34,6 +34,18 @@ const Portfolio = (() => {
     state.analysisRun = false;
   }
 
+  // ── Update property field ─────────────────────────────────────────────────
+  function updateProperty(propertyName, field, value) {
+    const prop = state.properties.find(p => p.name === propertyName);
+    if (!prop) return;
+    if (field === 'purchasePrice') {
+      prop.purchasePrice = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+      if (window.savePrice) window.savePrice(propertyName, value);
+    } else {
+      prop[field] = value;
+    }
+  }
+
   // ── Set mode ──────────────────────────────────────────────────────────────
   function setMode(mode) {
     state.mode = mode;
@@ -198,6 +210,7 @@ const Portfolio = (() => {
     getCombinedOAMetrics,
     getCombinedEAMonths,
     getUnionMonths,
+    updateProperty,
   };
 
 })();
