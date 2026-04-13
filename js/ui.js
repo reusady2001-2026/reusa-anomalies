@@ -1067,6 +1067,7 @@ const UI = (() => {
       city: window._eaCategoryResult?.city || '',
       propertyName: window._eaCategoryResult?.propertyName || '',
       purchasePrice: window._eaCategoryResult?.purchasePrice || 0,
+      fema: window._eaCategoryResult?.fema || [],
       recentCategoryT3: categoryFlags,
     };
 

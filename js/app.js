@@ -1448,6 +1448,7 @@ const App = (() => {
       state.executiveResult.city         = state.cityEA;
       state.executiveResult.propertyName = state.propertyNameEA;
       state.executiveResult.purchasePrice = purchasePrice;
+      state.executiveResult.fema = state.dataContextEA?.fema || [];
       UI.renderEACards(state.executiveResult);
     });
 

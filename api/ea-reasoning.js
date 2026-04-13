@@ -298,24 +298,45 @@ function generateReasoning(data) {
   // ── First appearance drivers ──────────────────────────────────────────────
   const firstAppearanceDrivers = topDrivers.filter(d => d.firstAppearance);
   if (firstAppearanceDrivers.length > 0) {
-    const names = firstAppearanceDrivers.map(d => d.name).join(' and ');
-    const amounts = firstAppearanceDrivers.map(d => fmt(d.absMovement)).join(' and ');
-    sentences.push(`${names} appeared for the first time this quarter at ${amounts} — no prior activity in the trailing 12 months.`);
+    firstAppearanceDrivers.forEach(d => {
+      const interp = METRIC_INTERPRETATIONS[d.name];
+      const interpText = interp ? (d.direction === 'up' ? interp.up : interp.down) : null;
+      let faSentence = `${d.name} appeared for the first time this quarter at ${fmt(d.absMovement)}`;
+      if (interpText) faSentence += ` — ${interpText}`;
+      faSentence += `. No prior activity in the trailing 12 months.`;
+      sentences.push(faSentence);
+    });
   }
 
   // ── Dominant driver ───────────────────────────────────────────────────────
   if (topDrivers.length >= 1) {
-    const driverParts = topDrivers.slice(0, 3).map(d => {
-      const moved = d.movement;
-      const sign = moved >= 0 ? '+' : '-';
-      return `${d.name} (${sign}${fmt(Math.abs(moved))})`;
-    });
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
-    if (dominantPct && Math.abs(dominantPct) >= 60 && topDrivers.length === 1) {
-      sentences.push(`Primary driver: ${driverParts[0]} ${reference}, accounting for ${Math.abs(dominantPct)}% of the shift.`);
-    } else {
-      sentences.push(`Primary drivers ${reference}: ${driverParts.join('; ')}.`);
-    }
+
+    const driverSentences = topDrivers.slice(0, 3).map(d => {
+      const interp = METRIC_INTERPRETATIONS[d.name];
+      const interpText = interp ? (d.direction === 'up' ? interp.up : interp.down) : null;
+      const verification = getVerificationStatus(d.name, d.direction, externalContext);
+      const sign = d.movement >= 0 ? '+' : '-';
+      const amount = `${sign}${fmt(d.absMovement)}`;
+
+      let sentence = `${d.name} (${amount} ${reference})`;
+      if (interpText) sentence += ` — ${interpText}`;
+
+      if (verification === 'confirmed') {
+        sentence += ` [confirmed by market data]`;
+      } else if (verification === 'contradicted') {
+        const contradictNote = interp?.contradictNote;
+        if (contradictNote) {
+          sentence += ` ⚠ ${contradictNote}`;
+        } else {
+          sentence += ` ⚠ market data points in the opposite direction`;
+        }
+      }
+
+      return sentence;
+    });
+
+    sentences.push(driverSentences.join('. ') + '.');
   }
 
   // ── Counter-movement driver ───────────────────────────────────────────────
@@ -327,10 +348,13 @@ function generateReasoning(data) {
     .slice(0, 1);
   if (counterDrivers.length > 0) {
     const cd = counterDrivers[0];
-    const moved = cd.movement;
-    const sign = moved >= 0 ? '+' : '-';
+    const interp = METRIC_INTERPRETATIONS[cd.name];
+    const interpText = interp ? (cd.direction === 'up' ? interp.up : interp.down) : null;
+    const sign = cd.movement >= 0 ? '+' : '-';
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
-    sentences.push(`Partially offset by ${cd.name} (${sign}${fmt(Math.abs(moved))}) ${reference}.`);
+    let counterSentence = `Partially offset by ${cd.name} (${sign}${fmt(cd.absMovement)} ${reference})`;
+    if (interpText) counterSentence += ` — ${interpText}`;
+    sentences.push(counterSentence + '.');
   }
 
   // ── Composition ───────────────────────────────────────────────────────────
