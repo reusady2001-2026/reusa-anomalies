@@ -111,7 +111,8 @@ const Portfolio = (() => {
   // ── Get combined OA metric list ───────────────────────────────────────────
   function getCombinedOAMetrics() {
     // Collect all unique metric names across all properties
-    const metricMap = {}; // metricName → { name, section, properties: [{ name, anomalies, reasonData, months, values }] }
+    const metricMap = {}; // metricName → { name, section, properties: [...] }
+    const metricOrder = []; // first-seen order (preserves source file metric order)
 
     state.properties.forEach(prop => {
       if (!prop.result) return;
@@ -124,22 +125,24 @@ const Portfolio = (() => {
             properties: [],
             totalAnomalies: 0,
           };
+          metricOrder.push(metric.name);
         }
         metricMap[metric.name].properties.push({
           propertyName: prop.name,
           stateAbbr: prop.stateAbbr,
-          anomalies: metric.anomalies,
+          anomalies: metric.anomalies,       // display-indexed
           reasonData: metric.reasonData,
-          months: prop.result.months,
-          values: metric.values,
-          zScores: metric.zScores,
+          months: prop.result.months,         // full months array (absolute)
+          displayMonths: metric.displayMonths, // absolute indices of display window
+          values: metric.values,              // absolute-indexed
+          zScores: metric.zScores,            // display-indexed
         });
         metricMap[metric.name].totalAnomalies += metric.anomalies.length;
       });
     });
 
-    // Sort by total anomalies descending
-    return Object.values(metricMap).sort((a, b) => b.totalAnomalies - a.totalAnomalies);
+    // Return in file order (first appearance across all properties)
+    return metricOrder.map(name => metricMap[name]);
   }
 
   // ── Get combined EA month cards ───────────────────────────────────────────

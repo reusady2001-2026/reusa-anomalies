@@ -1337,22 +1337,35 @@ const UI = (() => {
 
     const headerCells = unionMonths.map(m => `<th class="pm-month-th">${m}</th>`).join('');
 
-    const propertyRows = metric.properties.map(prop => {
-      const cells = unionMonths.map(monthLabel => {
+    // Problem 3: only show property rows that have at least one anomaly in visible months
+    const visibleProps = metric.properties.filter(prop =>
+      unionMonths.some(monthLabel => {
         const monthIdx = prop.months.indexOf(monthLabel);
+        if (monthIdx === -1) return false;
+        const ri = prop.displayMonths ? prop.displayMonths.indexOf(monthIdx) : monthIdx;
+        return ri !== -1 && prop.anomalies.includes(ri);
+      })
+    );
+
+    const propertyRows = visibleProps.map(prop => {
+      const cells = unionMonths.map(monthLabel => {
+        const monthIdx = prop.months.indexOf(monthLabel);  // absolute index
         if (monthIdx === -1) return '<td class="pm-cell pm-cell-empty"></td>';
 
-        const isAnomaly = prop.anomalies.includes(monthIdx);
-        const value = prop.values?.[monthIdx];
-        const zScore = prop.zScores?.[monthIdx];
+        // zScores and anomalies are display-indexed; values are absolute-indexed
+        const ri = prop.displayMonths ? prop.displayMonths.indexOf(monthIdx) : monthIdx;
+        if (ri === -1) return '<td class="pm-cell pm-cell-empty"></td>';
+
+        const isAnomaly = prop.anomalies.includes(ri);
+        const value = prop.values?.[monthIdx];   // absolute-indexed
+        const z = prop.zScores?.[ri];            // display-indexed
 
         if (!isAnomaly) {
           return `<td class="pm-cell pm-cell-normal">${fmtVal(value)}</td>`;
         }
 
-        const isIncome = metric.section === 'INCOME';
-        const isAboveBaseline = (zScore || 0) > 0;
-        const isPositive = (isIncome && isAboveBaseline) || (!isIncome && !isAboveBaseline);
+        // Mirror OA getCellClass: use z.pnl (same logic as renderTable)
+        const isPositive = z?.pnl === 'profit';
         const cellClass = isPositive ? 'pm-cell-positive' : 'pm-cell-negative';
 
         return `<td class="pm-cell ${cellClass}"
