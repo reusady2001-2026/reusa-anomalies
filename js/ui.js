@@ -1050,7 +1050,7 @@ const UI = (() => {
       .sort((a, b) => b.monthIdx - a.monthIdx)
       .slice(0, 3)
       .reverse()
-      .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current }));
+      .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current, T3_prior: f.T3_prior }));
 
     const reasoningPayload = {
       categoryName: flag.categoryName,

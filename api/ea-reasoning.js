@@ -144,10 +144,12 @@ function generateReasoning(data) {
   }
 
   // ── Trend ─────────────────────────────────────────────────────────────────
-  if (trendType === 'accelerating') {
-    sentences.push(`The gap is widening each quarter.`);
-  } else if (trendType === 'decelerating') {
-    sentences.push(`The gap is narrowing — momentum is slowing.`);
+  if (triggeredByPrior && !triggeredByT12) {
+    if (trendType === 'accelerating') {
+      sentences.push(`Momentum is accelerating — the gap between current and prior quarter T3 is widening each month.`);
+    } else if (trendType === 'decelerating') {
+      sentences.push(`Momentum is decelerating — the gap between current and prior quarter T3 is shrinking each month.`);
+    }
   }
 
   // ── Seasonal ──────────────────────────────────────────────────────────────
@@ -262,15 +264,19 @@ export default async function handler(req, res) {
   // ── Step 3: Trend acceleration ───────────────────────────────────────────
   let trendType = 'unknown';
   if (recentCategoryT3 && recentCategoryT3.length >= 2) {
-    const movements = recentCategoryT3.map((r, i) => {
-      if (i === 0) return null;
-      return r.T3 - recentCategoryT3[i-1].T3;
-    }).filter(Boolean);
-    const isAccelerating = movements.every((m, i) => i === 0 || Math.abs(m) >= Math.abs(movements[i-1]));
-    const isDecelerating = movements.every((m, i) => i === 0 || Math.abs(m) <= Math.abs(movements[i-1]));
-    if (isAccelerating) trendType = 'accelerating';
-    else if (isDecelerating) trendType = 'decelerating';
-    else trendType = 'volatile';
+    // Each entry has { monthLabel, T3, T3_prior }
+    // Compute the T3 vs T3_prior gap for each recent month
+    const gaps = recentCategoryT3
+      .filter(r => r.T3 != null && r.T3_prior != null)
+      .map(r => Math.abs(r.T3 - r.T3_prior));
+
+    if (gaps.length >= 2) {
+      const isAccelerating = gaps.every((g, i) => i === 0 || g >= gaps[i-1]);
+      const isDecelerating = gaps.every((g, i) => i === 0 || g <= gaps[i-1]);
+      if (isAccelerating) trendType = 'accelerating';
+      else if (isDecelerating) trendType = 'decelerating';
+      else trendType = 'volatile';
+    }
   }
 
   // ── Step 4: OA context from Supabase ────────────────────────────────────
