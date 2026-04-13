@@ -1730,3 +1730,101 @@ input[type="file"] { display: none; }
 }
 [data-theme="light"] .portfolio-mode-btn { color: #475569; border-color: rgba(0,0,0,0.12); }
 [data-theme="light"] .portfolio-mode-btn.active { background: rgba(0,0,0,0.06); color: #1e293b; }
+
+/* ── PORTFOLIO OA TABLE ── */
+.portfolio-section-header {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 12px 8px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.portfolio-metric-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.portfolio-metric-row:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.portfolio-metric-name {
+  font-size: 13px;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  flex: 1;
+}
+
+.portfolio-metric-count {
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
+  margin-right: 12px;
+}
+
+.portfolio-metric-arrow {
+  font-size: 10px;
+  color: #475569;
+}
+
+.pm-detail-table-wrap {
+  overflow-x: auto;
+  padding: 8px 0 8px 8px;
+  background: rgba(255,255,255,0.01);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.pm-detail-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.pm-prop-th {
+  text-align: left;
+  padding: 4px 12px 4px 8px;
+  color: #475569;
+  font-weight: 600;
+  min-width: 140px;
+}
+
+.pm-month-th {
+  text-align: right;
+  padding: 4px 6px;
+  color: #475569;
+  min-width: 80px;
+}
+
+.pm-prop-name {
+  padding: 4px 12px 4px 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pm-cell {
+  padding: 4px 6px;
+  text-align: right;
+  font-size: 11px;
+}
+
+.pm-cell-normal { color: #475569; }
+.pm-cell-empty { background: transparent; }
+.pm-cell-positive { background: rgba(34,197,94,0.15); color: #22c55e; }
+.pm-cell-negative { background: rgba(248,113,113,0.15); color: #f87171; }
+
+/* Light mode */
+[data-theme="light"] .portfolio-section-header { color: #64748b; border-bottom-color: rgba(0,0,0,0.06); }
+[data-theme="light"] .portfolio-metric-row:hover { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .portfolio-metric-name { color: #1e293b; }
+[data-theme="light"] .portfolio-metric-count { color: #94a3b8; }
+[data-theme="light"] .pm-prop-name { color: #475569; }
+[data-theme="light"] .pm-cell-normal { color: #94a3b8; }

@@ -1210,6 +1210,170 @@ const UI = (() => {
     detailRow.style.display = '';
   }
 
+  // ── PORTFOLIO: PROPERTY LIST ──────────────────────────
+
+  function renderPortfolioPropertyList(properties) {
+    const el = document.getElementById('portfolio-property-list');
+    if (!el) return;
+
+    if (properties.length === 0) {
+      el.innerHTML = '<span style="font-size:11px;color:#475569;font-family:JetBrains Mono,monospace;">No properties loaded</span>';
+      return;
+    }
+
+    el.innerHTML = properties.map(p => `
+      <div class="portfolio-property-tag">
+        <span>${p.name}</span>
+        ${p.stateAbbr ? `<span style="color:#64748b">${p.stateAbbr}</span>` : ''}
+        <button class="remove-btn" onclick="Portfolio.removeProperty('${p.name}'); UI.renderPortfolioPropertyList(Portfolio.state.properties); document.getElementById('portfolio-run-btn').disabled = Portfolio.state.properties.length === 0;">✕</button>
+      </div>
+    `).join('');
+  }
+
+  // ── PORTFOLIO: RESULTS DISPATCHER ────────────────────
+
+  function renderPortfolioResults(mode) {
+    if (mode === 'oa') {
+      renderPortfolioOA();
+    } else {
+      renderPortfolioEA();
+    }
+  }
+
+  // ── PORTFOLIO: OA VIEW ────────────────────────────────
+
+  function renderPortfolioOA() {
+    const el = document.getElementById('portfolio-results');
+    if (!el) return;
+
+    const metrics = Portfolio.getCombinedOAMetrics();
+    const unionMonths = Portfolio.getUnionMonths();
+
+    // Hide last 2 months
+    const visibleMonths = unionMonths.slice(0, -2);
+
+    if (metrics.length === 0) {
+      el.innerHTML = '<div style="padding:24px;color:#64748b;font-family:JetBrains Mono,monospace;font-size:12px;">No anomalies detected across portfolio.</div>';
+      return;
+    }
+
+    // Group by section
+    const income = metrics.filter(m => m.section === 'INCOME');
+    const expenses = metrics.filter(m => m.section === 'EXPENSES');
+
+    function renderSection(sectionMetrics, sectionLabel) {
+      if (sectionMetrics.length === 0) return '';
+      return `
+        <div class="portfolio-section-header">${sectionLabel}</div>
+        ${sectionMetrics.map((metric, idx) => {
+          const globalIdx = metrics.indexOf(metric);
+          return `
+            <div class="portfolio-metric-row" id="pm-row-${globalIdx}" onclick="UI.togglePortfolioMetric(${globalIdx})">
+              <div class="portfolio-metric-name">${metric.name}</div>
+              <div class="portfolio-metric-count">${metric.totalAnomalies} anomalies · ${metric.properties.length} propert${metric.properties.length === 1 ? 'y' : 'ies'}</div>
+              <div class="portfolio-metric-arrow" id="pm-arrow-${globalIdx}">▼</div>
+            </div>
+            <div id="pm-detail-${globalIdx}" style="display:none;"></div>
+          `;
+        }).join('')}
+      `;
+    }
+
+    el.innerHTML = `
+      <div class="portfolio-oa-table">
+        ${renderSection(income, 'INCOME')}
+        ${renderSection(expenses, 'EXPENSES')}
+      </div>
+    `;
+
+    // Store metrics globally for expand/collapse
+    window._portfolioOAMetrics = metrics;
+    window._portfolioUnionMonths = visibleMonths;
+  }
+
+  // ── PORTFOLIO: EXPAND/COLLAPSE METRIC ────────────────
+
+  function togglePortfolioMetric(idx) {
+    const detailEl = document.getElementById(`pm-detail-${idx}`);
+    const arrowEl = document.getElementById(`pm-arrow-${idx}`);
+    if (!detailEl) return;
+
+    if (detailEl.style.display !== 'none') {
+      detailEl.style.display = 'none';
+      if (arrowEl) arrowEl.textContent = '▼';
+      return;
+    }
+
+    const metric = window._portfolioOAMetrics?.[idx];
+    const unionMonths = window._portfolioUnionMonths || [];
+    if (!metric) return;
+
+    const fmtVal = n => n == null ? '' : (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
+
+    const headerCells = unionMonths.map(m => `<th class="pm-month-th">${m}</th>`).join('');
+
+    const propertyRows = metric.properties.map(prop => {
+      const cells = unionMonths.map(monthLabel => {
+        const monthIdx = prop.months.indexOf(monthLabel);
+        if (monthIdx === -1) return '<td class="pm-cell pm-cell-empty"></td>';
+
+        const isAnomaly = prop.anomalies.includes(monthIdx);
+        const value = prop.values?.[monthIdx];
+        const zScore = prop.zScores?.[monthIdx];
+
+        if (!isAnomaly) {
+          return `<td class="pm-cell pm-cell-normal">${fmtVal(value)}</td>`;
+        }
+
+        const isIncome = metric.section === 'INCOME';
+        const isUp = (zScore || 0) > 0;
+        const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
+        const cellClass = isPositive ? 'pm-cell-positive' : 'pm-cell-negative';
+
+        return `<td class="pm-cell ${cellClass}"
+          onclick="event.stopPropagation(); UI.openPortfolioReasonCard('${prop.propertyName}', '${metric.name}', ${monthIdx}, '${monthLabel}')"
+          style="cursor:pointer;">
+          ${fmtVal(value)}
+        </td>`;
+      }).join('');
+
+      return `
+        <tr>
+          <td class="pm-prop-name">${prop.propertyName}${prop.stateAbbr ? ` <span style="color:#475569">${prop.stateAbbr}</span>` : ''}</td>
+          ${cells}
+        </tr>
+      `;
+    }).join('');
+
+    detailEl.innerHTML = `
+      <div class="pm-detail-table-wrap">
+        <table class="pm-detail-table">
+          <thead>
+            <tr>
+              <th class="pm-prop-th">Property</th>
+              ${headerCells}
+            </tr>
+          </thead>
+          <tbody>${propertyRows}</tbody>
+        </table>
+      </div>
+    `;
+    detailEl.style.display = '';
+    if (arrowEl) arrowEl.textContent = '▲';
+  }
+
+  // ── PORTFOLIO: EA VIEW (stub) ─────────────────────────
+
+  function renderPortfolioEA() {
+    document.getElementById('portfolio-results').innerHTML = '<div style="padding:24px;color:#64748b;font-size:12px;font-family:JetBrains Mono,monospace;">EA view coming soon.</div>';
+  }
+
+  // ── PORTFOLIO: REASON CARD (stub) ─────────────────────
+
+  function openPortfolioReasonCard(propertyName, metricName, monthIdx, monthLabel) {
+    console.log('[Portfolio] open reason card:', propertyName, metricName, monthIdx, monthLabel);
+  }
+
   return {
     renderTable,
     renderComparisonTable,
@@ -1227,5 +1391,9 @@ const UI = (() => {
     fmt,
     fmtPct,
     escHtml,
+    renderPortfolioPropertyList,
+    renderPortfolioResults,
+    togglePortfolioMetric,
+    openPortfolioReasonCard,
   };
 })();
