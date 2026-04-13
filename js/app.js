@@ -1442,8 +1442,12 @@ const App = (() => {
         state.resultEA.months,
         purchasePrice
       );
-      state.executiveResult.metrics = state.resultEA.metrics;
-      state.executiveResult.months  = state.resultEA.months;
+      state.executiveResult.metrics      = state.resultEA.metrics;
+      state.executiveResult.months       = state.resultEA.months;
+      state.executiveResult.stateAbbr    = state.stateEA;
+      state.executiveResult.city         = state.cityEA;
+      state.executiveResult.propertyName = state.propertyNameEA;
+      state.executiveResult.purchasePrice = purchasePrice;
       UI.renderEACards(state.executiveResult);
     });
 

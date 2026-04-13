@@ -1033,12 +1033,61 @@ const UI = (() => {
           </tbody>
         </table>
         ${conflictNote}
+        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+          Loading analysis…
+        </div>
       </div>
     `;
 
     cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
     cardEl.classList.add('open');
     cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Build recentCategoryT3 — last 3 months of category T3 before this month
+    const allFlags = window._eaCategoryResult?.flags || [];
+    const categoryFlags = allFlags
+      .filter(f => f.categoryName === flag.categoryName && f.monthIdx < flag.monthIdx)
+      .sort((a, b) => b.monthIdx - a.monthIdx)
+      .slice(0, 3)
+      .reverse()
+      .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current }));
+
+    const reasoningPayload = {
+      categoryName: flag.categoryName,
+      section: flag.section,
+      monthLabel: flag.monthLabel,
+      metricBreakdown: rows.map(r => ({
+        name: r.name,
+        T3_current: r.T3_current,
+        T3_prior: r.T3_prior,
+        T12: r.T12,
+      })),
+      flag,
+      stateAbbr: window._eaCategoryResult?.stateAbbr || '',
+      city: window._eaCategoryResult?.city || '',
+      propertyName: window._eaCategoryResult?.propertyName || '',
+      purchasePrice: window._eaCategoryResult?.purchasePrice || 0,
+      recentCategoryT3: categoryFlags,
+    };
+
+    fetch('/api/ea-reasoning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reasoningPayload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById(`ea-reasoning-${idx}`);
+      if (el && data.reasoning) {
+        el.textContent = data.reasoning;
+      } else if (el) {
+        el.textContent = 'No reasoning available.';
+      }
+    })
+    .catch(() => {
+      const el = document.getElementById(`ea-reasoning-${idx}`);
+      if (el) el.textContent = 'Could not load analysis.';
+    });
   }
 
   function toggleMetricDetail(cardIdx, rowIdx, metricName) {
