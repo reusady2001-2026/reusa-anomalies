@@ -1313,6 +1313,8 @@ const App = (() => {
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
+        console.log('[Location] result.extractedCity:', state.parsedA.extractedCity);
+        console.log('[Location] CITY_STATE_MAP lookup:', CITY_STATE_MAP[state.parsedA.extractedCity]);
         if (state.parsedA.extractedCity) {
           const city = state.parsedA.extractedCity;
           const stateAbbr = CITY_STATE_MAP[city];

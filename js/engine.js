@@ -22,6 +22,8 @@ const Engine = (() => {
     const titleRow0 = rows[0] ? String(rows[0][0] || rows[0][1] || '').trim() : '';
     const cityMatch = titleRow0.match(/ at (.+?) \(/);
     const extractedCity = cityMatch ? cityMatch[1].trim() : null;
+    console.log('[Location] row 0 value:', rows[0]?.[0]);
+    console.log('[Location] extractedCity:', extractedCity);
 
     // ── find month header row ──
     let monthRowIdx = -1;
