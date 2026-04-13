@@ -285,6 +285,8 @@ function generateReasoning(data) {
     seasonalPattern, flag,
   } = data;
 
+  const { stateUR, mortgage30, hdd, cdd, energyCPI, avgHourlyEarnings, fema } = externalContext || {};
+
   const isIncome = section === 'INCOME';
   const fmt = n => '$' + Math.round(Math.abs(n || 0)).toLocaleString();
   const sentences = [];
@@ -402,29 +404,38 @@ function generateReasoning(data) {
     sentences.push(`${sameRegion.length} regional properties show similar movement — consistent with a broader trend.`);
   }
 
-  // ── External context — only if fewer than 3 property sentences ────────────
-  if (sentences.length < 3) {
-    const { stateUR, mortgage30, hdd, cdd, energyCPI } = externalContext || {};
-    const catLower = categoryName.toLowerCase();
+  // ── External context — only when it directly explains the dominant driver ──
+  const dominantName = dominantDriver?.name || '';
+  const catLower = categoryName.toLowerCase();
 
-    // Weather context only for weather-sensitive categories
-    const isWeatherSensitive = ['utilities','contract repairs','repairs','unit turnover','snow'].some(k => catLower.includes(k));
-    // Labor context only for payroll categories
-    const isLaborSensitive = catLower.includes('payroll') || catLower.includes('management');
-    // Rental market context only for income categories
-    const isRentalIncome = section === 'INCOME';
-
-    const noExternalContext = ['other income', 'other expenses', 'general and administrative', 'management fees', 'commercial income'];
-    if (noExternalContext.some(k => catLower.includes(k))) {
-      // Skip external context entirely for these categories
-    } else if (isRentalIncome && stateUR != null) {
-      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}%${mortgage30 ? ` and 30yr mortgage at ${mortgage30.toFixed(2)}%` : ''} — ${stateUR < 4 ? 'tight labor market supporting rental demand' : stateUR > 6 ? 'elevated unemployment may be pressuring demand' : 'moderate labor conditions'}.`);
-    } else if (isWeatherSensitive && hdd != null && hdd > 400) {
-      sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather driving operating costs.`);
-    } else if (isWeatherSensitive && cdd != null && cdd > 150) {
-      sentences.push(`${cdd} cooling degree days — summer heat elevating utility demand.`);
-    } else if (isLaborSensitive && stateUR != null) {
-      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% — labor market conditions affecting staffing costs.`);
+  if (section === 'INCOME') {
+    const rentDriven = ['Market Rent', 'Less: Vacancy', 'Concession', 'Residential Rent', '(Loss)/Gain to Lease'].includes(dominantName);
+    if (rentDriven && stateUR != null) {
+      const laborCtx = stateUR < 4 ? 'tight labor market supporting rental demand'
+        : stateUR > 6 ? 'elevated unemployment may be pressuring demand'
+        : null;
+      if (laborCtx) sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% — ${laborCtx}.`);
+    }
+  } else if (catLower.includes('utilit')) {
+    const utilDriven = ['Electric Expense', 'Gas Expense', 'Water expense'].includes(dominantName);
+    if (utilDriven) {
+      if (hdd != null && hdd > 400) sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather driving utility costs.`);
+      else if (cdd != null && cdd > 150) sentences.push(`${cdd} cooling degree days — summer heat elevating utility demand.`);
+    }
+  } else if (catLower.includes('payroll')) {
+    const payrollDriven = dominantName.toLowerCase().includes('payroll') || dominantName.toLowerCase().includes('salary') || dominantName.toLowerCase().includes('salaries');
+    if (payrollDriven && avgHourlyEarnings != null && avgHourlyEarnings > 30) {
+      sentences.push(`National avg hourly earnings at $${avgHourlyEarnings.toFixed(2)} — wage growth context for payroll costs.`);
+    }
+  } else if (catLower.includes('repair') || catLower.includes('maintenance')) {
+    const repairDriven = dominantName.toLowerCase().includes('repair') || dominantName.toLowerCase().includes('maint');
+    if (repairDriven && fema && fema.length > 0) {
+      sentences.push(`FEMA disaster declarations active in ${stateAbbr} — may be driving elevated repair costs.`);
+    }
+  } else if (catLower.includes('contract')) {
+    if (dominantName === 'Snow Removal Contract' && hdd != null) {
+      if (hdd > 400) sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather consistent with elevated snow removal costs.`);
+      else if (hdd < 100) sentences.push(`Low heating degree days in ${stateAbbr} — mild weather makes elevated snow removal costs unexpected.`);
     }
   }
 
