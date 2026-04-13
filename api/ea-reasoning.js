@@ -1,11 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
 const FRED_KEY = process.env.FRED_KEY;
+
+function sbFetch(supabaseUrl, anonKey, path, opts = {}) {
+  return fetch(`${supabaseUrl}/rest/v1${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        anonKey,
+      'Authorization': `Bearer ${anonKey}`,
+      ...(opts.headers || {}),
+    },
+  });
+}
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -178,6 +183,9 @@ function generateReasoning(data) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const SUPABASE_URL      = process.env.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
   const {
     categoryName,
     section,
@@ -243,11 +251,12 @@ export default async function handler(req, res) {
   // ── Step 4: OA context from Supabase ────────────────────────────────────
   let oaContext = [];
   try {
-    const { data: analyses } = await supabase
-      .from('analyses')
-      .select('anomalies, property_name')
-      .eq('property_name', propertyName)
-      .limit(10);
+    const oaRes = await sbFetch(
+      SUPABASE_URL, SUPABASE_ANON_KEY,
+      `/analyses?property_name=eq.${encodeURIComponent(propertyName)}&select=anomalies,property_name&limit=10`,
+      { method: 'GET' }
+    );
+    const analyses = oaRes.ok ? await oaRes.json() : null;
 
     if (analyses) {
       analyses.forEach(analysis => {
@@ -271,11 +280,12 @@ export default async function handler(req, res) {
   // ── Step 5: Portfolio context from Supabase ──────────────────────────────
   let portfolioContext = [];
   try {
-    const { data: allAnalyses } = await supabase
-      .from('analyses')
-      .select('anomalies, property_name, state_abbr')
-      .neq('property_name', propertyName)
-      .limit(50);
+    const portRes = await sbFetch(
+      SUPABASE_URL, SUPABASE_ANON_KEY,
+      `/analyses?property_name=neq.${encodeURIComponent(propertyName)}&select=anomalies,property_name,state_abbr&limit=50`,
+      { method: 'GET' }
+    );
+    const allAnalyses = portRes.ok ? await portRes.json() : null;
 
     if (allAnalyses) {
       const propertyRegion = getRegion(stateAbbr);
@@ -349,11 +359,12 @@ export default async function handler(req, res) {
   // ── Step 7: Seasonal check ───────────────────────────────────────────────
   let seasonalPattern = null;
   try {
-    const { data: historicalAnalyses } = await supabase
-      .from('analyses')
-      .select('anomalies')
-      .eq('property_name', propertyName)
-      .limit(20);
+    const seasonRes = await sbFetch(
+      SUPABASE_URL, SUPABASE_ANON_KEY,
+      `/analyses?property_name=eq.${encodeURIComponent(propertyName)}&select=anomalies&limit=20`,
+      { method: 'GET' }
+    );
+    const historicalAnalyses = seasonRes.ok ? await seasonRes.json() : null;
 
     if (historicalAnalyses) {
       const sameMonthPriorYears = [];
