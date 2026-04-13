@@ -1313,8 +1313,6 @@ const App = (() => {
       try {
         const rows = await readFileAsRows(file);
         state.parsedA = Engine.parseSheet(rows);
-        console.log('[Location] result.extractedCity:', state.parsedA.extractedCity);
-        console.log('[Location] CITY_STATE_MAP lookup:', CITY_STATE_MAP[state.parsedA.extractedCity]);
         if (state.parsedA.extractedCity) {
           const city = state.parsedA.extractedCity;
           const stateAbbr = CITY_STATE_MAP[city];
@@ -1329,7 +1327,6 @@ const App = (() => {
             state.selectedCity = city;
           });
         }
-        console.log('[Location] handler:', 'file-a', 'city:', state.parsedA.extractedCity);
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
@@ -1367,7 +1364,6 @@ const App = (() => {
             state.selectedCity = city;
           });
         }
-        console.log('[Location] handler:', 'file-hist-btn-a', 'city:', data.extractedCity);
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
         if (state.selectedState && state.selectedCity) fetchContextIfReady();
@@ -1451,7 +1447,6 @@ const App = (() => {
             state.cityEA = city;
           });
         }
-        console.log('[Location] handler:', 'file-ea', 'city:', state.resultEA.extractedCity);
         saveFileToHistory(file.name, state.resultEA);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
@@ -1484,7 +1479,6 @@ const App = (() => {
             state.cityEA = city;
           });
         }
-        console.log('[Location] handler:', 'file-hist-btn-ea', 'city:', data.extractedCity);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
       });
