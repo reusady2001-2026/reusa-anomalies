@@ -90,21 +90,37 @@ function generateReasoning(data) {
   } = data;
 
   const isIncome = section === 'INCOME';
-  const isUp = flag.direction === 'up';
   const fmt = n => '$' + Math.round(Math.abs(n || 0)).toLocaleString();
   const sentences = [];
 
-  // ── Property-first: dominant driver ──────────────────────────────────────
+  const triggeredByPrior = flag.flaggedByPrior;
+  const triggeredByT12 = flag.flaggedByT12;
+  const conflicting = flag.conflicting;
+
+  // ── Opening: what triggered the anomaly ──────────────────────────────────
+  if (triggeredByPrior && triggeredByT12 && !conflicting) {
+    sentences.push(`${categoryName} is running ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} above the prior quarter and ${fmt(Math.abs(flag.T3_current - flag.T12))} above the trailing 12-month baseline — both momentum and structural drift are elevated.`);
+  } else if (triggeredByPrior && !triggeredByT12) {
+    const dir = flag.T3_current > flag.T3_prior ? 'above' : 'below';
+    sentences.push(`${categoryName}'s run rate shifted ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} ${dir} the prior quarter — a momentum-driven change.`);
+  } else if (triggeredByT12 && !triggeredByPrior) {
+    const dir = flag.T3_current > flag.T12 ? 'above' : 'below';
+    sentences.push(`${categoryName}'s current run rate is ${fmt(Math.abs(flag.T3_current - flag.T12))} ${dir} the trailing 12-month baseline — a structural drift from the annual average.`);
+  } else if (conflicting) {
+    sentences.push(`${categoryName} shows conflicting signals — the quarterly trend and annual baseline are pointing in opposite directions.`);
+  }
+
+  // ── Dominant driver ───────────────────────────────────────────────────────
   if (dominantDriver) {
-    const driverDir = dominantDriver.direction === 'up' ? 'increased' : 'decreased';
+    const driverDir = dominantDriver.direction === 'up' ? 'higher' : 'lower';
+    const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
     if (dominantPct && Math.abs(dominantPct) >= 60) {
-      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} vs the prior quarter, accounting for ${Math.abs(dominantPct)}% of the category movement.`);
+      sentences.push(`${dominantDriver.name} is the primary driver — ${fmt(dominantDriver.absMovement)} ${driverDir} ${reference}, accounting for ${Math.abs(dominantPct)}% of the shift.`);
     } else if (topDrivers.length >= 2) {
       const second = topDrivers[1];
-      const secondDir = second.direction === 'up' ? 'up' : 'down';
-      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} while ${second.name} moved ${secondDir} ${fmt(second.absMovement)} — the two primary drivers of this category shift.`);
+      sentences.push(`Led by ${dominantDriver.name} (${fmt(dominantDriver.absMovement)} ${driverDir}) and ${second.name} (${fmt(second.absMovement)} ${second.direction === 'up' ? 'higher' : 'lower'}) ${reference}.`);
     } else {
-      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} vs the prior quarter.`);
+      sentences.push(`${dominantDriver.name} is the primary driver at ${fmt(dominantDriver.absMovement)} ${driverDir} ${reference}.`);
     }
   }
 
@@ -113,71 +129,51 @@ function generateReasoning(data) {
     const ups = topDrivers.filter(m => m.direction === 'up');
     const downs = topDrivers.filter(m => m.direction === 'down');
     if (ups.length > 0 && downs.length > 0) {
-      sentences.push(`Movement is partially offset — ${ups.map(m => m.name).join(', ')} ${ups.length > 1 ? 'are' : 'is'} up while ${downs.map(m => m.name).join(', ')} ${downs.length > 1 ? 'are' : 'is'} down.`);
+      sentences.push(`Partially offset — ${ups.map(m => m.name).join(' and ')} moving up while ${downs.map(m => m.name).join(' and ')} moving down.`);
     }
   }
 
   // ── Trend ─────────────────────────────────────────────────────────────────
   if (trendType === 'accelerating') {
-    sentences.push(`This movement is accelerating — each recent quarter has shown a larger shift than the prior one.`);
+    sentences.push(`The gap is widening each quarter.`);
   } else if (trendType === 'decelerating') {
-    sentences.push(`The trend is decelerating — movement is slowing compared to prior quarters.`);
+    sentences.push(`The gap is narrowing — momentum is slowing.`);
   }
 
   // ── Seasonal ──────────────────────────────────────────────────────────────
   if (seasonalPattern?.recurring) {
-    sentences.push(`This pattern has recurred in ${MONTH_NAMES[new Date(monthLabel).getMonth()] || monthLabel.split(' ')[0]} in ${seasonalPattern.years.join(', ')} — suggesting a seasonal component.`);
+    sentences.push(`This pattern has appeared in ${monthLabel.split(' ')[0]} in prior years (${seasonalPattern.years.join(', ')}) — a likely seasonal component.`);
   }
 
   // ── Portfolio context ─────────────────────────────────────────────────────
   const sameState = portfolioContext.filter(p => p.locationProximity === 'same-state');
   const sameRegion = portfolioContext.filter(p => p.locationProximity === 'same-region');
   if (sameState.length >= 2) {
-    sentences.push(`${sameState.length} other ${stateAbbr} properties show similar movement this month — suggesting a state-level driver.`);
+    sentences.push(`${sameState.length} other ${stateAbbr} properties show similar movement — likely a state-level driver.`);
   } else if (sameRegion.length >= 2) {
-    sentences.push(`${sameRegion.length} properties in the same region show similar movement — consistent with a regional trend.`);
+    sentences.push(`${sameRegion.length} regional properties show similar movement — consistent with a broader trend.`);
   }
 
-  // ── External context (market as last resort) ──────────────────────────────
-  const { fedfunds, rentCPI, stateUR, energyCPI, mortgage30, hdd, cdd } = externalContext || {};
-
-  // Only add market context if we don't already have a strong property explanation
-  if (sentences.length < 2) {
+  // ── External context — only if fewer than 3 property sentences ────────────
+  if (sentences.length < 3) {
+    const { stateUR, mortgage30, hdd, cdd, energyCPI } = externalContext || {};
     if (isIncome && stateUR != null) {
-      const laborContext = stateUR < 4 ? 'a tight labor market supporting rental demand'
-        : stateUR > 6 ? 'elevated unemployment that may be pressuring demand'
-        : `${stateUR.toFixed(1)}% state unemployment`;
-      sentences.push(`Market context: ${laborContext}${mortgage30 ? ` with 30yr mortgage at ${mortgage30.toFixed(2)}%` : ''}.`);
+      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% ${stateUR < 4 ? '— tight labor market supporting demand' : stateUR > 6 ? '— elevated unemployment may be pressuring demand' : '— moderate labor conditions'}.`);
     } else if (!isIncome && hdd != null && hdd > 400) {
-      sentences.push(`Weather context: ${hdd} heating degree days in ${stateAbbr} — elevated cold-weather operating costs expected.`);
+      sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather driving operating costs.`);
     } else if (!isIncome && cdd != null && cdd > 150) {
-      sentences.push(`Weather context: ${cdd} cooling degree days — elevated summer utility and maintenance demand.`);
-    } else if (!isIncome && energyCPI != null) {
-      sentences.push(`Energy CPI at ${energyCPI.toFixed(1)} nationally may be contributing to cost pressure.`);
-    }
-  }
-
-  // ── OA context (use internally to refine, not quote) ──────────────────────
-  if (oaContext.length > 0) {
-    const angles = [...new Set(oaContext.map(o => o.angle))];
-    // If OA identified seasonal variance for metrics in this category, note it
-    if (angles.includes('SEASONAL_VARIANCE') && !seasonalPattern?.recurring) {
-      sentences.push(`Operational analysis identified seasonal patterns in individual metrics within this category this month.`);
-    }
-    // If OA identified market pressure, reinforce or soften based on property data
-    if (angles.includes('MARKET_PRESSURE') && sentences.length < 3) {
-      sentences.push(`Individual metric analysis also points to market-driven factors for components of this category.`);
+      sentences.push(`${cdd} cooling degree days — summer heat elevating utility demand.`);
+    } else if (!isIncome && energyCPI != null && energyCPI > 300) {
+      sentences.push(`Energy CPI at ${energyCPI.toFixed(1)} — elevated energy costs contributing to expense pressure.`);
     }
   }
 
   // ── Trim to 75 words ──────────────────────────────────────────────────────
   let result = sentences.join(' ');
   const words = result.split(' ');
-  if (words.length > 80) {
-    result = words.slice(0, 75).join(' ') + '…';
-  }
+  if (words.length > 80) result = words.slice(0, 75).join(' ') + '…';
 
-  return result || `${categoryName} moved ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} vs the prior quarter in ${monthLabel}. No dominant single driver identified — review individual metric breakdown above for details.`;
+  return result || `${categoryName} moved ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} vs the prior quarter in ${monthLabel}. Review individual metric breakdown above for details.`;
 }
 
 export default async function handler(req, res) {
@@ -206,7 +202,8 @@ export default async function handler(req, res) {
   const endDate = `${parsed.year}-${String(parsed.month).padStart(2,'0')}-01`;
 
   // ── Step 1: Dominant driver ──────────────────────────────────────────────
-  const metricMovements = (metricBreakdown || [])
+  // T3 momentum drivers — which metric moved most vs prior quarter
+  const t3Drivers = (metricBreakdown || [])
     .map(m => ({
       name: m.name,
       movement: (m.T3_current || 0) - (m.T3_prior || 0),
@@ -219,16 +216,34 @@ export default async function handler(req, res) {
     .filter(m => m.absMovement > 0)
     .sort((a, b) => b.absMovement - a.absMovement);
 
-  const totalMovement = (flag.T3_current || 0) - (flag.T3_prior || 0);
-  const topDrivers = metricMovements.slice(0, 3);
-  const dominantDriver = topDrivers[0] || null;
+  // T12 drift drivers — which metric's current T3 diverges most from T12
+  const t12Drivers = (metricBreakdown || [])
+    .map(m => ({
+      name: m.name,
+      movement: (m.T3_current || 0) - (m.T12 || 0),
+      absMovement: Math.abs((m.T3_current || 0) - (m.T12 || 0)),
+      direction: (m.T3_current || 0) >= (m.T12 || 0) ? 'up' : 'down',
+      T3_current: m.T3_current,
+      T3_prior: m.T3_prior,
+      T12: m.T12,
+    }))
+    .filter(m => m.absMovement > 0)
+    .sort((a, b) => b.absMovement - a.absMovement);
+
+  // Pick active drivers based on trigger
+  const activeDrivers = flag.flaggedByPrior ? t3Drivers : t12Drivers;
+  const dominantDriver = activeDrivers[0] || null;
+  const totalMovement = flag.flaggedByPrior
+    ? (flag.T3_current - flag.T3_prior)
+    : (flag.T3_current - flag.T12);
   const dominantPct = dominantDriver && totalMovement !== 0
     ? Math.round((dominantDriver.movement / totalMovement) * 100)
     : null;
+  const topDrivers = activeDrivers.slice(0, 3);
 
   // ── Step 2: Composition analysis ────────────────────────────────────────
-  const upCount = metricMovements.filter(m => m.direction === 'up').length;
-  const downCount = metricMovements.filter(m => m.direction === 'down').length;
+  const upCount = activeDrivers.filter(m => m.direction === 'up').length;
+  const downCount = activeDrivers.filter(m => m.direction === 'down').length;
   let compositionType;
   if (upCount === 0 || downCount === 0) compositionType = 'broad-based';
   else if (dominantPct && Math.abs(dominantPct) >= 60) compositionType = 'single-driver';
@@ -403,6 +418,8 @@ export default async function handler(req, res) {
     monthLabel,
     stateAbbr,
     propertyName,
+    t3Drivers,
+    t12Drivers,
     dominantDriver,
     dominantPct,
     topDrivers,
