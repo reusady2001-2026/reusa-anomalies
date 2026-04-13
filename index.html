@@ -188,175 +188,54 @@
 
 
 <!-- ═══════════════════════════════════════
-     COMPARISON SCREEN
+     PORTFOLIO SCREEN
 ════════════════════════════════════════ -->
 <div id="screen-comparison" class="screen">
-
-  <div class="app-header">
-    <button class="btn-back">← Back</button>
-    <span class="header-title">Comparison Mode</span>
-    <button class="btn-theme-toggle" id="btn-theme-toggle-comp" title="Toggle dark/light mode">☀️</button>
-  </div>
-
   <div class="app-body">
 
-    <!-- ── Comparison control panel ── -->
-    <div class="control-panel" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
-
-      <!-- Asset A -->
-      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--blue-light);border-radius:8px;">
-        <div style="font-weight:700;color:var(--blue-dark);font-size:0.88rem;text-transform:uppercase;letter-spacing:0.5px;">Asset A</div>
-
-        <div class="control-group">
-          <label>Property Name</label>
-          <div class="price-wrap">
-            <input type="text" id="prop-name-a" placeholder="e.g. Lincoln Tower"/>
-            <button type="button" class="hist-btn" id="name-hist-btn-a" title="Name history">▾</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>Data File</label>
-          <div class="upload-wrap">
-            <label class="upload-btn" id="upload-btn-a-comp">
-              <span>Upload File A</span>
-              <input type="file" id="file-a-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
-            </label>
-            <button type="button" class="hist-btn" id="file-hist-btn-a-comp" title="Recent files">📁</button>
-          </div>
-        </div>
-      </div><!-- /Asset A -->
-
-      <!-- Asset B -->
-      <div style="display:flex;flex-direction:column;gap:12px;padding:16px;background:#fce4ec;border-radius:8px;">
-        <div style="font-weight:700;color:#880e4f;font-size:0.88rem;text-transform:uppercase;letter-spacing:0.5px;">Asset B</div>
-
-        <div class="control-group">
-          <label>Property Name</label>
-          <div class="price-wrap">
-            <input type="text" id="prop-name-b" placeholder="e.g. Park Avenue"/>
-            <button type="button" class="hist-btn" id="name-hist-btn-b" title="Name history">▾</button>
-          </div>
-        </div>
-
-        <div class="control-group">
-          <label>Data File</label>
-          <div class="upload-wrap">
-            <label class="upload-btn" id="upload-btn-b-comp">
-              <span>Upload File B</span>
-              <input type="file" id="file-b-comp" accept=".xlsx,.xls,.csv,.html,.htm"/>
-            </label>
-            <button type="button" class="hist-btn" id="file-hist-btn-b-comp" title="Recent files">📁</button>
-          </div>
-        </div>
-      </div><!-- /Asset B -->
-
-    </div><!-- /comparison control panel -->
-
-    <!-- Location selector (shared context for comparison) -->
-    <div class="control-panel" style="padding:12px 16px;">
-      <div class="control-group location-group">
-        <label>Market Location <span class="req-star">*</span></label>
-        <div class="location-wrap">
-          <select id="state-select-comp" class="location-select">
-            <option value="">Select State…</option>
-          </select>
-          <div class="city-autocomplete-wrapper">
-            <input type="text" id="city-input-comp" placeholder="Select a state first…" autocomplete="off" disabled>
-            <ul id="city-dropdown-list-comp" hidden></ul>
-          </div>
-        </div>
-      </div>
+    <!-- Header -->
+    <div class="app-header">
+      <button class="back-btn" onclick="selectMode('home')">← Back</button>
+      <span class="app-title">Portfolio Analysis</span>
     </div>
 
-    <!-- Compare button -->
-    <div style="display:flex;justify-content:center;margin-bottom:20px;">
-      <button class="btn-primary" id="btn-compare" style="padding:12px 40px;font-size:1rem;">Compare Assets</button>
+    <!-- Controls row -->
+    <div class="portfolio-controls">
+
+      <!-- File loader -->
+      <div class="portfolio-file-section">
+        <label class="upload-btn" id="portfolio-upload-label">
+          📂 Add Property
+          <input type="file" id="portfolio-file-input" accept=".xlsx,.xls,.csv" style="display:none" multiple>
+        </label>
+        <div id="portfolio-property-list" class="portfolio-property-list"></div>
+      </div>
+
+      <!-- Mode toggle -->
+      <div class="portfolio-mode-toggle">
+        <button id="portfolio-mode-oa" class="portfolio-mode-btn active" onclick="UI.setPortfolioMode('oa')">OA View</button>
+        <button id="portfolio-mode-ea" class="portfolio-mode-btn" onclick="UI.setPortfolioMode('ea')">EA View</button>
+      </div>
+
+      <!-- Run button -->
+      <button id="portfolio-run-btn" class="btn-primary" disabled onclick="App.runPortfolioAnalysis()">
+        Run Portfolio Analysis
+      </button>
+
     </div>
 
-    <!-- Status -->
-    <div id="status-msg-comp" class="hidden"></div>
-
-    <!-- ── Controls bar (post-analysis) ── -->
-    <div id="controls-bar-comp" class="hidden">
-
-      <span id="row-count-comp" class="row-count-badge">— rows</span>
-
-      <div class="price-wrap controls-price">
-        <input type="text" id="price-a-comp" value="150,000,000" title="Asset A purchase price"/>
-        <button type="button" class="hist-btn" id="price-hist-btn-a-comp" title="Price history">▾</button>
-      </div>
-
-      <div class="price-wrap controls-price">
-        <input type="text" id="price-b-comp" value="150,000,000" title="Asset B purchase price"/>
-        <button type="button" class="hist-btn" id="price-hist-btn-b-comp" title="Price history">▾</button>
-      </div>
-
-      <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
-        <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>
-        <select id="section-filter-comp">
-          <option value="all">All</option>
-          <option value="income">Income</option>
-          <option value="expenses">Expenses</option>
-        </select>
-      </div>
-
-      <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
-        <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">View:</label>
-        <select id="view-filter-comp">
-          <option value="both">Both Assets</option>
-          <option value="A">Asset A Only</option>
-          <option value="B">Asset B Only</option>
-        </select>
-      </div>
-
-      <button class="btn-secondary" id="btn-material-focus-comp">Material Focus</button>
-
-      <div class="export-wrapper" style="margin-left:auto">
-        <button class="btn-secondary" id="export-btn-comp">⬇ Export</button>
-        <div id="export-menu-comp" class="hidden">
-          <div class="export-item" id="export-html-full-comp">
-            <span class="export-icon">🌐</span> HTML — Full Comparison
-          </div>
-          <div class="export-item" id="export-html-filtered-comp">
-            <span class="export-icon">🌐</span> HTML — Current View
-          </div>
-          <div class="export-item" id="export-excel-full-comp">
-            <span class="export-icon">📊</span> Excel (.xlsx) — Asset A
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /controls-bar-comp -->
-
-    <!-- Legend (comparison) -->
-    <div id="legend-comp" class="legend-panel hidden">
-      <div class="legend-item"><span class="legend-swatch sw-material-pos"></span><span class="legend-label">Material +</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-material-neg"></span><span class="legend-label">Material −</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-seasonal"></span><span class="legend-label">Seasonal</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-anomaly"></span><span class="legend-label">Anomaly</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-reversion"></span><span class="legend-label">Reversion</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-inactive"></span><span class="legend-label">No data</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-skipped"></span><span class="legend-label">Excluded</span></div>
-      <div class="legend-item"><span class="legend-icon">🔄</span><span class="legend-label">Recurring</span></div>
-      <div class="legend-sep"></div>
-      <div class="legend-item"><span class="legend-swatch sw-asset-a"></span><span class="legend-label">Asset A</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-asset-b"></span><span class="legend-label">Asset B</span></div>
-      <div class="legend-item"><span class="legend-swatch sw-delta"></span><span class="legend-label">Δ% row</span></div>
+    <!-- Purchase price note -->
+    <div id="portfolio-price-note" class="portfolio-price-note" style="display:none">
+      ⚠ Some properties are missing a purchase price — required for EA view.
     </div>
 
-    <!-- Dashboard (side-by-side stats) -->
-    <div id="dashboard-container-comp" class="hidden dashboard-container-row"></div>
+    <!-- Results area -->
+    <div id="portfolio-results" class="portfolio-results"></div>
 
-    <!-- Comparison table -->
-    <div id="table-container-comp" class="hidden"></div>
+    <!-- Right-side detail cards (up to 5) -->
+    <div id="portfolio-detail-panel" class="portfolio-detail-panel"></div>
 
-    <!-- Anomaly detail card (fixed right panel) -->
-    <div id="detail-card-comp">
-      <button class="close-card" title="Close">✕</button>
-    </div>
-
-  </div><!-- /app-body -->
+  </div>
 </div><!-- /screen-comparison -->
 
 

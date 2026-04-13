@@ -1621,3 +1621,112 @@ input[type="file"] { display: none; }
 [data-theme="light"] .ea-metric-row:hover {
   background: rgba(0,0,0,0.03);
 }
+
+/* ── PORTFOLIO SCREEN ── */
+.portfolio-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+.portfolio-file-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.portfolio-property-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.portfolio-property-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #cbd5e1;
+}
+
+.portfolio-property-tag .remove-btn {
+  cursor: pointer;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.portfolio-property-tag .remove-btn:hover {
+  color: #f87171;
+}
+
+.portfolio-mode-toggle {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.portfolio-mode-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.15s;
+}
+
+.portfolio-mode-btn.active {
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.3);
+}
+
+.portfolio-price-note {
+  font-size: 11px;
+  color: #eab308;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 6px 0;
+}
+
+.portfolio-results {
+  margin-top: 16px;
+}
+
+.portfolio-detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  pointer-events: none;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+/* Light mode */
+[data-theme="light"] .portfolio-property-tag {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.1);
+  color: #334155;
+}
+[data-theme="light"] .portfolio-mode-btn { color: #475569; border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .portfolio-mode-btn.active { background: rgba(0,0,0,0.06); color: #1e293b; }
