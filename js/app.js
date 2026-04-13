@@ -1594,6 +1594,7 @@ const App = (() => {
     function toggleTheme() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
     document.getElementById('btn-theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('btn-theme-toggle-comp')?.addEventListener('click', toggleTheme);
+    document.getElementById('btn-theme-toggle-ea')?.addEventListener('click', toggleTheme);
     // Restore saved preference
     applyTheme(localStorage.getItem('oaas-theme') === 'dark');
 
