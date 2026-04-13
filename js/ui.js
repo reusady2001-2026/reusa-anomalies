@@ -1351,8 +1351,8 @@ const UI = (() => {
         }
 
         const isIncome = metric.section === 'INCOME';
-        const isUp = (zScore || 0) > 0;
-        const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
+        const isAboveBaseline = (zScore || 0) > 0;
+        const isPositive = (isIncome && isAboveBaseline) || (!isIncome && !isAboveBaseline);
         const cellClass = isPositive ? 'pm-cell-positive' : 'pm-cell-negative';
 
         return `<td class="pm-cell ${cellClass}"
