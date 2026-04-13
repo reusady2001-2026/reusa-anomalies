@@ -81,6 +81,191 @@ const FRED_UR_MAP = {
   'VT':'VTUR','WY':'WYUR',
 };
 
+const METRIC_INTERPRETATIONS = {
+  // ── RENTAL INCOME ────────────────────────────────────────────────────────
+  'Market Rent': {
+    up: 'rent growth — market rents have been rising above the annual average',
+    down: 'rent decline — market rents have softened vs the annual average',
+    verify: 'rentCPI',
+    verifyUp: 'rentCPI_rising',
+    verifyDown: 'rentCPI_falling',
+  },
+  'Less: Vacancy': {
+    up: 'occupancy improvement — fewer vacant units vs the annual average',
+    down: 'occupancy deterioration — more vacant units vs the annual average',
+    verify: 'stateUR',
+    verifyUp: 'stateUR_low',
+    verifyDown: 'stateUR_high',
+  },
+  '(Loss)/Gain to Lease': {
+    up: 'leases are being signed closer to or above asking rent — loss to lease narrowing',
+    down: 'leases are being signed below asking rent — concessions or loss to lease widening',
+    verify: 'rentCPI',
+    verifyUp: 'rentCPI_rising',
+    verifyDown: 'rentCPI_falling',
+    contradictNote: 'Despite rising market rents, leases are being signed below asking — suggesting property-specific pricing or concession pressure',
+  },
+  'Concession': {
+    up: 'concessions reduced — less incentive needed to lease units',
+    down: 'concessions increased — more incentive needed to attract tenants',
+    verify: 'stateUR',
+    verifyUp: 'stateUR_low',
+    verifyDown: 'stateUR_high',
+  },
+  'Residential Rent': {
+    up: 'residential rent income rising above annual average',
+    down: 'residential rent income declining vs annual average',
+    verify: 'rentCPI',
+    verifyUp: 'rentCPI_rising',
+    verifyDown: 'rentCPI_falling',
+  },
+  'Military Discount Concession': { up: 'military concessions reduced', down: 'military concessions increased', verify: null },
+  'Preferred Employer Concession': { up: 'employer concessions reduced', down: 'employer concessions increased', verify: null },
+  'First Responder Concession': { up: 'first responder concessions reduced', down: 'first responder concessions increased', verify: null },
+  'Employee Concession': { up: 'employee concessions reduced', down: 'employee concessions increased', verify: null },
+  'Rent Adjustment': { up: 'rent adjustments net positive vs annual average', down: 'rent adjustments net negative vs annual average', verify: null },
+  'Month to Month': { up: 'month-to-month leases increasing — possible retention or lease-up activity', down: 'month-to-month leases declining', verify: null },
+  'Delinquency': { up: 'delinquency income rising — more late fees collected', down: 'delinquency income declining', verify: 'stateUR', verifyDown: 'stateUR_high' },
+  'Section 8': { up: 'Section 8 income above annual average', down: 'Section 8 income below annual average', verify: null },
+  'Preferential Rent': { up: 'preferential rent income rising', down: 'preferential rent income declining', verify: null },
+
+  // ── COST RECOVERY ────────────────────────────────────────────────────────
+  'Reimbursed Water/Sewer': { up: 'water/sewer reimbursements rising — higher utility usage or rate pass-through', down: 'water/sewer reimbursements declining', verify: null },
+  'Reimbursed Trash': { up: 'trash reimbursements rising', down: 'trash reimbursements declining', verify: null },
+  'Reimbursed Utilities': { up: 'utility reimbursements rising — tenants paying more of utility costs', down: 'utility reimbursements declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising' },
+  'Other Reimbursed costs': { up: 'other cost recoveries increasing', down: 'other cost recoveries declining', verify: null },
+
+  // ── OTHER INCOME ─────────────────────────────────────────────────────────
+  'Late Fees': { up: 'late fee income rising — more late payments being collected', down: 'late fee income declining', verify: 'stateUR', verifyUp: 'stateUR_high' },
+  'Pet Rent': { up: 'pet rent income rising — more pet-owning tenants or higher pet fees', down: 'pet rent declining', verify: null },
+  'Parking Income': { up: 'parking income above annual average', down: 'parking income below annual average', verify: null },
+  'Laundry': { up: 'laundry income rising', down: 'laundry income declining', verify: null },
+  'Early Termination Fee': { up: 'early termination fees rising — more lease breaks than annual average', down: 'early termination fees declining', verify: null },
+  'Bad Debt Recoveries': { up: 'bad debt recoveries improving — collecting on prior delinquencies', down: 'bad debt recoveries declining', verify: null },
+  'Application Fee': { up: 'application fees rising — higher leasing activity', down: 'application fees declining — less leasing activity', verify: 'stateUR', verifyUp: 'stateUR_low' },
+  'Storage Income': { up: 'storage income above annual average', down: 'storage income below annual average', verify: null },
+
+  // ── AUTO EXPENSE ─────────────────────────────────────────────────────────
+  'Gas': { up: 'fuel costs rising above annual average', down: 'fuel costs declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising' },
+  'Auto Insurance': { up: 'auto insurance costs rising', down: 'auto insurance costs declining', verify: null },
+  'Auto Repairs': { up: 'vehicle repair costs above annual average', down: 'vehicle repair costs declining', verify: null },
+
+  // ── G&A ──────────────────────────────────────────────────────────────────
+  'Yardi expense': { up: 'property management software costs rising', down: 'software costs declining', verify: null },
+  'Management Fees': { up: 'management fees above annual average — may reflect higher revenue base', down: 'management fees below annual average', verify: null },
+  'Legal L & T': { up: 'legal costs rising — more eviction or tenant legal activity', down: 'legal costs declining', verify: 'stateUR', verifyUp: 'stateUR_high' },
+  'Professional Fees': { up: 'professional fees above annual average', down: 'professional fees below annual average', verify: null },
+  'Insurance': { up: 'insurance costs rising', down: 'insurance costs declining', verify: null },
+
+  // ── PAYROLL ───────────────────────────────────────────────────────────────
+  'Payroll - Admin Assistant Property Manager': { up: 'admin payroll rising — staffing increases or wage growth', down: 'admin payroll declining', verify: 'avgHourlyEarnings', verifyUp: 'wages_rising' },
+  'Assistant Manager': { up: 'assistant manager payroll above annual average', down: 'assistant manager payroll declining', verify: 'avgHourlyEarnings', verifyUp: 'wages_rising' },
+  'Payroll - Leasing': { up: 'leasing payroll rising — more leasing staff or higher wages', down: 'leasing payroll declining', verify: 'avgHourlyEarnings', verifyUp: 'wages_rising' },
+  'Payroll - Maintenance': { up: 'maintenance payroll above annual average — staffing or overtime increases', down: 'maintenance payroll declining', verify: 'avgHourlyEarnings', verifyUp: 'wages_rising' },
+  'Payroll - Property Manager': { up: 'property manager payroll above annual average', down: 'property manager payroll declining', verify: 'avgHourlyEarnings', verifyUp: 'wages_rising' },
+  'Health Insurance - Administrative': { up: 'health insurance costs rising — benefit cost increases', down: 'health insurance costs declining', verify: null },
+  'Workers Comp - Administrative': { up: 'workers comp costs rising', down: 'workers comp declining', verify: null },
+
+  // ── TAXES AND INSURANCE ───────────────────────────────────────────────────
+  'Property & Liability Insurance': { up: 'property insurance costs rising above annual average', down: 'property insurance costs declining', verify: null },
+  'Real Estate Taxes': { up: 'real estate taxes above annual average — possible reassessment or rate increase', down: 'real estate taxes declining', verify: null },
+  'Flood Insurance': { up: 'flood insurance costs rising', down: 'flood insurance declining', verify: 'fema', verifyUp: 'fema_active' },
+
+  // ── UTILITIES ─────────────────────────────────────────────────────────────
+  'Electric Expense': { up: 'electricity costs above annual average', down: 'electricity costs declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising', weatherVerify: 'cdd_or_hdd' },
+  'Gas Expense': { up: 'gas costs above annual average', down: 'gas costs declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising', weatherVerify: 'hdd' },
+  'Water expense': { up: 'water costs above annual average', down: 'water costs declining', verify: null },
+  'Sewer Expense': { up: 'sewer costs above annual average', down: 'sewer costs declining', verify: null },
+  'Rubbish Removal/Sanitation': { up: 'sanitation costs above annual average', down: 'sanitation costs declining', verify: null },
+
+  // ── CONTRACT REPAIRS ──────────────────────────────────────────────────────
+  'Snow Removal Contract': { up: 'snow removal costs above annual average', down: 'snow removal costs below annual average', verify: 'hdd', verifyUp: 'hdd_high', verifyDown: 'hdd_low', contradictNote: 'Snow removal costs are above average despite mild weather — review contract terms or extra service charges' },
+  'Landscaping Contract': { up: 'landscaping costs above annual average', down: 'landscaping costs below annual average', verify: 'cdd', verifyUp: 'cdd_high' },
+  'Exterminating Contract': { up: 'exterminating costs rising', down: 'exterminating costs declining', verify: null },
+  'HVAC Contract': { up: 'HVAC contract costs above annual average', down: 'HVAC costs declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising' },
+  'Elevator Contract': { up: 'elevator maintenance costs rising', down: 'elevator costs declining', verify: null },
+  'Cleaning Contract': { up: 'cleaning contract costs above annual average', down: 'cleaning costs declining', verify: null },
+  'Valet Trash': { up: 'valet trash costs above annual average', down: 'valet trash costs declining', verify: null },
+  'Pool Maintenance Contract': { up: 'pool maintenance costs rising — peak season or additional service', down: 'pool costs declining', verify: 'cdd', verifyUp: 'cdd_high' },
+
+  // ── REPAIRS & MAINTENANCE ─────────────────────────────────────────────────
+  'Plumbing Repairs & Maint': { up: 'plumbing repair costs above annual average', down: 'plumbing costs declining', verify: 'fema', verifyUp: 'fema_active' },
+  'HVAC Repairs & Maint': { up: 'HVAC repair costs above annual average', down: 'HVAC costs declining', verify: 'energyCPI', verifyUp: 'energyCPI_rising', weatherVerify: 'cdd_or_hdd' },
+  'Roof Repairs & Maint': { up: 'roof repair costs above annual average', down: 'roof costs declining', verify: 'fema', verifyUp: 'fema_active' },
+  'Exterior Repairs & Maint': { up: 'exterior repair costs above annual average', down: 'exterior costs declining', verify: 'fema', verifyUp: 'fema_active' },
+  'Elevator Repairs & Maint': { up: 'elevator repair costs above annual average', down: 'elevator costs declining', verify: null },
+  'Interior Repairs & Maint': { up: 'interior repair costs above annual average', down: 'interior costs declining', verify: null },
+  'Appliances': { up: 'appliance costs above annual average — replacements or upgrades', down: 'appliance costs declining', verify: null },
+  'Paint & Plaster': { up: 'paint and plaster costs above annual average', down: 'costs declining', verify: null },
+  'Leak Repair': { up: 'leak repair costs above annual average', down: 'leak costs declining', verify: 'fema', verifyUp: 'fema_active' },
+  'Mold': { up: 'mold remediation costs above annual average', down: 'mold costs declining', verify: 'fema', verifyUp: 'fema_active' },
+
+  // ── UNIT TURNOVER ─────────────────────────────────────────────────────────
+  'Unit Turnover - Carpet Cleaning & Repairs': { up: 'carpet turnover costs above annual average — higher unit turnover', down: 'carpet costs declining', verify: null },
+  'Unit Turnover - Painting': { up: 'unit painting costs above annual average — more units turning over', down: 'painting costs declining', verify: null },
+  'Unit Turnover - Cleaning': { up: 'unit cleaning costs above annual average', down: 'cleaning costs declining', verify: null },
+  'Paint & Plaster Contract': { up: 'paint and plaster contract costs above annual average', down: 'costs declining', verify: null },
+
+  // ── OTHER EXPENSES ────────────────────────────────────────────────────────
+  'Bad debts expense': { up: 'bad debt expense rising — tenant delinquencies increasing', down: 'bad debt expense declining — collections improving', verify: 'stateUR', verifyUp: 'stateUR_high', contradictNote: 'Bad debt is rising despite a healthy labor market — may reflect property-specific tenant issues rather than broad economic stress' },
+  'Property Inspection': { up: 'property inspection costs above annual average', down: 'inspection costs declining', verify: null },
+  'Violation Penalty': { up: 'violation penalties above annual average — compliance issues', down: 'penalties declining', verify: null },
+};
+
+function getVerificationStatus(metricName, direction, externalContext) {
+  const interp = METRIC_INTERPRETATIONS[metricName];
+  if (!interp || !interp.verify) return 'unverified';
+
+  const { rentCPI, stateUR, energyCPI, hdd, cdd, fema, avgHourlyEarnings } = externalContext || {};
+  const isUp = direction === 'up';
+  const verifyKey = isUp ? interp.verifyUp : interp.verifyDown;
+
+  switch (verifyKey) {
+    case 'rentCPI_rising': {
+      if (rentCPI == null) return 'unverified';
+      return rentCPI > 310 ? 'confirmed' : 'contradicted';
+    }
+    case 'rentCPI_falling': {
+      if (rentCPI == null) return 'unverified';
+      return rentCPI < 305 ? 'confirmed' : 'contradicted';
+    }
+    case 'stateUR_low': {
+      if (stateUR == null) return 'unverified';
+      return stateUR < 4.5 ? 'confirmed' : stateUR > 6 ? 'contradicted' : 'unverified';
+    }
+    case 'stateUR_high': {
+      if (stateUR == null) return 'unverified';
+      return stateUR > 5.5 ? 'confirmed' : stateUR < 4 ? 'contradicted' : 'unverified';
+    }
+    case 'energyCPI_rising': {
+      if (energyCPI == null) return 'unverified';
+      return energyCPI > 320 ? 'confirmed' : energyCPI < 300 ? 'contradicted' : 'unverified';
+    }
+    case 'hdd_high': {
+      if (hdd == null) return 'unverified';
+      return hdd > 400 ? 'confirmed' : hdd < 100 ? 'contradicted' : 'unverified';
+    }
+    case 'hdd_low': {
+      if (hdd == null) return 'unverified';
+      return hdd < 100 ? 'confirmed' : hdd > 400 ? 'contradicted' : 'unverified';
+    }
+    case 'cdd_high': {
+      if (cdd == null) return 'unverified';
+      return cdd > 150 ? 'confirmed' : cdd < 50 ? 'contradicted' : 'unverified';
+    }
+    case 'fema_active': {
+      if (!fema || fema.length === 0) return 'unverified';
+      return fema.length > 0 ? 'confirmed' : 'unverified';
+    }
+    case 'wages_rising': {
+      if (avgHourlyEarnings == null) return 'unverified';
+      return avgHourlyEarnings > 30 ? 'confirmed' : 'unverified';
+    }
+    default:
+      return 'unverified';
+  }
+}
+
 function generateReasoning(data) {
   const {
     categoryName, section, monthLabel, stateAbbr,
@@ -229,6 +414,7 @@ export default async function handler(req, res) {
     propertyName,
     purchasePrice,
     recentCategoryT3,  // last 3 months of category T3: [{monthLabel, T3}]
+    fema,              // FEMA disaster declarations array (optional, from client)
   } = req.body;
 
   const parsed = parseMonthLabel(monthLabel);
@@ -372,18 +558,21 @@ export default async function handler(req, res) {
   // ── Step 6: External context ─────────────────────────────────────────────
   const externalContext = {};
   try {
-    const [fedfunds, rentCPI, stateUR, energyCPI, mortgage30] = await Promise.all([
+    const [fedfunds, rentCPI, stateUR, energyCPI, mortgage30, avgHourlyEarningsSeries] = await Promise.all([
       fetchFREDSeries('FEDFUNDS', startDate, endDate),
       fetchFREDSeries('CUUR0000SEHA', startDate, endDate),
       fetchFREDSeries(FRED_UR_MAP[stateAbbr] || 'UNRATE', startDate, endDate),
       fetchFREDSeries('CUUR0000SEHE', startDate, endDate),
       fetchFREDSeries('MORTGAGE30US', startDate, endDate),
+      fetchFREDSeries('CES0500000003', startDate, endDate),
     ]);
     externalContext.fedfunds = fedfunds[monthLabel];
     externalContext.rentCPI = rentCPI[monthLabel];
     externalContext.stateUR = stateUR[monthLabel];
     externalContext.energyCPI = energyCPI[monthLabel];
     externalContext.mortgage30 = mortgage30[monthLabel];
+    externalContext.avgHourlyEarnings = avgHourlyEarningsSeries[monthLabel];
+    externalContext.fema = fema || [];
   } catch(e) {}
 
   // Fetch weather
