@@ -1664,6 +1664,101 @@ const App = (() => {
         }
       });
     });
+
+    // ── Portfolio file input ──
+    document.getElementById('portfolio-file-input')?.addEventListener('change', async e => {
+      const files = Array.from(e.target.files);
+      for (const file of files) {
+        try {
+          const rows = await readFileAsRows(file);
+          const parsed = Engine.parseSheet(rows);
+
+          // Extract property name
+          const nameMatch = file.name.match(/Cash_Flow_(.+?)_Accrual/i);
+          const propertyName = nameMatch
+            ? nameMatch[1].replace(/_/g, ' ').trim()
+            : (parsed.extractedCity ? `Property at ${parsed.extractedCity}` : file.name);
+
+          // Extract location
+          const city = parsed.extractedCity || '';
+          const stateAbbr = CITY_STATE_MAP[city] || '';
+
+          // Get saved price or default
+          const savedPrice = getSavedPrice(propertyName) || '150,000,000';
+
+          // Add to portfolio
+          const result = Portfolio.addProperty(parsed, file.name, propertyName, stateAbbr, city, savedPrice);
+          if (result.error) {
+            console.warn('[Portfolio]', result.error);
+            continue;
+          }
+
+          // Update UI
+          UI.renderPortfolioPropertyList(Portfolio.state.properties);
+
+          // Enable run button if at least 1 property loaded
+          document.getElementById('portfolio-run-btn').disabled = Portfolio.state.properties.length === 0;
+
+        } catch(err) {
+          console.error('[Portfolio] Error loading file:', file.name, err);
+        }
+      }
+      // Reset input so same file can be re-added after removal
+      e.target.value = '';
+    });
+
+    // ── Portfolio mode toggle ──
+    document.getElementById('portfolio-mode-oa')?.addEventListener('click', () => {
+      Portfolio.setMode('oa');
+      document.getElementById('portfolio-mode-oa').classList.add('active');
+      document.getElementById('portfolio-mode-ea').classList.remove('active');
+      if (Portfolio.state.analysisRun) UI.renderPortfolioResults('oa');
+    });
+
+    document.getElementById('portfolio-mode-ea')?.addEventListener('click', async () => {
+      Portfolio.setMode('ea');
+      document.getElementById('portfolio-mode-ea').classList.add('active');
+      document.getElementById('portfolio-mode-oa').classList.remove('active');
+      if (Portfolio.state.analysisRun) {
+        // Run EA if not yet run
+        await Portfolio.runEAAnalysis();
+        UI.renderPortfolioResults('ea');
+      }
+    });
+  }
+
+  // ── PORTFOLIO ANALYSIS ────────────────────────────────
+
+  async function runPortfolioAnalysis() {
+    const btn = document.getElementById('portfolio-run-btn');
+    const resultsEl = document.getElementById('portfolio-results');
+    btn.disabled = true;
+    btn.textContent = 'Analysing…';
+    resultsEl.innerHTML = '<div style="padding:24px;color:#64748b;font-family:JetBrains Mono,monospace;font-size:12px;">Running analysis…</div>';
+
+    try {
+      // Run OA for all
+      await Portfolio.runOAAnalysis((current, total, name) => {
+        btn.textContent = `Analysing ${current}/${total}: ${name}`;
+      });
+
+      // Run EA for all if mode is ea
+      if (Portfolio.state.mode === 'ea') {
+        await Portfolio.runEAAnalysis((current, total, name) => {
+          btn.textContent = `EA: ${current}/${total}: ${name}`;
+        });
+      }
+
+      // Render results
+      UI.renderPortfolioResults(Portfolio.state.mode);
+
+    } catch(err) {
+      console.error('[Portfolio] Analysis error:', err);
+      resultsEl.innerHTML = '<div style="padding:24px;color:#f87171;">Analysis failed — check console.</div>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Run Portfolio Analysis';
+    }
   }
 
   // ── SELECT MODE ───────────────────────────────────────
@@ -1676,7 +1771,7 @@ const App = (() => {
     if (s) s.classList.add('active');
   }
 
-  return { init, selectMode, _state: state };
+  return { init, selectMode, runPortfolioAnalysis, _state: state };
 })();
 
 // Global fallback — used by onclick attributes on mode cards (guarantees
