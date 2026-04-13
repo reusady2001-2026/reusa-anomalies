@@ -138,6 +138,7 @@ function generateReasoning(data) {
   const topThreeNames = topDrivers.slice(0, 3).map(d => d.name);
   const counterDrivers = (activeDrivers || [])
     .filter(d => d.direction !== categoryDir && !topThreeNames.includes(d.name))
+    .filter(d => dominantDriver && d.absMovement >= dominantDriver.absMovement * 0.10)
     .slice(0, 1);
   if (counterDrivers.length > 0) {
     const cd = counterDrivers[0];
