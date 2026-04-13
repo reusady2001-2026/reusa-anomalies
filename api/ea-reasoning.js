@@ -210,13 +210,20 @@ const METRIC_INTERPRETATIONS = {
   'Bad debts expense': { up: 'bad debt expense rising — tenant delinquencies increasing', down: 'bad debt expense declining — collections improving', verify: 'stateUR', verifyUp: 'stateUR_high', contradictNote: 'Bad debt is rising despite a healthy labor market — may reflect property-specific tenant issues rather than broad economic stress' },
   'Property Inspection': { up: 'property inspection costs above annual average', down: 'inspection costs declining', verify: null },
   'Violation Penalty': { up: 'violation penalties above annual average — compliance issues', down: 'penalties declining', verify: null },
+  'Interest Expense': { up: 'interest expense declining — lower debt costs', down: 'interest expense rising above annual average — higher financing costs', verify: 'fedfunds', verifyDown: 'fedfunds_high' },
+  'Damages Fee': { up: 'damage fee income rising — more tenant damage charges collected', down: 'damage fee income declining', verify: null },
+  'Cleaning Fee': { up: 'cleaning fee income rising', down: 'cleaning fee income declining', verify: null },
+  'Furnished Unit Expenses': { up: 'furnished unit costs declining', down: 'furnished unit expenses rising', verify: null },
+  'Miscellaneous': { up: 'miscellaneous income rising', down: 'miscellaneous income declining', verify: null },
+  'Amenity Fee': { up: 'amenity fee income above annual average', down: 'amenity fee income declining', verify: null },
+  'Administrative Fee': { up: 'administrative fee income above annual average', down: 'administrative fee income declining', verify: null },
 };
 
 function getVerificationStatus(metricName, direction, externalContext) {
   const interp = METRIC_INTERPRETATIONS[metricName];
   if (!interp || !interp.verify) return 'unverified';
 
-  const { rentCPI, stateUR, energyCPI, hdd, cdd, fema, avgHourlyEarnings } = externalContext || {};
+  const { rentCPI, stateUR, energyCPI, hdd, cdd, fema, avgHourlyEarnings, fedfunds } = externalContext || {};
   const isUp = direction === 'up';
   const verifyKey = isUp ? interp.verifyUp : interp.verifyDown;
 
@@ -251,7 +258,11 @@ function getVerificationStatus(metricName, direction, externalContext) {
     }
     case 'cdd_high': {
       if (cdd == null) return 'unverified';
-      return cdd > 150 ? 'confirmed' : cdd < 50 ? 'contradicted' : 'unverified';
+      return cdd > 50 ? 'confirmed' : cdd < 10 ? 'contradicted' : 'unverified';
+    }
+    case 'fedfunds_high': {
+      if (fedfunds == null) return 'unverified';
+      return fedfunds > 4 ? 'confirmed' : fedfunds < 2 ? 'contradicted' : 'unverified';
     }
     case 'fema_active': {
       if (!fema || fema.length === 0) return 'unverified';
@@ -309,10 +320,12 @@ function generateReasoning(data) {
   }
 
   // ── Dominant driver ───────────────────────────────────────────────────────
-  if (topDrivers.length >= 1) {
+  const firstAppearanceNames = firstAppearanceDrivers.map(d => d.name);
+  const remainingDrivers = topDrivers.slice(0, 3).filter(d => !firstAppearanceNames.includes(d.name));
+  if (remainingDrivers.length >= 1) {
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
 
-    const driverSentences = topDrivers.slice(0, 3).map(d => {
+    const driverSentences = remainingDrivers.map(d => {
       const interp = METRIC_INTERPRETATIONS[d.name];
       const interpText = interp ? (d.direction === 'up' ? interp.up : interp.down) : null;
       const verification = getVerificationStatus(d.name, d.direction, externalContext);
@@ -401,7 +414,10 @@ function generateReasoning(data) {
     // Rental market context only for income categories
     const isRentalIncome = section === 'INCOME';
 
-    if (isRentalIncome && stateUR != null) {
+    const noExternalContext = ['other income', 'other expenses', 'general and administrative', 'management fees', 'commercial income'];
+    if (noExternalContext.some(k => catLower.includes(k))) {
+      // Skip external context entirely for these categories
+    } else if (isRentalIncome && stateUR != null) {
       sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}%${mortgage30 ? ` and 30yr mortgage at ${mortgage30.toFixed(2)}%` : ''} — ${stateUR < 4 ? 'tight labor market supporting rental demand' : stateUR > 6 ? 'elevated unemployment may be pressuring demand' : 'moderate labor conditions'}.`);
     } else if (isWeatherSensitive && hdd != null && hdd > 400) {
       sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather driving operating costs.`);
@@ -410,7 +426,6 @@ function generateReasoning(data) {
     } else if (isLaborSensitive && stateUR != null) {
       sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% — labor market conditions affecting staffing costs.`);
     }
-    // For all other categories (bad debt, G&A, insurance, etc.) — no external context fallback
   }
 
   // ── Trim to 200 words ─────────────────────────────────────────────────────
