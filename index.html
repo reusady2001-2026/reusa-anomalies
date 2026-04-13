@@ -105,6 +105,14 @@
         </div>
       </div>
 
+      <div class="control-group">
+        <label>Purchase Price</label>
+        <div class="price-wrap controls-price">
+          <input type="text" id="price-a" value="150,000,000" title="Purchase price — used to compute materiality threshold"/>
+          <button type="button" class="hist-btn" id="price-hist-btn-a" title="Price history">▾</button>
+        </div>
+      </div>
+
       <div class="control-group" style="justify-content:flex-end;">
         <button class="btn-primary" id="btn-analyze">Analyze</button>
       </div>
@@ -118,11 +126,6 @@
     <div id="controls-bar" class="hidden">
 
       <span id="row-count" class="row-count-badge">— rows</span>
-
-      <div class="price-wrap controls-price">
-        <input type="text" id="price-a" value="150,000,000" title="Purchase price — change to update materiality"/>
-        <button type="button" class="hist-btn" id="price-hist-btn-a" title="Price history">▾</button>
-      </div>
 
       <div class="control-group" style="flex-direction:row;align-items:center;gap:8px;min-width:0">
         <label style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:#757575">Section:</label>
