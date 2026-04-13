@@ -1329,6 +1329,7 @@ const App = (() => {
             state.selectedCity = city;
           });
         }
+        console.log('[Location] handler:', 'file-a', 'city:', state.parsedA.extractedCity);
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
@@ -1366,6 +1367,7 @@ const App = (() => {
             state.selectedCity = city;
           });
         }
+        console.log('[Location] handler:', 'file-hist-btn-a', 'city:', data.extractedCity);
         populatePeriodSelects(data.months);
         showMsg(`Restored: ${data.months.length} months · ${data.metrics.length} metrics`);
         if (state.selectedState && state.selectedCity) fetchContextIfReady();
@@ -1449,6 +1451,7 @@ const App = (() => {
             state.cityEA = city;
           });
         }
+        console.log('[Location] handler:', 'file-ea', 'city:', state.resultEA.extractedCity);
         saveFileToHistory(file.name, state.resultEA);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
@@ -1481,6 +1484,7 @@ const App = (() => {
             state.cityEA = city;
           });
         }
+        console.log('[Location] handler:', 'file-hist-btn-ea', 'city:', data.extractedCity);
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
       });
