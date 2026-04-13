@@ -1393,10 +1393,72 @@ const UI = (() => {
     document.getElementById('portfolio-results').innerHTML = '<div style="padding:24px;color:#64748b;font-size:12px;font-family:JetBrains Mono,monospace;">EA view coming soon.</div>';
   }
 
-  // ── PORTFOLIO: REASON CARD (stub) ─────────────────────
+  // ── PORTFOLIO: REASON CARD ────────────────────────────
 
   function openPortfolioReasonCard(propertyName, metricName, monthIdx, monthLabel) {
-    console.log('[Portfolio] open reason card:', propertyName, metricName, monthIdx, monthLabel);
+    const panel = document.getElementById('portfolio-detail-panel');
+    if (!panel) return;
+
+    // Check if already open
+    const existingId = `prc-${propertyName}-${metricName}-${monthIdx}`.replace(/[^a-zA-Z0-9-]/g, '_');
+    if (document.getElementById(existingId)) return;
+
+    // Max 5 cards
+    const existingCards = panel.querySelectorAll('.portfolio-reason-card');
+    if (existingCards.length >= 5) {
+      existingCards[0].remove();
+    }
+
+    // Find property and metric data
+    const prop = Portfolio.state.properties.find(p => p.name === propertyName);
+    if (!prop || !prop.result) return;
+
+    const metric = prop.result.metrics.find(m => m.name === metricName);
+    if (!metric) return;
+
+    const reasonData = metric.reasonData?.[monthIdx];
+    const value = metric.values?.[monthIdx];
+
+    function fmtVal(n) {
+      if (n == null) return '—';
+      return (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
+
+    const primaryReason = reasonData?.enrichedPrimary || reasonData?.primary?.label || 'No reasoning available';
+    const altReasons = reasonData?.enrichedAlternatives || [];
+
+    const altHtml = altReasons.map((alt, i) => {
+      const colors = ['#f97316', '#a855f7', '#06b6d4'];
+      return `
+        <div class="reason-box reason-box--alt" style="border-color:${colors[i] || colors[0]}">
+          <div class="reason-box-label">ALT ${i + 1}</div>
+          <div class="reason-box-narrative">${alt}</div>
+        </div>
+      `;
+    }).join('');
+
+    const card = document.createElement('div');
+    card.className = 'portfolio-reason-card';
+    card.id = existingId;
+    card.style.pointerEvents = 'all';
+    card.innerHTML = `
+      <div class="portfolio-reason-card-header">
+        <div>
+          <div class="portfolio-reason-card-title">${metricName}</div>
+          <div class="portfolio-reason-card-meta">${propertyName} · ${monthLabel} · ${fmtVal(value)}</div>
+        </div>
+        <button class="close-card" onclick="this.closest('.portfolio-reason-card').remove()">✕</button>
+      </div>
+      <div class="portfolio-reason-card-body">
+        <div class="reason-box reason-box--primary">
+          <div class="reason-box-label">PRIMARY REASON</div>
+          <div class="reason-box-narrative">${primaryReason}</div>
+        </div>
+        ${altHtml}
+      </div>
+    `;
+
+    panel.appendChild(card);
   }
 
   return {
