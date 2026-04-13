@@ -111,17 +111,27 @@ function generateReasoning(data) {
   }
 
   // ── Dominant driver ───────────────────────────────────────────────────────
-  if (dominantDriver) {
-    const driverDir = dominantDriver.direction === 'up' ? 'higher' : 'lower';
+  if (topDrivers.length >= 1) {
+    const driverParts = topDrivers.slice(0, 3).map(d => {
+      const dir = d.direction === 'up' ? 'higher' : 'lower';
+      return `${d.name} (${fmt(d.absMovement)} ${dir})`;
+    });
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
-    if (dominantPct && Math.abs(dominantPct) >= 60) {
-      sentences.push(`${dominantDriver.name} is the primary driver — ${fmt(dominantDriver.absMovement)} ${driverDir} ${reference}, accounting for ${Math.abs(dominantPct)}% of the shift.`);
-    } else if (topDrivers.length >= 2) {
-      const second = topDrivers[1];
-      sentences.push(`Led by ${dominantDriver.name} (${fmt(dominantDriver.absMovement)} ${driverDir}) and ${second.name} (${fmt(second.absMovement)} ${second.direction === 'up' ? 'higher' : 'lower'}) ${reference}.`);
+    if (dominantPct && Math.abs(dominantPct) >= 60 && topDrivers.length === 1) {
+      sentences.push(`Primary driver: ${driverParts[0]} ${reference}, accounting for ${Math.abs(dominantPct)}% of the shift.`);
     } else {
-      sentences.push(`${dominantDriver.name} is the primary driver at ${fmt(dominantDriver.absMovement)} ${driverDir} ${reference}.`);
+      sentences.push(`Primary drivers ${reference}: ${driverParts.join('; ')}.`);
     }
+  }
+
+  // ── Counter-movement driver ───────────────────────────────────────────────
+  const categoryDir = flag.T3_current > (triggeredByT12 && !triggeredByPrior ? flag.T12 : flag.T3_prior) ? 'up' : 'down';
+  const counterDrivers = topDrivers.filter(d => d.direction !== categoryDir).slice(0, 1);
+  if (counterDrivers.length > 0) {
+    const cd = counterDrivers[0];
+    const counterDir = cd.direction === 'up' ? 'higher' : 'lower';
+    const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
+    sentences.push(`Partially offset by ${cd.name} moving ${fmt(cd.absMovement)} ${counterDir} ${reference}.`);
   }
 
   // ── Composition ───────────────────────────────────────────────────────────
@@ -168,10 +178,10 @@ function generateReasoning(data) {
     }
   }
 
-  // ── Trim to 75 words ──────────────────────────────────────────────────────
+  // ── Trim to 200 words ─────────────────────────────────────────────────────
   let result = sentences.join(' ');
   const words = result.split(' ');
-  if (words.length > 80) result = words.slice(0, 75).join(' ') + '…';
+  if (words.length > 210) result = words.slice(0, 200).join(' ') + '…';
 
   return result || `${categoryName} moved ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} vs the prior quarter in ${monthLabel}. Review individual metric breakdown above for details.`;
 }
