@@ -99,22 +99,31 @@ function generateReasoning(data) {
 
   // ── Opening: what triggered the anomaly ──────────────────────────────────
   if (triggeredByPrior && triggeredByT12 && !conflicting) {
-    sentences.push(`${categoryName} is running ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} above the prior quarter and ${fmt(Math.abs(flag.T3_current - flag.T12))} above the trailing 12-month baseline — both momentum and structural drift are elevated.`);
+    sentences.push(`${categoryName} is running ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} above the prior quarter run rate and ${fmt(Math.abs(flag.T3_current - flag.T12))} above the annual baseline — both short-term momentum and structural drift are flagged.`);
   } else if (triggeredByPrior && !triggeredByT12) {
     const dir = flag.T3_current > flag.T3_prior ? 'above' : 'below';
-    sentences.push(`${categoryName}'s run rate shifted ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} ${dir} the prior quarter — a momentum-driven change.`);
+    sentences.push(`${categoryName} shifted ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} ${dir} the prior quarter run rate — a short-term momentum change.`);
   } else if (triggeredByT12 && !triggeredByPrior) {
     const dir = flag.T3_current > flag.T12 ? 'above' : 'below';
-    sentences.push(`${categoryName}'s current run rate is ${fmt(Math.abs(flag.T3_current - flag.T12))} ${dir} the trailing 12-month baseline — a structural drift from the annual average.`);
+    sentences.push(`${categoryName} is running ${fmt(Math.abs(flag.T3_current - flag.T12))} ${dir} the trailing 12-month baseline — a structural drift from the annual average.`);
   } else if (conflicting) {
-    sentences.push(`${categoryName} shows conflicting signals — the quarterly trend and annual baseline are pointing in opposite directions.`);
+    sentences.push(`${categoryName} shows conflicting signals — short-term momentum and the annual baseline are pointing in opposite directions.`);
+  }
+
+  // ── First appearance drivers ──────────────────────────────────────────────
+  const firstAppearanceDrivers = topDrivers.filter(d => d.firstAppearance);
+  if (firstAppearanceDrivers.length > 0) {
+    const names = firstAppearanceDrivers.map(d => d.name).join(' and ');
+    const amounts = firstAppearanceDrivers.map(d => fmt(d.absMovement)).join(' and ');
+    sentences.push(`${names} appeared for the first time this quarter at ${amounts} — no prior activity in the trailing 12 months.`);
   }
 
   // ── Dominant driver ───────────────────────────────────────────────────────
   if (topDrivers.length >= 1) {
     const driverParts = topDrivers.slice(0, 3).map(d => {
-      const dir = d.direction === 'up' ? 'higher' : 'lower';
-      return `${d.name} (${fmt(d.absMovement)} ${dir})`;
+      const moved = d.movement;
+      const sign = moved >= 0 ? '+' : '-';
+      return `${d.name} (${sign}${fmt(Math.abs(moved))})`;
     });
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
     if (dominantPct && Math.abs(dominantPct) >= 60 && topDrivers.length === 1) {
@@ -129,9 +138,10 @@ function generateReasoning(data) {
   const counterDrivers = topDrivers.filter(d => d.direction !== categoryDir).slice(0, 1);
   if (counterDrivers.length > 0) {
     const cd = counterDrivers[0];
-    const counterDir = cd.direction === 'up' ? 'higher' : 'lower';
+    const moved = cd.movement;
+    const sign = moved >= 0 ? '+' : '-';
     const reference = triggeredByT12 && !triggeredByPrior ? 'vs the annual baseline' : 'vs the prior quarter';
-    sentences.push(`Partially offset by ${cd.name} moving ${fmt(cd.absMovement)} ${counterDir} ${reference}.`);
+    sentences.push(`Partially offset by ${cd.name} (${sign}${fmt(Math.abs(moved))}) ${reference}.`);
   }
 
   // ── Composition ───────────────────────────────────────────────────────────
@@ -169,15 +179,25 @@ function generateReasoning(data) {
   // ── External context — only if fewer than 3 property sentences ────────────
   if (sentences.length < 3) {
     const { stateUR, mortgage30, hdd, cdd, energyCPI } = externalContext || {};
-    if (isIncome && stateUR != null) {
-      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% ${stateUR < 4 ? '— tight labor market supporting demand' : stateUR > 6 ? '— elevated unemployment may be pressuring demand' : '— moderate labor conditions'}.`);
-    } else if (!isIncome && hdd != null && hdd > 400) {
+    const catLower = categoryName.toLowerCase();
+
+    // Weather context only for weather-sensitive categories
+    const isWeatherSensitive = ['utilities','contract repairs','repairs','unit turnover','snow'].some(k => catLower.includes(k));
+    // Labor context only for payroll categories
+    const isLaborSensitive = catLower.includes('payroll') || catLower.includes('management');
+    // Rental market context only for income categories
+    const isRentalIncome = section === 'INCOME';
+
+    if (isRentalIncome && stateUR != null) {
+      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}%${mortgage30 ? ` and 30yr mortgage at ${mortgage30.toFixed(2)}%` : ''} — ${stateUR < 4 ? 'tight labor market supporting rental demand' : stateUR > 6 ? 'elevated unemployment may be pressuring demand' : 'moderate labor conditions'}.`);
+    } else if (isWeatherSensitive && hdd != null && hdd > 400) {
       sentences.push(`${hdd} heating degree days in ${stateAbbr} — cold weather driving operating costs.`);
-    } else if (!isIncome && cdd != null && cdd > 150) {
+    } else if (isWeatherSensitive && cdd != null && cdd > 150) {
       sentences.push(`${cdd} cooling degree days — summer heat elevating utility demand.`);
-    } else if (!isIncome && energyCPI != null && energyCPI > 300) {
-      sentences.push(`Energy CPI at ${energyCPI.toFixed(1)} — elevated energy costs contributing to expense pressure.`);
+    } else if (isLaborSensitive && stateUR != null) {
+      sentences.push(`${stateAbbr} unemployment at ${stateUR.toFixed(1)}% — labor market conditions affecting staffing costs.`);
     }
+    // For all other categories (bad debt, G&A, insurance, etc.) — no external context fallback
   }
 
   // ── Trim to 200 words ─────────────────────────────────────────────────────
@@ -224,6 +244,7 @@ export default async function handler(req, res) {
       T3_current: m.T3_current,
       T3_prior: m.T3_prior,
       T12: m.T12,
+      firstAppearance: (m.T3_prior === 0 || m.T3_prior == null) && Math.abs(m.T3_current || 0) > 0,
     }))
     .filter(m => m.absMovement > 0)
     .sort((a, b) => b.absMovement - a.absMovement);
@@ -238,6 +259,7 @@ export default async function handler(req, res) {
       T3_current: m.T3_current,
       T3_prior: m.T3_prior,
       T12: m.T12,
+      firstAppearance: (m.T12 === 0 || m.T12 == null) && Math.abs(m.T3_current || 0) > 0,
     }))
     .filter(m => m.absMovement > 0)
     .sort((a, b) => b.absMovement - a.absMovement);
