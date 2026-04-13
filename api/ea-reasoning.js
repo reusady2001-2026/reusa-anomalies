@@ -76,6 +76,105 @@ const FRED_UR_MAP = {
   'VT':'VTUR','WY':'WYUR',
 };
 
+function generateReasoning(data) {
+  const {
+    categoryName, section, monthLabel, stateAbbr,
+    dominantDriver, dominantPct, topDrivers, compositionType,
+    trendType, oaContext, portfolioContext, externalContext,
+    seasonalPattern, flag,
+  } = data;
+
+  const isIncome = section === 'INCOME';
+  const isUp = flag.direction === 'up';
+  const fmt = n => '$' + Math.round(Math.abs(n || 0)).toLocaleString();
+  const sentences = [];
+
+  // ── Property-first: dominant driver ──────────────────────────────────────
+  if (dominantDriver) {
+    const driverDir = dominantDriver.direction === 'up' ? 'increased' : 'decreased';
+    if (dominantPct && Math.abs(dominantPct) >= 60) {
+      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} vs the prior quarter, accounting for ${Math.abs(dominantPct)}% of the category movement.`);
+    } else if (topDrivers.length >= 2) {
+      const second = topDrivers[1];
+      const secondDir = second.direction === 'up' ? 'up' : 'down';
+      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} while ${second.name} moved ${secondDir} ${fmt(second.absMovement)} — the two primary drivers of this category shift.`);
+    } else {
+      sentences.push(`${dominantDriver.name} ${driverDir} ${fmt(dominantDriver.absMovement)} vs the prior quarter.`);
+    }
+  }
+
+  // ── Composition ───────────────────────────────────────────────────────────
+  if (compositionType === 'mixed' && topDrivers.length >= 2) {
+    const ups = topDrivers.filter(m => m.direction === 'up');
+    const downs = topDrivers.filter(m => m.direction === 'down');
+    if (ups.length > 0 && downs.length > 0) {
+      sentences.push(`Movement is partially offset — ${ups.map(m => m.name).join(', ')} ${ups.length > 1 ? 'are' : 'is'} up while ${downs.map(m => m.name).join(', ')} ${downs.length > 1 ? 'are' : 'is'} down.`);
+    }
+  }
+
+  // ── Trend ─────────────────────────────────────────────────────────────────
+  if (trendType === 'accelerating') {
+    sentences.push(`This movement is accelerating — each recent quarter has shown a larger shift than the prior one.`);
+  } else if (trendType === 'decelerating') {
+    sentences.push(`The trend is decelerating — movement is slowing compared to prior quarters.`);
+  }
+
+  // ── Seasonal ──────────────────────────────────────────────────────────────
+  if (seasonalPattern?.recurring) {
+    sentences.push(`This pattern has recurred in ${MONTH_NAMES[new Date(monthLabel).getMonth()] || monthLabel.split(' ')[0]} in ${seasonalPattern.years.join(', ')} — suggesting a seasonal component.`);
+  }
+
+  // ── Portfolio context ─────────────────────────────────────────────────────
+  const sameState = portfolioContext.filter(p => p.locationProximity === 'same-state');
+  const sameRegion = portfolioContext.filter(p => p.locationProximity === 'same-region');
+  if (sameState.length >= 2) {
+    sentences.push(`${sameState.length} other ${stateAbbr} properties show similar movement this month — suggesting a state-level driver.`);
+  } else if (sameRegion.length >= 2) {
+    sentences.push(`${sameRegion.length} properties in the same region show similar movement — consistent with a regional trend.`);
+  }
+
+  // ── External context (market as last resort) ──────────────────────────────
+  const { fedfunds, rentCPI, stateUR, energyCPI, mortgage30, hdd, cdd } = externalContext || {};
+
+  // Only add market context if we don't already have a strong property explanation
+  if (sentences.length < 2) {
+    if (isIncome && stateUR != null) {
+      const laborContext = stateUR < 4 ? 'a tight labor market supporting rental demand'
+        : stateUR > 6 ? 'elevated unemployment that may be pressuring demand'
+        : `${stateUR.toFixed(1)}% state unemployment`;
+      sentences.push(`Market context: ${laborContext}${mortgage30 ? ` with 30yr mortgage at ${mortgage30.toFixed(2)}%` : ''}.`);
+    } else if (!isIncome && hdd != null && hdd > 400) {
+      sentences.push(`Weather context: ${hdd} heating degree days in ${stateAbbr} — elevated cold-weather operating costs expected.`);
+    } else if (!isIncome && cdd != null && cdd > 150) {
+      sentences.push(`Weather context: ${cdd} cooling degree days — elevated summer utility and maintenance demand.`);
+    } else if (!isIncome && energyCPI != null) {
+      sentences.push(`Energy CPI at ${energyCPI.toFixed(1)} nationally may be contributing to cost pressure.`);
+    }
+  }
+
+  // ── OA context (use internally to refine, not quote) ──────────────────────
+  if (oaContext.length > 0) {
+    const angles = [...new Set(oaContext.map(o => o.angle))];
+    // If OA identified seasonal variance for metrics in this category, note it
+    if (angles.includes('SEASONAL_VARIANCE') && !seasonalPattern?.recurring) {
+      sentences.push(`Operational analysis identified seasonal patterns in individual metrics within this category this month.`);
+    }
+    // If OA identified market pressure, reinforce or soften based on property data
+    if (angles.includes('MARKET_PRESSURE') && sentences.length < 3) {
+      sentences.push(`Individual metric analysis also points to market-driven factors for components of this category.`);
+    }
+  }
+
+  // ── Trim to 75 words ──────────────────────────────────────────────────────
+  let result = sentences.join(' ');
+  const words = result.split(' ');
+  if (words.length > 80) {
+    result = words.slice(0, 75).join(' ') + '…';
+  }
+
+  return result || `${categoryName} moved ${fmt(Math.abs(flag.T3_current - flag.T3_prior))} vs the prior quarter in ${monthLabel}. No dominant single driver identified — review individual metric breakdown above for details.`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -280,6 +379,13 @@ export default async function handler(req, res) {
   } catch(e) {}
 
   // ── Return structured reasoning data ─────────────────────────────────────
+  const reasoning = generateReasoning({
+    categoryName, section, monthLabel, stateAbbr,
+    dominantDriver, dominantPct, topDrivers, compositionType,
+    trendType, oaContext, portfolioContext, externalContext,
+    seasonalPattern, flag,
+  });
+
   return res.status(200).json({
     categoryName,
     section,
@@ -296,5 +402,6 @@ export default async function handler(req, res) {
     externalContext,
     seasonalPattern,
     flag,
+    reasoning,
   });
 }
