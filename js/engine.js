@@ -648,6 +648,10 @@ const Engine = (() => {
       }
       Object.assign(metric, stats);
 
+      if (metric.name === 'Market Rent') {
+        console.log('[analyse] Market Rent — type:', metric.type, '| openingIdx:', metric.openingIdx, '| mean:', metric.mean, '| stdDev:', metric.stdDev);
+      }
+
       // Z-scores (on the display slice, but using stats from active)
       // We compute zscores for all display months but only mark active ones
       metric.zScores = calcZScoresForDisplay(metric, vals, displayMonths, activeIdxsInDisplay, stats);
