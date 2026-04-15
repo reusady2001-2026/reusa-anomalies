@@ -738,7 +738,7 @@ const Engine = (() => {
         return;
       }
 
-      const sliceIdxs = activeIdxs.slice(0, pos + 1);
+      const sliceIdxs = activeIdxs.slice(0, pos + 1).filter(j => j >= metric.openingIdx);
       const slice = sliceIdxs.map(j => vals[j]);
       const mSlice = mean(slice);
       const sdSlice = stdDev(slice);
