@@ -366,6 +366,9 @@ const Engine = (() => {
   }
 
   function detectSeasonality(metric, months, purchasePrice, activeMonths) {
+    if (metric.name === 'Market Rent') {
+      console.log('[detectSeasonality] Market Rent — mean:', metric.mean, '| stdDev:', metric.stdDev, '| values:', JSON.stringify(metric.values));
+    }
     const monthIndex = buildMonthIndex(months);
     const materialSeasonal = new Set();
     const recurring = new Set();
