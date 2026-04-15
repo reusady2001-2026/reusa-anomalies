@@ -399,7 +399,9 @@ const Engine = (() => {
 
         if (matI && matJ) {
           const sameAnomalyDir = (zi.effectiveZ > 0) === (zj.effectiveZ > 0);
-          if (sameAnomalyDir) {
+          const mean = metric.mean || 0;
+          const iDeviates = mean !== 0 && Math.abs(vi - mean) / Math.abs(mean) > 0.15;
+          if (sameAnomalyDir && iDeviates) {
             materialSeasonal.add(i);
             materialSeasonal.add(j);
           }
