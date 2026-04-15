@@ -154,7 +154,7 @@ const UI = (() => {
         const z = metric.zScores && metric.zScores[ri];
         const cellClass = getCellClass(metric, ri, skippedRelIdxs, mFocus);
         const recurring = hasRecurring(metric, ri, mFocus);
-        const isAnomaly = z && z.isAnomaly && !metric.seasonalityMonths?.includes(ri);
+        const isAnomaly = z && z.isAnomaly;
         const zDisplay = z && z.effectiveZ != null ? z.effectiveZ.toFixed(2) : '';
 
         const pnlClass = z && z.pnl ? `pnl-${z.pnl}` : '';
