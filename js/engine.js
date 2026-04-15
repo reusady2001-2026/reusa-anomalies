@@ -2,6 +2,7 @@
 // ENGINE.JS — Core anomaly detection algorithms
 // ============================================================
 
+// OAAS Engine v2.1
 const Engine = (() => {
 
   // ── PARSING ─────────────────────────────────────────────
