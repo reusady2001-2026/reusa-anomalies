@@ -378,7 +378,9 @@ const Engine = (() => {
     months.forEach((m, i) => {
       if (!activeSet.has(i)) return;
       const shortName = m.split(' ')[0];
-      const peers = (monthIndex[shortName] || []).filter(j => j !== i && activeSet.has(j));
+      const allSameNameMonths = (monthIndex[shortName] || []).filter(j => activeSet.has(j));
+      if (allSameNameMonths.length < 3) return;
+      const peers = allSameNameMonths.filter(j => j !== i);
 
       peers.forEach(j => {
         const vi = metric.values[i];
