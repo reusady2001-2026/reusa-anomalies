@@ -408,7 +408,7 @@ const Engine = (() => {
         // Gate 6 — value must deviate from overall mean by more than 15%
         // Values hugging the mean are stable baseline behavior, not a seasonal pattern
         const mean = metric.mean || 0;
-        if (mean !== 0 && Math.abs(vi - mean) / Math.abs(mean) <= 0.15) continue;
+        if (mean !== 0 && Math.abs(vi - mean) / Math.abs(mean) <= 0.15) return;
 
         // Recurring pattern: values similar within 10%, same direction
         recurring.add(i);
