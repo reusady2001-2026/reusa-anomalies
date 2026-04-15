@@ -744,6 +744,10 @@ const Engine = (() => {
       const sdSlice = stdDev(slice);
       const z2 = sdSlice !== 0 ? (vals[i] - mSlice) / sdSlice : 0;
 
+      if (metric.name === 'Market Rent' && i >= 52 && i <= 58) {
+        console.log('[z2 debug] idx:', i, '| sliceIdxs:', JSON.stringify(sliceIdxs), '| slice:', JSON.stringify(slice), '| mSlice:', mSlice.toFixed(2), '| sdSlice:', sdSlice.toFixed(2), '| z2:', z2.toFixed(3));
+      }
+
       if (Math.abs(z2) > metric.threshold && slice.length >= 6) {
         result[i] = makeZ(z1, z2, 'value', true, false, z2);
         if (metric.name === 'Market Rent') console.log('[zScore] Market Rent idx:', i, '| val:', vals[i], '| change:', change.toFixed(2), '| z1:', z1.toFixed(3), '| z2:', z2.toFixed(3), '| isAnomaly: true (value)');
