@@ -2,6 +2,7 @@
 // ENGINE.JS — Core anomaly detection algorithms
 // ============================================================
 
+// OAAS Engine v2.1
 const Engine = (() => {
 
   // ── PARSING ─────────────────────────────────────────────
@@ -738,11 +739,15 @@ const Engine = (() => {
         return;
       }
 
-      const sliceIdxs = activeIdxs.slice(0, pos + 1);
+      const sliceIdxs = activeIdxs.slice(0, pos + 1).filter(j => j >= metric.openingIdx);
       const slice = sliceIdxs.map(j => vals[j]);
       const mSlice = mean(slice);
       const sdSlice = stdDev(slice);
       const z2 = sdSlice !== 0 ? (vals[i] - mSlice) / sdSlice : 0;
+
+      if (metric.name === 'Market Rent' && i >= 52 && i <= 58) {
+        console.log('[z2 debug] idx:', i, '| sliceIdxs:', JSON.stringify(sliceIdxs), '| slice:', JSON.stringify(slice), '| mSlice:', mSlice.toFixed(2), '| sdSlice:', sdSlice.toFixed(2), '| z2:', z2.toFixed(3));
+      }
 
       if (Math.abs(z2) > metric.threshold && slice.length >= 6) {
         result[i] = makeZ(z1, z2, 'value', true, false, z2);
