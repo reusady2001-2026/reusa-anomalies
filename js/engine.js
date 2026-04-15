@@ -180,6 +180,18 @@ const Engine = (() => {
     const valuesAfterOpening = values.slice(openingIdx + 1);
     const cond2 = valuesAfterOpening.some(v => v === 0);
 
+    const lastNonZeroRun = (() => {
+      let count = 0;
+      for (let i = values.length - 1; i >= 0; i--) {
+        if (values[i] !== 0) count++;
+        else break;
+      }
+      return count;
+    })();
+    const cond3 = lastNonZeroRun >= 6;
+
+    if (cond1 && cond2 && cond3) return { type: 'continuous', openingIdx: values.length - lastNonZeroRun };
+
     return {
       type: (cond1 && cond2) ? 'sporadic' : 'continuous',
       openingIdx,
