@@ -325,6 +325,7 @@ input[type="file"] { display: none; }
 [data-theme="light"] .ea-detail-row { color: #1e293b; border-bottom-color: rgba(0,0,0,0.07); }
 [data-theme="light"] .ea-detail-flagged { color: #c2410c; }
 [data-theme="light"] .ea-detail-reasoning { color: #334155; background: rgba(0,0,0,0.02); }
+[data-theme="light"] .ea-label { color: #000000; }
 
 .btn-secondary.active {
   background: var(--blue-dark);
@@ -1025,6 +1026,21 @@ input[type="file"] { display: none; }
 [data-theme="light"] .reason-box-label         { color: #1e293b; }
 [data-theme="light"] .reason-box-narrative      { color: #334155; }
 [data-theme="light"] .rb-evidence > summary     { color: #000000; }
+[data-theme="light"] .reason-box-summary::before { color: #000000; }
+[data-theme="light"] .close-card { color: #000000; }
+[data-theme="light"] .control-group input[disabled] { color: #000000; }
+[data-theme="light"] .cell-inactive { color: #000000; }
+[data-theme="light"] .cell-skipped { color: #000000; }
+[data-theme="light"] .summary-badge--total { color: #000000; }
+[data-theme="light"] .location-select:disabled { color: #000000; }
+[data-theme="light"] .city-autocomplete-wrapper input[type="text"]:disabled { color: #000000; }
+[data-theme="light"] .city-autocomplete-wrapper ul li.city-ac-noresult { color: #000000; }
+[data-theme="light"] .reason-preview { color: #000000; }
+[data-theme="light"] .data-sources-section summary { color: #000000; }
+[data-theme="light"] .ds-label { color: #000000; }
+[data-theme="light"] .ev-score-sep { color: #000000; }
+[data-theme="light"] .ev-signal-name { color: #000000; }
+[data-theme="light"] .ev-signal-explanation { color: #000000; }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
@@ -1500,6 +1516,7 @@ input[type="file"] { display: none; }
   color: #000000;
 }
 [data-theme="light"] .rule-btn-dismiss:hover { background: rgba(0,0,0,0.08); }
+[data-theme="light"] .rule-suggestion-header { color: #000000; }
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -1837,6 +1854,10 @@ input[type="file"] { display: none; }
 [data-theme="light"] .portfolio-metric-count { color: #1e293b; }
 [data-theme="light"] .pm-prop-name { color: #1e293b; }
 [data-theme="light"] .pm-cell-normal { color: #1e293b; }
+[data-theme="light"] .portfolio-property-tag .remove-btn { color: #000000; }
+[data-theme="light"] .portfolio-metric-arrow { color: #000000; }
+[data-theme="light"] .pm-prop-th { color: #000000; }
+[data-theme="light"] .pm-month-th { color: #000000; }
 
 /* ── PORTFOLIO PROPERTY CARDS ── */
 .portfolio-prop-card {
@@ -1955,6 +1976,7 @@ input[type="file"] { display: none; }
   border-bottom-color: rgba(0,0,0,0.06);
 }
 [data-theme="light"] .portfolio-reason-card-title { color: #1e293b; }
+[data-theme="light"] .portfolio-reason-card-meta { color: #000000; }
 
 /* ── PORTFOLIO EA VIEW ───────────────────────────────── */
 .pea-filter-bar {
