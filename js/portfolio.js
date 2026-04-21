@@ -129,7 +129,7 @@ const Portfolio = (() => {
           });
         }
         const entry = monthMap.get(key);
-        entry.totalMovement += Math.abs(flag.maxMovement);
+        entry.totalMovement += flag.maxMovement;
         entry.propertyCount += 1;
         entry.properties.push({
           name: prop.name,
@@ -140,9 +140,9 @@ const Portfolio = (() => {
       });
     });
 
-    // Sort by totalMovement descending
+    // Sort by absolute totalMovement descending
     state.eaMonthMap = new Map(
-      [...monthMap.entries()].sort((a, b) => b[1].totalMovement - a[1].totalMovement)
+      [...monthMap.entries()].sort((a, b) => Math.abs(b[1].totalMovement) - Math.abs(a[1].totalMovement))
     );
   }
 

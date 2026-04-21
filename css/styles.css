@@ -1958,62 +1958,64 @@ input[type="file"] { display: none; }
 
 /* ── PORTFOLIO EA VIEW ───────────────────────────────── */
 .pea-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
   padding: 16px;
 }
 .pea-month-card {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  padding: 12px 14px;
-  min-width: 160px;
+  border-radius: 8px;
+  padding: 14px 16px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.15s, background 0.15s;
+  gap: 4px;
+  min-height: 100px;
+  transition: background 0.15s;
 }
 .pea-month-card:hover {
   background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.16);
 }
 .pea-month-card--active {
-  border-color: #3b82f6;
-  background: rgba(59,130,246,0.08);
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
 }
-.pea-category-name {
-  font-size: 13px;
+.pea-card-category {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #8892a4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pea-card-month {
+  font-size: 18px;
   font-weight: 700;
   color: #e2e8f0;
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.pea-month-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: #94a3b8;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.03em;
-}
-.pea-month-stats {
+.pea-card-movement {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
 }
-.pea-month-props {
-  font-size: 10px;
-  color: #64748b;
-  font-family: 'JetBrains Mono', monospace;
-}
-.pea-movement {
-  font-size: 11px;
+.pea-card-arrow {
+  font-size: 13px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
+}
+.pea-card-amount {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.pea-card-meta {
+  font-size: 10px;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
 }
 .pea-sub-panel {
   flex-direction: column;
@@ -2051,11 +2053,10 @@ input[type="file"] { display: none; }
   background: rgba(0,0,0,0.02);
   border-color: rgba(0,0,0,0.08);
 }
-[data-theme="light"] .pea-month-card:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.14); }
-[data-theme="light"] .pea-month-card--active { border-color: #3b82f6; background: rgba(59,130,246,0.06); }
-[data-theme="light"] .pea-category-name { color: #0f172a; }
-[data-theme="light"] .pea-month-label { color: #64748b; }
-[data-theme="light"] .pea-month-props { color: #94a3b8; }
+[data-theme="light"] .pea-month-card:hover { background: rgba(0,0,0,0.04); }
+[data-theme="light"] .pea-card-category { color: #94a3b8; }
+[data-theme="light"] .pea-card-month { color: #1e293b; }
+[data-theme="light"] .pea-card-meta { color: #64748b; }
 [data-theme="light"] .pea-sub-panel { border-top-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .pea-property-row { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
 [data-theme="light"] .pea-property-row:hover { background: rgba(0,0,0,0.05); }

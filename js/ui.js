@@ -1564,21 +1564,34 @@ const UI = (() => {
 
     eaMonthMap.forEach((entry, key) => {
       const firstFlag = entry.properties[0]?.flag;
-      const favorable = firstFlag
-        ? (firstFlag.isIncome ? firstFlag.direction === 'up' : firstFlag.direction === 'down')
-        : false;
-      const movementColor = favorable ? '#22c55e' : '#ef4444';
+      const isIncome = firstFlag?.isIncome ?? (firstFlag?.section === 'INCOME');
+      const isUp = firstFlag?.direction === 'up';
+      const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
+      const color = firstFlag?.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+      const arrow = entry.totalMovement >= 0 ? '▲' : '▼';
+
+      let triggerType = '';
+      if (firstFlag) {
+        if (firstFlag.flaggedByPrior && firstFlag.flaggedByT12)
+          triggerType = firstFlag.conflicting ? 'T3 + T12 · conflicting' : 'T3 + T12';
+        else if (firstFlag.flaggedByPrior) triggerType = 'T3 momentum';
+        else triggerType = 'T12 drift';
+      }
+      const metaText = `${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}` +
+        (triggerType ? ` · ${triggerType}` : '');
 
       const card = document.createElement('div');
       card.className = 'pea-month-card';
       card.dataset.key = key;
+      card.style.borderLeft = `4px solid ${color}`;
       card.innerHTML =
-        `<div class="pea-category-name">${escHtml(entry.categoryName)}</div>` +
-        `<div class="pea-month-label">${escHtml(entry.monthLabel)}</div>` +
-        `<div class="pea-month-stats">` +
-          `<span class="pea-month-props">${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}</span>` +
-          `<span class="pea-movement" style="color:${movementColor}">${fmtMovement(entry.totalMovement)}</span>` +
-        `</div>`;
+        `<div class="pea-card-category">${escHtml(entry.categoryName)}</div>` +
+        `<div class="pea-card-month">${escHtml(entry.monthLabel)}</div>` +
+        `<div class="pea-card-movement">` +
+          `<span class="pea-card-arrow" style="color:${color}">${arrow}</span>` +
+          `<span class="pea-card-amount" style="color:${color}">${fmtMovement(entry.totalMovement)}</span>` +
+        `</div>` +
+        `<div class="pea-card-meta">${escHtml(metaText)}</div>`;
 
       card.addEventListener('click', () => {
         if (activeKey === key) {
