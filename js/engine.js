@@ -379,9 +379,6 @@ const Engine = (() => {
   }
 
   function detectSeasonality(metric, months, purchasePrice, activeMonths) {
-    if (metric.name === 'Market Rent') {
-      console.log('[detectSeasonality] Market Rent — mean:', metric.mean, '| stdDev:', metric.stdDev, '| values:', JSON.stringify(metric.values));
-    }
     const monthIndex = buildMonthIndex(months);
     const materialSeasonal = new Set();
     const recurring = new Set();
@@ -649,9 +646,6 @@ const Engine = (() => {
       }
       Object.assign(metric, stats);
 
-      if (metric.name === 'Market Rent') {
-        console.log('[analyse] Market Rent — type:', metric.type, '| openingIdx:', metric.openingIdx, '| mean:', metric.mean, '| stdDev:', metric.stdDev, '| changesStdDev:', metric.changesStdDev, '| threshold:', metric.threshold);
-      }
 
       // Z-scores (on the display slice, but using stats from active)
       // We compute zscores for all display months but only mark active ones
@@ -721,7 +715,6 @@ const Engine = (() => {
     activeIdxs.forEach((i, pos) => {
       if (i === metric.openingIdx) {
         result[i] = makeZ(0, null, null, false, false, 0);
-        if (metric.name === 'Market Rent') console.log('[zScore] Market Rent idx:', i, '| OPENING baseline');
         return;
       }
       if (!activeSet.has(i)) return;
@@ -735,7 +728,6 @@ const Engine = (() => {
 
       if (Math.abs(z1) > metric.threshold) {
         result[i] = makeZ(z1, null, 'change', true, false, z1);
-        if (metric.name === 'Market Rent') console.log('[zScore] Market Rent idx:', i, '| val:', vals[i], '| change:', change.toFixed(2), '| z1:', z1.toFixed(3), '| z2: —', '| isAnomaly: true (change)');
         return;
       }
 
@@ -747,10 +739,8 @@ const Engine = (() => {
 
       if (Math.abs(z2) > metric.threshold && slice.length >= 6) {
         result[i] = makeZ(z1, z2, 'value', true, false, z2);
-        if (metric.name === 'Market Rent') console.log('[zScore] Market Rent idx:', i, '| val:', vals[i], '| change:', change.toFixed(2), '| z1:', z1.toFixed(3), '| z2:', z2.toFixed(3), '| isAnomaly: true (value)');
       } else {
         result[i] = makeZ(z1, z2, null, false, false, z2);
-        if (metric.name === 'Market Rent') console.log('[zScore] Market Rent idx:', i, '| val:', vals[i], '| change:', change.toFixed(2), '| z1:', z1.toFixed(3), '| z2:', z2.toFixed(3), '| isAnomaly: false');
       }
     });
 
