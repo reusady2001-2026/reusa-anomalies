@@ -1533,6 +1533,13 @@ const UI = (() => {
     panel.appendChild(card);
   }
 
+  // ── PORTFOLIO: MODE TOGGLE ────────────────────────────
+  function setPortfolioMode(mode) {
+    Portfolio.state.mode = mode;
+    document.getElementById('portfolio-mode-oa')?.classList.toggle('active', mode === 'oa');
+    document.getElementById('portfolio-mode-ea')?.classList.toggle('active', mode === 'ea');
+  }
+
   return {
     renderTable,
     renderComparisonTable,
@@ -1555,5 +1562,6 @@ const UI = (() => {
     renderPortfolioEA,
     togglePortfolioMetric,
     openPortfolioReasonCard,
+    setPortfolioMode,
   };
 })();
