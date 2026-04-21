@@ -1403,7 +1403,75 @@ const UI = (() => {
   // ── PORTFOLIO: EA VIEW (stub) ─────────────────────────
 
   function renderPortfolioEA() {
-    document.getElementById('portfolio-results').innerHTML = '<div style="padding:24px;color:#64748b;font-size:12px;font-family:JetBrains Mono,monospace;">EA view coming soon.</div>';
+    const container = document.getElementById('portfolio-results');
+    if (!container) return;
+
+    const eaMonthMap = Portfolio.state.eaMonthMap;
+    if (!eaMonthMap || eaMonthMap.size === 0) {
+      container.innerHTML = '<div style="padding:24px;color:#64748b;font-size:12px;font-family:\'JetBrains Mono\',monospace;">No EA data — run portfolio analysis first.</div>';
+      return;
+    }
+
+    let activeMonth = null; // tracks which month card is expanded
+
+    const grid = document.createElement('div');
+    grid.className = 'pea-grid';
+
+    const subPanel = document.createElement('div');
+    subPanel.className = 'pea-sub-panel';
+    subPanel.style.display = 'none';
+
+    eaMonthMap.forEach((entry, monthLabel) => {
+      const card = document.createElement('div');
+      card.className = 'pea-month-card';
+      card.dataset.month = monthLabel;
+      card.innerHTML =
+        `<div class="pea-month-label">${escHtml(monthLabel)}</div>` +
+        `<div class="pea-month-stats">` +
+          `<span class="pea-month-props">${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}</span>` +
+          `<span class="pea-month-flags">${entry.totalFlags} category flag${entry.totalFlags === 1 ? '' : 's'}</span>` +
+        `</div>`;
+
+      card.addEventListener('click', () => {
+        // Collapse if already open
+        if (activeMonth === monthLabel) {
+          activeMonth = null;
+          card.classList.remove('pea-month-card--active');
+          subPanel.style.display = 'none';
+          subPanel.innerHTML = '';
+          return;
+        }
+
+        // Deactivate previous card
+        grid.querySelectorAll('.pea-month-card--active').forEach(c => c.classList.remove('pea-month-card--active'));
+        activeMonth = monthLabel;
+        card.classList.add('pea-month-card--active');
+
+        // Build sub-panel rows
+        subPanel.innerHTML = '';
+        entry.properties.forEach(propEntry => {
+          const row = document.createElement('div');
+          row.className = 'pea-property-row';
+          row.dataset.month = monthLabel;
+          row.dataset.prop = propEntry.name;
+          row.innerHTML =
+            `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
+            `<span class="pea-prop-flagcount">${propEntry.flags.length} flag${propEntry.flags.length === 1 ? '' : 's'}</span>`;
+          row.addEventListener('click', () => {
+            console.log('open EA detail for', propEntry.name, monthLabel);
+          });
+          subPanel.appendChild(row);
+        });
+
+        subPanel.style.display = 'flex';
+      });
+
+      grid.appendChild(card);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+    container.appendChild(subPanel);
   }
 
   // ── PORTFOLIO: REASON CARD ────────────────────────────
