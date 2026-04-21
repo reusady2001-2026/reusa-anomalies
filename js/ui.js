@@ -1544,6 +1544,7 @@ const UI = (() => {
     escHtml,
     renderPortfolioPropertyList,
     renderPortfolioResults,
+    renderPortfolioEA,
     togglePortfolioMetric,
     openPortfolioReasonCard,
   };

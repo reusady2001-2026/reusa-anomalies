@@ -1765,20 +1765,17 @@ const App = (() => {
     resultsEl.innerHTML = '<div style="padding:24px;color:#64748b;font-family:JetBrains Mono,monospace;font-size:12px;">Running analysis…</div>';
 
     try {
-      // Run OA for all
-      await Portfolio.runOAAnalysis((current, total, name) => {
-        btn.textContent = `Analysing ${current}/${total}: ${name}`;
-      });
-
-      // Run EA for all if mode is ea
       if (Portfolio.state.mode === 'ea') {
         await Portfolio.runEAAnalysis((current, total, name) => {
           btn.textContent = `EA: ${current}/${total}: ${name}`;
         });
+        UI.renderPortfolioEA();
+      } else {
+        await Portfolio.runOAAnalysis((current, total, name) => {
+          btn.textContent = `Analysing ${current}/${total}: ${name}`;
+        });
+        UI.renderPortfolioResults('oa');
       }
-
-      // Render results
-      UI.renderPortfolioResults(Portfolio.state.mode);
 
     } catch(err) {
       console.error('[Portfolio] Analysis error:', err);
