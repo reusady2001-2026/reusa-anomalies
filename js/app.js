@@ -267,7 +267,7 @@ const App = (() => {
       const e = document.getElementById(id);
       if (e) { e.innerHTML = ''; e.classList.add('hidden'); }
     });
-    ['detail-card', 'detail-card-comp', 'detail-card-ea'].forEach(id => {
+    ['detail-card', 'detail-card-comp', 'detail-card-ea', 'portfolio-ea-detail'].forEach(id => {
       const e = document.getElementById(id);
       if (e) { e.innerHTML = '<button class="close-card" title="Close">✕</button>'; e.classList.remove('open'); }
     });
@@ -1646,7 +1646,7 @@ const App = (() => {
     wireExport('export-btn-comp', 'export-menu-comp', 'export-html-full-comp', 'export-html-filtered-comp', 'export-excel-full-comp');
 
     // ── Detail card close ──
-    ['detail-card', 'detail-card-comp', 'detail-card-ea'].forEach(id => {
+    ['detail-card', 'detail-card-comp', 'detail-card-ea', 'portfolio-ea-detail'].forEach(id => {
       document.getElementById(id)?.addEventListener('click', e => {
         if (e.target.classList.contains('close-card')) {
           e.stopPropagation();

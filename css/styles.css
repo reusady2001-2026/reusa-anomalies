@@ -653,7 +653,8 @@ input[type="file"] { display: none; }
 }
 #detail-card-ea.open,
 #portfolio-ea-detail.open {
-  max-height: 800px;
+  max-height: none;
+  overflow-y: auto;
 }
 .anomaly-card-header {
   display: flex;
