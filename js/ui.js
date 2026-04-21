@@ -393,7 +393,7 @@ const UI = (() => {
     const { primary, alternatives, corroborating } = reasonData;
     const z = metric.zScores[reasonData.monthIdx];
     if (!z) return '';
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const enrichedPrimary   = reasonData.enrichedPrimary   || null;
     const dataSources       = reasonData.dataSources       || [];
@@ -700,7 +700,7 @@ const UI = (() => {
     const container = document.getElementById('ea-table-container');
     const badgesEl  = document.getElementById('ea-summary-badges');
     if (!container) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const { results, threshold } = executiveResult;
 
@@ -783,7 +783,7 @@ const UI = (() => {
     if (event) event.stopPropagation();
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     function fmtLocal(n) {
       if (n == null) return '—';
@@ -873,7 +873,7 @@ const UI = (() => {
   function renderEACards(executiveResult) {
     const container = document.getElementById('ea-table-container');
     if (!container) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const { flags, threshold } = executiveResult;
     if (!flags || flags.length === 0) {
@@ -962,7 +962,7 @@ const UI = (() => {
     if (!flag) return;
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics  = window._eaCategoryResult?.metrics || [];
     const monthIdx = flag.monthIdx;
@@ -1101,7 +1101,7 @@ const UI = (() => {
     if (!flag) return;
     const cardEl = document.getElementById('portfolio-ea-detail');
     if (!cardEl) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics  = window._eaCategoryResult?.metrics || [];
     const monthIdx = flag.monthIdx;
@@ -1238,7 +1238,7 @@ const UI = (() => {
     const detailRow = document.getElementById(`ea-metric-detail-${cardIdx}-${rowIdx}`);
     const contentDiv = document.getElementById(`ea-metric-detail-content-${cardIdx}-${rowIdx}`);
     if (!detailRow || !contentDiv) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     // Toggle
     if (detailRow.style.display !== 'none') {
@@ -1359,7 +1359,7 @@ const UI = (() => {
   function renderPortfolioPropertyList(properties) {
     const el = document.getElementById('portfolio-property-list');
     if (!el) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     if (properties.length === 0) {
       el.innerHTML = `<span style="font-size:11px;color:${textColor};font-family:JetBrains Mono,monospace;">No properties loaded</span>`;
@@ -1415,7 +1415,7 @@ const UI = (() => {
   function renderPortfolioOA() {
     const el = document.getElementById('portfolio-results');
     if (!el) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics = Portfolio.getCombinedOAMetrics();
     const unionMonths = Portfolio.getUnionMonths();
@@ -1468,7 +1468,7 @@ const UI = (() => {
     const detailEl = document.getElementById(`pm-detail-${idx}`);
     const arrowEl = document.getElementById(`pm-arrow-${idx}`);
     if (!detailEl) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     if (detailEl.style.display !== 'none') {
       detailEl.style.display = 'none';
@@ -1552,7 +1552,7 @@ const UI = (() => {
   function renderPortfolioEA() {
     const container = document.getElementById('portfolio-results');
     if (!container) return;
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const eaMonthMap = Portfolio.state.eaMonthMap;
     if (!eaMonthMap || eaMonthMap.size === 0) {

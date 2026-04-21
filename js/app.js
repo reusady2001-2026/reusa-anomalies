@@ -162,7 +162,7 @@ const App = (() => {
 
     const files = loadFileHistory();
     console.log('[FileHistory] dropdown opened, files in storage:', files.length, files.map(f => f.name));
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
@@ -1763,7 +1763,7 @@ const App = (() => {
     const resultsEl = document.getElementById('portfolio-results');
     btn.disabled = true;
     btn.textContent = 'Analysing…';
-    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
     resultsEl.innerHTML = `<div style="padding:24px;color:${textColor};font-family:JetBrains Mono,monospace;font-size:12px;">Running analysis…</div>`;
 
     try {
