@@ -111,42 +111,38 @@ const Portfolio = (() => {
       }
     }
 
-    // Build shared eaMonthMap: month label → aggregated entry across all properties
+    // Build eaMonthMap keyed by "categoryName||monthLabel"
     const monthMap = new Map();
 
     state.properties.forEach(prop => {
       if (!prop.eaResult?.flags) return;
-      const flagsByMonth = {};
       prop.eaResult.flags.forEach(flag => {
-        const ml = flag.monthLabel;
-        if (!flagsByMonth[ml]) flagsByMonth[ml] = [];
-        flagsByMonth[ml].push(flag);
-      });
-
-      Object.entries(flagsByMonth).forEach(([monthLabel, flags]) => {
-        if (!monthMap.has(monthLabel)) {
-          monthMap.set(monthLabel, {
-            month: monthLabel,
-            totalFlags: 0,
+        const key = `${flag.categoryName}||${flag.monthLabel}`;
+        if (!monthMap.has(key)) {
+          monthMap.set(key, {
+            key,
+            categoryName: flag.categoryName,
+            monthLabel: flag.monthLabel,
+            totalMovement: 0,
             propertyCount: 0,
             properties: [],
           });
         }
-        const entry = monthMap.get(monthLabel);
-        entry.totalFlags += flags.length;
+        const entry = monthMap.get(key);
+        entry.totalMovement += Math.abs(flag.maxMovement);
         entry.propertyCount += 1;
         entry.properties.push({
           name: prop.name,
           purchasePrice: prop.purchasePrice,
           eaResult: prop.eaResult,
-          flags,
+          flag,
         });
       });
     });
 
-    // Sort by totalFlags descending
+    // Sort by totalMovement descending
     state.eaMonthMap = new Map(
-      [...monthMap.entries()].sort((a, b) => b[1].totalFlags - a[1].totalFlags)
+      [...monthMap.entries()].sort((a, b) => b[1].totalMovement - a[1].totalMovement)
     );
   }
 
