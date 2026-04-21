@@ -841,6 +841,58 @@ const App = (() => {
     UI.renderRuleCandidates(state.ruleCandidates, onApprove, onDismiss);
   }
 
+  function _runNarratorPipeline(result, dataContext, cloudHistory) {
+    (result.metrics || []).forEach(metric => {
+      (metric.anomalies || []).forEach(relIdx => {
+        if (!metric.reasonData?.[relIdx]) return;
+        const coMovers = metric.reasonData[relIdx]?.reasonerResult?.primary?.matchedMetrics || [];
+        metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
+          metric,
+          relIdx,
+          result.metrics,
+          result.months,
+          coMovers,
+          cloudHistory
+        );
+        const situationProfile = Narrator.profile(
+          metric.reasonData[relIdx], metric, dataContext
+        );
+        const narrativeResult = Composer.compose(
+          metric.reasonData[relIdx], metric, dataContext, situationProfile
+        );
+        metric.reasonData[relIdx].situationProfile = situationProfile;
+        metric.reasonData[relIdx].narrativeResult = narrativeResult;
+
+        if (narrativeResult?.narrative) {
+          const hasCoMovers =
+            metric.reasonData[relIdx].anomalyProfile?.causalityChain?.likelyCause !== null ||
+            (metric.reasonData[relIdx].anomalyProfile?.causalityChain?.effects?.length || 0) > 0;
+          if (narrativeResult.angle !== 'ANOMALY_ALERT' || hasCoMovers) {
+            metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
+          }
+        }
+
+        // Generate alt narratives using ranked angles (always 2–4)
+        if (situationProfile?.rankedAngles) {
+          const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
+          const existingAlts = metric.reasonData[relIdx].alternatives || [];
+          const paddedAngles = [...altAngles];
+          while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
+          metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
+            .map((altAngle, i) => {
+              const altResult = Composer.compose(
+                metric.reasonData[relIdx], metric, dataContext, situationProfile, altAngle
+              );
+              return altResult || { narrative: existingAlts[i] || '', angle: altAngle };
+            })
+            .filter(result => result?.angle !== 'ANOMALY_ALERT')
+            .slice(0, 4)
+            .map(result => result.narrative || '');
+        }
+      });
+    });
+  }
+
   function _runAnalysisCore() {
     state.propertyNameA = document.getElementById('analyzer-property-name')?.value.trim() || 'Unknown Property';
 
@@ -857,55 +909,7 @@ const App = (() => {
       state.reasonsA = Enrichment.enrichAll(state.resultA, state.reasonsA, state.dataContext, state.cloudHistory);
       window._debugReasons = state.reasonsA;
 
-      (state.resultA.metrics || []).forEach(metric => {
-        (metric.anomalies || []).forEach(relIdx => {
-          if (!metric.reasonData?.[relIdx]) return;
-          const coMovers = metric.reasonData[relIdx]?.reasonerResult?.primary?.matchedMetrics || [];
-          metric.reasonData[relIdx].anomalyProfile = Enricher.enrichAnomaly(
-            metric,
-            relIdx,
-            state.resultA.metrics,
-            state.resultA.months,
-            coMovers,
-            state.cloudHistory
-          );
-          const situationProfile = Narrator.profile(
-            metric.reasonData[relIdx], metric, state.dataContext
-          );
-          const narrativeResult = Composer.compose(
-            metric.reasonData[relIdx], metric, state.dataContext, situationProfile
-          );
-          metric.reasonData[relIdx].situationProfile = situationProfile;
-          metric.reasonData[relIdx].narrativeResult = narrativeResult;
-
-          if (narrativeResult?.narrative) {
-            const hasCoMovers =
-              metric.reasonData[relIdx].anomalyProfile?.causalityChain?.likelyCause !== null ||
-              (metric.reasonData[relIdx].anomalyProfile?.causalityChain?.effects?.length || 0) > 0;
-            if (narrativeResult.angle !== 'ANOMALY_ALERT' || hasCoMovers) {
-              metric.reasonData[relIdx].enrichedPrimary = narrativeResult.narrative;
-            }
-          }
-
-          // Generate alt narratives using ranked angles (always 2–4)
-          if (situationProfile?.rankedAngles) {
-            const altAngles = situationProfile.rankedAngles.slice(1); // skip dominant — already used
-            const existingAlts = metric.reasonData[relIdx].alternatives || [];
-            const paddedAngles = [...altAngles];
-            while (paddedAngles.length < 2) paddedAngles.push('ANOMALY_ALERT');
-            metric.reasonData[relIdx].enrichedAlternatives = paddedAngles
-              .map((altAngle, i) => {
-                const altResult = Composer.compose(
-                  metric.reasonData[relIdx], metric, state.dataContext, situationProfile, altAngle
-                );
-                return altResult || { narrative: existingAlts[i] || '', angle: altAngle };
-              })
-              .filter(result => result?.angle !== 'ANOMALY_ALERT')
-              .slice(0, 4)
-              .map(result => result.narrative || '');
-          }
-        });
-      });
+      _runNarratorPipeline(state.resultA, state.dataContext, state.cloudHistory);
 
       // Compute summary stats for badge display (seasonal takes priority; no double-counting)
       state.summaryStats = { totalMaterial: 0, incomeAnomalies: 0, expenseAnomalies: 0, seasonalAnomalies: 0 };
