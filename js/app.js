@@ -162,6 +162,7 @@ const App = (() => {
 
     const files = loadFileHistory();
     console.log('[FileHistory] dropdown opened, files in storage:', files.length, files.map(f => f.name));
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
@@ -170,13 +171,13 @@ const App = (() => {
     drop.style.zIndex = '9999';
 
     if (!files.length) {
-      drop.innerHTML = '<div class="history-item" style="color:#9e9e9e;cursor:default">No recent files — upload a file first</div>';
+      drop.innerHTML = `<div class="history-item" style="color:${textColor};cursor:default">No recent files — upload a file first</div>`;
     } else {
       drop.innerHTML = files.map((f, i) => {
         const d = new Date(f.savedAt).toLocaleDateString();
         return `<div class="history-item" data-idx="${i}">
           <div style="font-weight:600">${f.name}</div>
-          <div style="font-size:0.72rem;color:#9e9e9e">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
+          <div style="font-size:0.72rem;color:${textColor}">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
         </div>`;
       }).join('');
       drop.querySelectorAll('.history-item').forEach(item => {
@@ -1762,7 +1763,8 @@ const App = (() => {
     const resultsEl = document.getElementById('portfolio-results');
     btn.disabled = true;
     btn.textContent = 'Analysing…';
-    resultsEl.innerHTML = '<div style="padding:24px;color:#64748b;font-family:JetBrains Mono,monospace;font-size:12px;">Running analysis…</div>';
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
+    resultsEl.innerHTML = `<div style="padding:24px;color:${textColor};font-family:JetBrains Mono,monospace;font-size:12px;">Running analysis…</div>`;
 
     try {
       if (Portfolio.state.mode === 'ea') {

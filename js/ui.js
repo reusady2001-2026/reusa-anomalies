@@ -393,6 +393,7 @@ const UI = (() => {
     const { primary, alternatives, corroborating } = reasonData;
     const z = metric.zScores[reasonData.monthIdx];
     if (!z) return '';
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const enrichedPrimary   = reasonData.enrichedPrimary   || null;
     const dataSources       = reasonData.dataSources       || [];
@@ -446,7 +447,7 @@ const UI = (() => {
     if (hCtx && hCtx.timesSeenBefore > 0) {
       const stateLabel = escHtml(reasonData.stateAbbr || '');
       const inStr = stateLabel ? ` in ${stateLabel}` : '';
-      historicalHtml = `<div style="margin-top:5px;font-size:0.78rem;color:#757575">` +
+      historicalHtml = `<div style="margin-top:5px;font-size:0.78rem;color:${textColor}">` +
         `📈 Seen ${hCtx.timesSeenBefore} time${hCtx.timesSeenBefore !== 1 ? 's' : ''} ` +
         `across ${hCtx.propertiesCount} propert${hCtx.propertiesCount !== 1 ? 'ies' : 'y'}${inStr}` +
         `</div>`;
@@ -458,11 +459,11 @@ const UI = (() => {
       const rows = matchedMetrics.map(cm => {
         const ez   = cm.effectiveZ != null ? cm.effectiveZ : 0;
         const sign = ez >= 0 ? '+' : '';
-        return `<li style="margin:3px 0;font-size:0.82rem">${escHtml(cm.name)} <span style="color:#757575">(Z = ${sign}${ez.toFixed(1)}, same direction)</span></li>`;
+        return `<li style="margin:3px 0;font-size:0.82rem">${escHtml(cm.name)} <span style="color:${textColor}">(Z = ${sign}${ez.toFixed(1)}, same direction)</span></li>`;
       }).join('');
       coMoversHtml = `
       <details class="co-movers-details" style="margin-top:6px;font-size:0.82rem">
-        <summary style="cursor:pointer;color:#546e7a;font-weight:600;list-style:none;user-select:none">
+        <summary style="cursor:pointer;color:${textColor};font-weight:600;list-style:none;user-select:none">
           ▶ Co-moving metrics that support this reason:
         </summary>
         <ul style="margin:6px 0 0 14px;padding:0;list-style:disc">${rows}</ul>
@@ -699,6 +700,7 @@ const UI = (() => {
     const container = document.getElementById('ea-table-container');
     const badgesEl  = document.getElementById('ea-summary-badges');
     if (!container) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const { results, threshold } = executiveResult;
 
@@ -715,7 +717,7 @@ const UI = (() => {
     }
 
     if (results.length === 0) {
-      container.innerHTML = '<p style="padding:16px;color:#64748b">No metrics exceeded the materiality threshold.</p>';
+      container.innerHTML = `<p style="padding:16px;color:${textColor}">No metrics exceeded the materiality threshold.</p>`;
       return;
     }
 
@@ -752,7 +754,7 @@ const UI = (() => {
       visibleMonths.forEach((_, i) => {
         const flag = result.flags[i];
         if (!flag) {
-          html += `<td class="cell-normal" style="font-size:10px;color:#64748b;text-align:right;padding:2px 4px;">${fmt(result.values[i])}</td>`;
+          html += `<td class="cell-normal" style="font-size:10px;color:${textColor};text-align:right;padding:2px 4px;">${fmt(result.values[i])}</td>`;
           return;
         }
         const isIncome  = result.section === 'INCOME';
@@ -781,6 +783,7 @@ const UI = (() => {
     if (event) event.stopPropagation();
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     function fmtLocal(n) {
       if (n == null) return '—';
@@ -870,10 +873,11 @@ const UI = (() => {
   function renderEACards(executiveResult) {
     const container = document.getElementById('ea-table-container');
     if (!container) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const { flags, threshold } = executiveResult;
     if (!flags || flags.length === 0) {
-      container.innerHTML = '<div style="padding:24px;color:#64748b;">No category anomalies detected.</div>';
+      container.innerHTML = `<div style="padding:24px;color:${textColor};">No category anomalies detected.</div>`;
       return;
     }
 
@@ -1001,7 +1005,7 @@ const UI = (() => {
     const arrow = flag.direction === 'up' ? '▲' : '▼';
 
     const conflictNote = flag.conflicting ? `
-      <div style="margin-top:16px;padding:12px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+      <div style="margin-top:16px;padding:12px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
         T3 momentum and T12 drift are pointing in opposite directions.
         The trailing 3-month run rate ${flag.T3_current > flag.T3_prior ? 'increased' : 'decreased'} $${Math.round(flag.movementFromPrior).toLocaleString()} vs the prior quarter,
         while the annualized run rate is ${flag.T3_current > flag.T12 ? 'above' : 'below'} the trailing 12-month baseline by $${Math.round(flag.movementFromT12).toLocaleString()}.
@@ -1011,8 +1015,8 @@ const UI = (() => {
 
     const content = `
       <div style="padding:16px">
-        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <div style="font-size:14px;font-weight:600;color:${textColor};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
+        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
@@ -1033,7 +1037,7 @@ const UI = (() => {
           </tbody>
         </table>
         ${conflictNote}
-        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
           Loading analysis…
         </div>
       </div>
@@ -1096,6 +1100,7 @@ const UI = (() => {
     if (!flag) return;
     const cardEl = document.getElementById('portfolio-ea-detail');
     if (!cardEl) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics  = window._eaCategoryResult?.metrics || [];
     const monthIdx = flag.monthIdx;
@@ -1139,7 +1144,7 @@ const UI = (() => {
     const arrow = flag.direction === 'up' ? '▲' : '▼';
 
     const conflictNote = flag.conflicting ? `
-      <div style="margin-top:16px;padding:12px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+      <div style="margin-top:16px;padding:12px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
         T3 momentum and T12 drift are pointing in opposite directions.
         The trailing 3-month run rate ${flag.T3_current > flag.T3_prior ? 'increased' : 'decreased'} $${Math.round(flag.movementFromPrior).toLocaleString()} vs the prior quarter,
         while the annualized run rate is ${flag.T3_current > flag.T12 ? 'above' : 'below'} the trailing 12-month baseline by $${Math.round(flag.movementFromT12).toLocaleString()}.
@@ -1149,8 +1154,8 @@ const UI = (() => {
 
     const content = `
       <div style="padding:16px">
-        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <div style="font-size:14px;font-weight:600;color:${textColor};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
+        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
@@ -1171,7 +1176,7 @@ const UI = (() => {
           </tbody>
         </table>
         ${conflictNote}
-        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
           Loading analysis…
         </div>
       </div>
@@ -1232,6 +1237,7 @@ const UI = (() => {
     const detailRow = document.getElementById(`ea-metric-detail-${cardIdx}-${rowIdx}`);
     const contentDiv = document.getElementById(`ea-metric-detail-content-${cardIdx}-${rowIdx}`);
     if (!detailRow || !contentDiv) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     // Toggle
     if (detailRow.style.display !== 'none') {
@@ -1326,19 +1332,19 @@ const UI = (() => {
         <!-- Calculations -->
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'JetBrains Mono',monospace;">
           <tr>
-            <td style="padding:4px 8px;color:#64748b;width:120px;">T3 Current</td>
-            <td style="padding:4px 8px;color:#94a3b8;">${t3Labels[0]} ${fmt(t3Months[0])} + ${t3Labels[1]} ${fmt(t3Months[1])} + ${t3Labels[2]} ${fmt(t3Months[2])} = ${fmt(t3Sum)} × 4</td>
+            <td style="padding:4px 8px;color:${textColor};width:120px;">T3 Current</td>
+            <td style="padding:4px 8px;color:${textColor};">${t3Labels[0]} ${fmt(t3Months[0])} + ${t3Labels[1]} ${fmt(t3Months[1])} + ${t3Labels[2]} ${fmt(t3Months[2])} = ${fmt(t3Sum)} × 4</td>
             <td style="padding:4px 8px;color:#3b82f6;text-align:right;font-weight:700;">${fmt(t3Annualized)}</td>
           </tr>
           <tr>
-            <td style="padding:4px 8px;color:#64748b;">T3 Prior</td>
-            <td style="padding:4px 8px;color:#94a3b8;">${t3PriorLabels[0]} ${fmt(t3PriorMonths[0])} + ${t3PriorLabels[1]} ${fmt(t3PriorMonths[1])} + ${t3PriorLabels[2]} ${fmt(t3PriorMonths[2])} = ${fmt(t3PriorSum)} × 4</td>
+            <td style="padding:4px 8px;color:${textColor};">T3 Prior</td>
+            <td style="padding:4px 8px;color:${textColor};">${t3PriorLabels[0]} ${fmt(t3PriorMonths[0])} + ${t3PriorLabels[1]} ${fmt(t3PriorMonths[1])} + ${t3PriorLabels[2]} ${fmt(t3PriorMonths[2])} = ${fmt(t3PriorSum)} × 4</td>
             <td style="padding:4px 8px;color:#f97316;text-align:right;font-weight:700;">${fmt(t3PriorAnnualized)}</td>
           </tr>
           <tr>
-            <td style="padding:4px 8px;color:#64748b;">T12</td>
-            <td style="padding:4px 8px;color:#94a3b8;">Sum of ${windowMonths[0]} → ${windowMonths[winLen-1]}</td>
-            <td style="padding:4px 8px;color:#94a3b8;text-align:right;font-weight:700;">${fmt(t12Sum)}</td>
+            <td style="padding:4px 8px;color:${textColor};">T12</td>
+            <td style="padding:4px 8px;color:${textColor};">Sum of ${windowMonths[0]} → ${windowMonths[winLen-1]}</td>
+            <td style="padding:4px 8px;color:${textColor};text-align:right;font-weight:700;">${fmt(t12Sum)}</td>
           </tr>
         </table>
       </div>
@@ -1352,9 +1358,10 @@ const UI = (() => {
   function renderPortfolioPropertyList(properties) {
     const el = document.getElementById('portfolio-property-list');
     if (!el) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     if (properties.length === 0) {
-      el.innerHTML = '<span style="font-size:11px;color:#475569;font-family:JetBrains Mono,monospace;">No properties loaded</span>';
+      el.innerHTML = `<span style="font-size:11px;color:${textColor};font-family:JetBrains Mono,monospace;">No properties loaded</span>`;
       return;
     }
 
@@ -1407,6 +1414,7 @@ const UI = (() => {
   function renderPortfolioOA() {
     const el = document.getElementById('portfolio-results');
     if (!el) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics = Portfolio.getCombinedOAMetrics();
     const unionMonths = Portfolio.getUnionMonths();
@@ -1415,7 +1423,7 @@ const UI = (() => {
     const visibleMonths = unionMonths.slice(0, -2);
 
     if (metrics.length === 0) {
-      el.innerHTML = '<div style="padding:24px;color:#64748b;font-family:JetBrains Mono,monospace;font-size:12px;">No anomalies detected across portfolio.</div>';
+      el.innerHTML = `<div style="padding:24px;color:${textColor};font-family:JetBrains Mono,monospace;font-size:12px;">No anomalies detected across portfolio.</div>`;
       return;
     }
 
@@ -1459,6 +1467,7 @@ const UI = (() => {
     const detailEl = document.getElementById(`pm-detail-${idx}`);
     const arrowEl = document.getElementById(`pm-arrow-${idx}`);
     if (!detailEl) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     if (detailEl.style.display !== 'none') {
       detailEl.style.display = 'none';
@@ -1514,7 +1523,7 @@ const UI = (() => {
 
       return `
         <tr>
-          <td class="pm-prop-name">${prop.propertyName}${prop.stateAbbr ? ` <span style="color:#475569">${prop.stateAbbr}</span>` : ''}</td>
+          <td class="pm-prop-name">${prop.propertyName}${prop.stateAbbr ? ` <span style="color:${textColor}">${prop.stateAbbr}</span>` : ''}</td>
           ${cells}
         </tr>
       `;
@@ -1542,10 +1551,11 @@ const UI = (() => {
   function renderPortfolioEA() {
     const container = document.getElementById('portfolio-results');
     if (!container) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const eaMonthMap = Portfolio.state.eaMonthMap;
     if (!eaMonthMap || eaMonthMap.size === 0) {
-      container.innerHTML = '<div style="padding:24px;color:#64748b;font-size:12px;font-family:\'JetBrains Mono\',monospace;">No EA data — run portfolio analysis first.</div>';
+      container.innerHTML = `<div style="padding:24px;color:${textColor};font-size:12px;font-family:'JetBrains Mono',monospace;">No EA data — run portfolio analysis first.</div>`;
       return;
     }
 
