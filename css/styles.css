@@ -638,7 +638,8 @@ input[type="file"] { display: none; }
 }
 
 /* ── EA DETAIL CARD (inline drawer below table) ── */
-#detail-card-ea {
+#detail-card-ea,
+#portfolio-ea-detail {
   position: relative;
   width: 100%;
   max-height: 0;
@@ -650,7 +651,8 @@ input[type="file"] { display: none; }
   border-radius: 6px;
   padding: 0;
 }
-#detail-card-ea.open {
+#detail-card-ea.open,
+#portfolio-ea-detail.open {
   max-height: 800px;
 }
 .anomaly-card-header {
@@ -1010,7 +1012,8 @@ input[type="file"] { display: none; }
   color: #1e293b;
   box-shadow: -4px 0 24px rgba(0,0,0,0.12);
 }
-[data-theme="light"] #detail-card-ea {
+[data-theme="light"] #detail-card-ea,
+[data-theme="light"] #portfolio-ea-detail {
   background: #ffffff;
   color: #1e293b;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);

@@ -1091,6 +1091,143 @@ const UI = (() => {
     });
   }
 
+  function openPortfolioEACard(idx) {
+    const flag = window._eaCategoryResult?.flags?.[idx];
+    if (!flag) return;
+    const cardEl = document.getElementById('portfolio-ea-detail');
+    if (!cardEl) return;
+
+    const metrics  = window._eaCategoryResult?.metrics || [];
+    const monthIdx = flag.monthIdx;
+
+    const categoryMetricNames = Executive.CATEGORY_MAP?.[flag.categoryName] || [];
+    const categoryMetrics = metrics.filter(m => categoryMetricNames.includes(m.name));
+
+    function fmtDetail(n) {
+      if (n == null) return '—';
+      return (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
+
+    let totalT3 = 0, totalT3Prior = 0, totalT12 = 0;
+    const rows = categoryMetrics.map(metric => {
+      const t = Executive.computeMetricT3T12(metric, monthIdx);
+      if (!t) return null;
+      totalT3      += t.T3_current;
+      totalT3Prior += t.T3_prior;
+      totalT12     += t.T12;
+      return { name: metric.name, ...t };
+    }).filter(Boolean);
+
+    const rowsHtml = rows.map((r, rowIdx) => `
+      <tr class="ea-metric-row" id="ea-metric-row-${idx}-${rowIdx}"
+        onclick="UI.toggleMetricDetail(${idx}, ${rowIdx}, '${escHtml(r.name).replace(/'/g, "\\'")}')"
+        style="cursor:pointer;">
+        <td class="ea-detail-td">${escHtml(r.name)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_current)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_prior)}</td>
+        <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T12)}</td>
+      </tr>
+      <tr id="ea-metric-detail-${idx}-${rowIdx}" style="display:none;">
+        <td colspan="4" style="padding:0;">
+          <div id="ea-metric-detail-content-${idx}-${rowIdx}" class="ea-metric-expand"></div>
+        </td>
+      </tr>
+    `).join('');
+
+    const isIncome  = flag.section === 'INCOME';
+    const isPositive = (isIncome && flag.direction === 'up') || (!isIncome && flag.direction === 'down');
+    const arrow = flag.direction === 'up' ? '▲' : '▼';
+
+    const conflictNote = flag.conflicting ? `
+      <div style="margin-top:16px;padding:12px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+        T3 momentum and T12 drift are pointing in opposite directions.
+        The trailing 3-month run rate ${flag.T3_current > flag.T3_prior ? 'increased' : 'decreased'} $${Math.round(flag.movementFromPrior).toLocaleString()} vs the prior quarter,
+        while the annualized run rate is ${flag.T3_current > flag.T12 ? 'above' : 'below'} the trailing 12-month baseline by $${Math.round(flag.movementFromT12).toLocaleString()}.
+        This may indicate a recent reversal of a longer trend — review both timeframes before drawing conclusions.
+      </div>
+    ` : '';
+
+    const content = `
+      <div style="padding:16px">
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th class="ea-detail-th">Metric</th>
+              <th class="ea-detail-th ea-detail-num">T3 Current</th>
+              <th class="ea-detail-th ea-detail-num">T3 Prior</th>
+              <th class="ea-detail-th ea-detail-num">T12</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr class="ea-detail-total-row">
+              <td class="ea-detail-td" style="font-weight:700">Total</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3)}</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3Prior)}</td>
+              <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT12)}</td>
+            </tr>
+          </tbody>
+        </table>
+        ${conflictNote}
+        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+          Loading analysis…
+        </div>
+      </div>
+    `;
+
+    cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
+    cardEl.classList.add('open');
+    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const allFlags = window._eaCategoryResult?.flags || [];
+    const categoryFlags = allFlags
+      .filter(f => f.categoryName === flag.categoryName && f.monthIdx < flag.monthIdx)
+      .sort((a, b) => b.monthIdx - a.monthIdx)
+      .slice(0, 3)
+      .reverse()
+      .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current, T3_prior: f.T3_prior }));
+
+    const reasoningPayload = {
+      categoryName: flag.categoryName,
+      section: flag.section,
+      monthLabel: flag.monthLabel,
+      metricBreakdown: rows.map(r => ({
+        name: r.name,
+        T3_current: r.T3_current,
+        T3_prior: r.T3_prior,
+        T12: r.T12,
+      })),
+      flag,
+      stateAbbr: window._eaCategoryResult?.stateAbbr || '',
+      city: window._eaCategoryResult?.city || '',
+      propertyName: window._eaCategoryResult?.propertyName || '',
+      purchasePrice: window._eaCategoryResult?.purchasePrice || 0,
+      fema: window._eaCategoryResult?.fema || [],
+      recentCategoryT3: categoryFlags,
+    };
+
+    fetch('/api/ea-reasoning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reasoningPayload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById(`ea-reasoning-${idx}`);
+      if (el && data.reasoning) {
+        el.textContent = data.reasoning;
+      } else if (el) {
+        el.textContent = 'No reasoning available.';
+      }
+    })
+    .catch(() => {
+      const el = document.getElementById(`ea-reasoning-${idx}`);
+      if (el) el.textContent = 'Could not load analysis.';
+    });
+  }
+
   function toggleMetricDetail(cardIdx, rowIdx, metricName) {
     const detailRow = document.getElementById(`ea-metric-detail-${cardIdx}-${rowIdx}`);
     const contentDiv = document.getElementById(`ea-metric-detail-content-${cardIdx}-${rowIdx}`);
@@ -1465,7 +1602,7 @@ const UI = (() => {
             console.log('[PEA] row clicked', propEntry.name, monthLabel, 'flags:', propEntry.flags.length, 'flagIdx:', flagIdx);
             if (flagIdx !== -1) {
               console.log('[PEA] calling openEACard with idx:', flagIdx, 'eaResult keys:', Object.keys(window._eaCategoryResult || {}));
-              openEACard(flagIdx, null);
+              openPortfolioEACard(flagIdx);
             }
           });
           subPanel.appendChild(row);
@@ -1562,6 +1699,7 @@ const UI = (() => {
     renderPortfolioEA,
     togglePortfolioMetric,
     openPortfolioReasonCard,
+    openPortfolioEACard,
     setPortfolioMode,
   };
 })();
