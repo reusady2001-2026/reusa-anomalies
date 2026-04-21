@@ -1458,14 +1458,15 @@ const UI = (() => {
             `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
             `<span class="pea-prop-flagcount">${propEntry.flags.length} flag${propEntry.flags.length === 1 ? '' : 's'}</span>`;
           row.addEventListener('click', () => {
-            // Point the global EA context at this property's eaResult so
-            // openEACard can read metrics, months, purchasePrice from it.
             window._eaCategoryResult = propEntry.eaResult;
-            // Pick the highest-movement flag for this property+month.
             const bestFlag = propEntry.flags.reduce((a, b) =>
               (b.maxMovement > a.maxMovement ? b : a), propEntry.flags[0]);
             const flagIdx = propEntry.eaResult.flags.indexOf(bestFlag);
-            if (flagIdx !== -1) openEACard(flagIdx, null);
+            console.log('[PEA] row clicked', propEntry.name, monthLabel, 'flags:', propEntry.flags.length, 'flagIdx:', flagIdx);
+            if (flagIdx !== -1) {
+              console.log('[PEA] calling openEACard with idx:', flagIdx, 'eaResult keys:', Object.keys(window._eaCategoryResult || {}));
+              openEACard(flagIdx, null);
+            }
           });
           subPanel.appendChild(row);
         });
