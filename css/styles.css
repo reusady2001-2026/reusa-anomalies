@@ -1957,6 +1957,62 @@ input[type="file"] { display: none; }
 [data-theme="light"] .portfolio-reason-card-title { color: #1e293b; }
 
 /* ── PORTFOLIO EA VIEW ───────────────────────────────── */
+.pea-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 4px;
+}
+.pea-filter-select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #94a3b8;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2364748b'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  padding-right: 22px;
+}
+.pea-filter-select:focus { outline: none; border-color: rgba(255,255,255,0.3); color: #e2e8f0; }
+.pea-limit-btns {
+  display: flex;
+  gap: 4px;
+  margin-left: 4px;
+}
+.pea-limit-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: background 0.1s, color 0.1s;
+}
+.pea-limit-btn:hover { background: rgba(255,255,255,0.06); color: #94a3b8; }
+.pea-limit-btn.active {
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.3);
+}
+[data-theme="light"] .pea-filter-select {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.12);
+  color: #475569;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2394a3b8'/%3E%3C/svg%3E");
+}
+[data-theme="light"] .pea-filter-select:focus { border-color: rgba(0,0,0,0.3); color: #1e293b; }
+[data-theme="light"] .pea-limit-btn { color: #64748b; border-color: rgba(0,0,0,0.12); }
+[data-theme="light"] .pea-limit-btn:hover { background: rgba(0,0,0,0.04); color: #475569; }
+[data-theme="light"] .pea-limit-btn.active { background: rgba(0,0,0,0.08); color: #1e293b; border-color: rgba(0,0,0,0.25); }
 .pea-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

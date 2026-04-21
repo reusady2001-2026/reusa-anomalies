@@ -1549,87 +1549,170 @@ const UI = (() => {
       return;
     }
 
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
     function fmtMovement(val) {
       return '$' + Math.round(Math.abs(val)).toLocaleString('en-US');
     }
 
+    const allEntries = [...eaMonthMap.values()];
+    const years = [...new Set(allEntries.map(e => e.monthLabel.split(' ').pop()))].sort();
+    const categories = [...new Set(allEntries.map(e => e.categoryName))].sort();
+
+    const filters = { year: '', month: '', category: '', sort: 'desc', limit: 50 };
     let activeKey = null;
+
+    container.innerHTML = '';
+
+    // ── Filter bar
+    const filterBar = document.createElement('div');
+    filterBar.className = 'pea-filter-bar';
+    filterBar.innerHTML =
+      `<select class="pea-filter-select" id="pea-filter-year">` +
+        `<option value="">All Years</option>` +
+        years.map(y => `<option value="${escHtml(y)}">${escHtml(y)}</option>`).join('') +
+      `</select>` +
+      `<select class="pea-filter-select" id="pea-filter-month">` +
+        `<option value="">All Months</option>` +
+        MONTHS.map(m => `<option value="${m}">${m}</option>`).join('') +
+      `</select>` +
+      `<select class="pea-filter-select" id="pea-filter-category">` +
+        `<option value="">All Categories</option>` +
+        categories.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('') +
+      `</select>` +
+      `<select class="pea-filter-select" id="pea-filter-sort">` +
+        `<option value="desc">High to Low</option>` +
+        `<option value="asc">Low to High</option>` +
+      `</select>` +
+      `<div class="pea-limit-btns">` +
+        [10, 25, 50, 100, 250, 500].map(n =>
+          `<button class="pea-limit-btn${n === 50 ? ' active' : ''}" data-limit="${n}">${n}</button>`
+        ).join('') +
+      `</div>`;
+    container.appendChild(filterBar);
 
     const grid = document.createElement('div');
     grid.className = 'pea-grid';
+    container.appendChild(grid);
 
     const subPanel = document.createElement('div');
     subPanel.className = 'pea-sub-panel';
     subPanel.style.display = 'none';
+    container.appendChild(subPanel);
 
-    eaMonthMap.forEach((entry, key) => {
-      const firstFlag = entry.properties[0]?.flag;
-      const isIncome = firstFlag?.isIncome ?? (firstFlag?.section === 'INCOME');
-      const isUp = firstFlag?.direction === 'up';
-      const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
-      const color = firstFlag?.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
-      const arrow = entry.totalMovement >= 0 ? '▲' : '▼';
+    // ── Grid render (called on every filter change)
+    function applyFilters() {
+      let entries = allEntries;
 
-      let triggerType = '';
-      if (firstFlag) {
-        if (firstFlag.flaggedByPrior && firstFlag.flaggedByT12)
-          triggerType = firstFlag.conflicting ? 'T3 + T12 · conflicting' : 'T3 + T12';
-        else if (firstFlag.flaggedByPrior) triggerType = 'T3 momentum';
-        else triggerType = 'T12 drift';
-      }
-      const metaText = `${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}` +
-        (triggerType ? ` · ${triggerType}` : '');
+      if (filters.year)
+        entries = entries.filter(e => e.monthLabel.split(' ').pop() === filters.year);
+      if (filters.month)
+        entries = entries.filter(e => e.monthLabel.startsWith(filters.month));
+      if (filters.category)
+        entries = entries.filter(e => e.categoryName === filters.category);
 
-      const card = document.createElement('div');
-      card.className = 'pea-month-card';
-      card.dataset.key = key;
-      card.style.borderLeft = `4px solid ${color}`;
-      card.innerHTML =
-        `<div class="pea-card-category">${escHtml(entry.categoryName)}</div>` +
-        `<div class="pea-card-month">${escHtml(entry.monthLabel)}</div>` +
-        `<div class="pea-card-movement">` +
-          `<span class="pea-card-arrow" style="color:${color}">${arrow}</span>` +
-          `<span class="pea-card-amount" style="color:${color}">${fmtMovement(entry.totalMovement)}</span>` +
-        `</div>` +
-        `<div class="pea-card-meta">${escHtml(metaText)}</div>`;
-
-      card.addEventListener('click', () => {
-        if (activeKey === key) {
-          activeKey = null;
-          card.classList.remove('pea-month-card--active');
-          subPanel.style.display = 'none';
-          subPanel.innerHTML = '';
-          return;
-        }
-
-        grid.querySelectorAll('.pea-month-card--active').forEach(c => c.classList.remove('pea-month-card--active'));
-        activeKey = key;
-        card.classList.add('pea-month-card--active');
-
-        subPanel.innerHTML = '';
-        entry.properties.forEach(propEntry => {
-          const row = document.createElement('div');
-          row.className = 'pea-property-row';
-          row.innerHTML =
-            `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
-            `<span class="pea-prop-flagcount">${fmtMovement(Math.abs(propEntry.flag.maxMovement))}</span>`;
-          row.addEventListener('click', () => {
-            window._eaCategoryResult = propEntry.eaResult;
-            const flagIdx = propEntry.eaResult.flags.indexOf(propEntry.flag);
-            if (flagIdx !== -1) openPortfolioEACard(flagIdx);
-          });
-          subPanel.appendChild(row);
-        });
-
-        subPanel.style.display = 'flex';
+      entries = entries.slice().sort((a, b) => {
+        const d = Math.abs(b.totalMovement) - Math.abs(a.totalMovement);
+        return filters.sort === 'asc' ? -d : d;
       });
 
-      grid.appendChild(card);
+      entries = entries.slice(0, filters.limit);
+
+      activeKey = null;
+      subPanel.style.display = 'none';
+      subPanel.innerHTML = '';
+      grid.innerHTML = '';
+
+      entries.forEach(entry => {
+        const key = entry.key;
+        const firstFlag = entry.properties[0]?.flag;
+        const isIncome = firstFlag?.isIncome ?? (firstFlag?.section === 'INCOME');
+        const isUp = firstFlag?.direction === 'up';
+        const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
+        const color = firstFlag?.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+        const arrow = entry.totalMovement >= 0 ? '▲' : '▼';
+
+        let triggerType = '';
+        if (firstFlag) {
+          if (firstFlag.flaggedByPrior && firstFlag.flaggedByT12)
+            triggerType = firstFlag.conflicting ? 'T3 + T12 · conflicting' : 'T3 + T12';
+          else if (firstFlag.flaggedByPrior) triggerType = 'T3 momentum';
+          else triggerType = 'T12 drift';
+        }
+        const metaText = `${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}` +
+          (triggerType ? ` · ${triggerType}` : '');
+
+        const card = document.createElement('div');
+        card.className = 'pea-month-card';
+        card.dataset.key = key;
+        card.style.borderLeft = `4px solid ${color}`;
+        card.innerHTML =
+          `<div class="pea-card-category">${escHtml(entry.categoryName)}</div>` +
+          `<div class="pea-card-month">${escHtml(entry.monthLabel)}</div>` +
+          `<div class="pea-card-movement">` +
+            `<span class="pea-card-arrow" style="color:${color}">${arrow}</span>` +
+            `<span class="pea-card-amount" style="color:${color}">${fmtMovement(entry.totalMovement)}</span>` +
+          `</div>` +
+          `<div class="pea-card-meta">${escHtml(metaText)}</div>`;
+
+        card.addEventListener('click', () => {
+          if (activeKey === key) {
+            activeKey = null;
+            card.classList.remove('pea-month-card--active');
+            subPanel.style.display = 'none';
+            subPanel.innerHTML = '';
+            return;
+          }
+
+          grid.querySelectorAll('.pea-month-card--active').forEach(c => c.classList.remove('pea-month-card--active'));
+          activeKey = key;
+          card.classList.add('pea-month-card--active');
+
+          subPanel.innerHTML = '';
+          entry.properties.forEach(propEntry => {
+            const row = document.createElement('div');
+            row.className = 'pea-property-row';
+            row.innerHTML =
+              `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
+              `<span class="pea-prop-flagcount">${fmtMovement(Math.abs(propEntry.flag.maxMovement))}</span>`;
+            row.addEventListener('click', () => {
+              window._eaCategoryResult = propEntry.eaResult;
+              const flagIdx = propEntry.eaResult.flags.indexOf(propEntry.flag);
+              if (flagIdx !== -1) openPortfolioEACard(flagIdx);
+            });
+            subPanel.appendChild(row);
+          });
+
+          subPanel.style.display = 'flex';
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Wire filter controls
+    filterBar.querySelector('#pea-filter-year').addEventListener('change', e => {
+      filters.year = e.target.value; applyFilters();
+    });
+    filterBar.querySelector('#pea-filter-month').addEventListener('change', e => {
+      filters.month = e.target.value; applyFilters();
+    });
+    filterBar.querySelector('#pea-filter-category').addEventListener('change', e => {
+      filters.category = e.target.value; applyFilters();
+    });
+    filterBar.querySelector('#pea-filter-sort').addEventListener('change', e => {
+      filters.sort = e.target.value; applyFilters();
+    });
+    filterBar.querySelectorAll('.pea-limit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBar.querySelectorAll('.pea-limit-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filters.limit = parseInt(btn.dataset.limit, 10);
+        applyFilters();
+      });
     });
 
-    container.innerHTML = '';
-    container.appendChild(grid);
-    container.appendChild(subPanel);
+    applyFilters();
   }
 
   // ── PORTFOLIO: REASON CARD ────────────────────────────
