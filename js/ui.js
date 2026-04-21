@@ -1279,7 +1279,7 @@ const UI = (() => {
       if (isT3Current) { bg = '#3b82f6'; textColor = '#fff'; }
       else if (isT3Prior) { bg = '#f97316'; textColor = '#fff'; }
       else if (isOverlap) { bg = 'linear-gradient(135deg, #f97316 50%, #3b82f6 50%)'; textColor = '#fff'; }
-      else { bg = 'rgba(236,72,153,0.35)'; textColor = '#f9a8d4'; }
+      else { bg = 'rgba(236,72,153,0.35)'; textColor = '#ffffff'; }
 
       return `
         <div style="
