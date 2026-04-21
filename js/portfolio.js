@@ -71,8 +71,11 @@ const Portfolio = (() => {
         const reasons = RuleEngine.analyse(result.metrics, result.months, {
           purchasePrice: prop.purchasePrice,
           stateAbbr: prop.stateAbbr,
+          city: prop.city,
+          name: prop.name,
         });
-        Enrichment.enrichAll(result, reasons, prop.dataContext || {}, {});
+        prop.reasons = Enrichment.enrichAll(result, reasons, prop.dataContext || {}, {});
+        _runNarratorPipeline(result, prop.dataContext || {}, {});
 
       } catch(e) {
         console.error(`[Portfolio] Error analysing ${prop.name}:`, e);
