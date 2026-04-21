@@ -1537,7 +1537,7 @@ const UI = (() => {
     if (arrowEl) arrowEl.textContent = '▲';
   }
 
-  // ── PORTFOLIO: EA VIEW (stub) ─────────────────────────
+  // ── PORTFOLIO: EA VIEW ────────────────────────────────
 
   function renderPortfolioEA() {
     const container = document.getElementById('portfolio-results');
@@ -1549,7 +1549,11 @@ const UI = (() => {
       return;
     }
 
-    let activeMonth = null; // tracks which month card is expanded
+    function fmtMovement(val) {
+      return '$' + Math.round(Math.abs(val)).toLocaleString('en-US');
+    }
+
+    let activeKey = null;
 
     const grid = document.createElement('div');
     grid.className = 'pea-grid';
@@ -1558,52 +1562,48 @@ const UI = (() => {
     subPanel.className = 'pea-sub-panel';
     subPanel.style.display = 'none';
 
-    eaMonthMap.forEach((entry, monthLabel) => {
+    eaMonthMap.forEach((entry, key) => {
+      const firstFlag = entry.properties[0]?.flag;
+      const favorable = firstFlag
+        ? (firstFlag.isIncome ? firstFlag.direction === 'up' : firstFlag.direction === 'down')
+        : false;
+      const movementColor = favorable ? '#22c55e' : '#ef4444';
+
       const card = document.createElement('div');
       card.className = 'pea-month-card';
-      card.dataset.month = monthLabel;
+      card.dataset.key = key;
       card.innerHTML =
-        `<div class="pea-month-label">${escHtml(monthLabel)}</div>` +
+        `<div class="pea-category-name">${escHtml(entry.categoryName)}</div>` +
+        `<div class="pea-month-label">${escHtml(entry.monthLabel)}</div>` +
         `<div class="pea-month-stats">` +
           `<span class="pea-month-props">${entry.propertyCount} propert${entry.propertyCount === 1 ? 'y' : 'ies'}</span>` +
-          `<span class="pea-month-flags">${entry.totalFlags} category flag${entry.totalFlags === 1 ? '' : 's'}</span>` +
+          `<span class="pea-movement" style="color:${movementColor}">${fmtMovement(entry.totalMovement)}</span>` +
         `</div>`;
 
       card.addEventListener('click', () => {
-        // Collapse if already open
-        if (activeMonth === monthLabel) {
-          activeMonth = null;
+        if (activeKey === key) {
+          activeKey = null;
           card.classList.remove('pea-month-card--active');
           subPanel.style.display = 'none';
           subPanel.innerHTML = '';
           return;
         }
 
-        // Deactivate previous card
         grid.querySelectorAll('.pea-month-card--active').forEach(c => c.classList.remove('pea-month-card--active'));
-        activeMonth = monthLabel;
+        activeKey = key;
         card.classList.add('pea-month-card--active');
 
-        // Build sub-panel rows
         subPanel.innerHTML = '';
         entry.properties.forEach(propEntry => {
           const row = document.createElement('div');
           row.className = 'pea-property-row';
-          row.dataset.month = monthLabel;
-          row.dataset.prop = propEntry.name;
           row.innerHTML =
             `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
-            `<span class="pea-prop-flagcount">${propEntry.flags.length} flag${propEntry.flags.length === 1 ? '' : 's'}</span>`;
+            `<span class="pea-prop-flagcount">${fmtMovement(Math.abs(propEntry.flag.maxMovement))}</span>`;
           row.addEventListener('click', () => {
             window._eaCategoryResult = propEntry.eaResult;
-            const bestFlag = propEntry.flags.reduce((a, b) =>
-              (b.maxMovement > a.maxMovement ? b : a), propEntry.flags[0]);
-            const flagIdx = propEntry.eaResult.flags.indexOf(bestFlag);
-            console.log('[PEA] row clicked', propEntry.name, monthLabel, 'flags:', propEntry.flags.length, 'flagIdx:', flagIdx);
-            if (flagIdx !== -1) {
-              console.log('[PEA] calling openEACard with idx:', flagIdx, 'eaResult keys:', Object.keys(window._eaCategoryResult || {}));
-              openPortfolioEACard(flagIdx);
-            }
+            const flagIdx = propEntry.eaResult.flags.indexOf(propEntry.flag);
+            if (flagIdx !== -1) openPortfolioEACard(flagIdx);
           });
           subPanel.appendChild(row);
         });
