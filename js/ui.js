@@ -962,6 +962,7 @@ const UI = (() => {
     if (!flag) return;
     const cardEl = document.getElementById('detail-card-ea');
     if (!cardEl) return;
+    const textColor = document.body.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const metrics  = window._eaCategoryResult?.metrics || [];
     const monthIdx = flag.monthIdx;
