@@ -5,6 +5,7 @@ const Portfolio = (() => {
     properties: [], // { name, fileName, stateAbbr, city, purchasePrice, result, eaResult, dataContext }
     mode: 'oa',    // 'oa' or 'ea'
     analysisRun: false,
+    eaMonthMap: new Map(),
   };
 
   // ── Add property ─────────────────────────────────────────────────────────
@@ -109,6 +110,44 @@ const Portfolio = (() => {
         console.error(`[Portfolio] Error running EA for ${prop.name}:`, e);
       }
     }
+
+    // Build shared eaMonthMap: month label → aggregated entry across all properties
+    const monthMap = new Map();
+
+    state.properties.forEach(prop => {
+      if (!prop.eaResult?.flags) return;
+      const flagsByMonth = {};
+      prop.eaResult.flags.forEach(flag => {
+        const ml = flag.monthLabel;
+        if (!flagsByMonth[ml]) flagsByMonth[ml] = [];
+        flagsByMonth[ml].push(flag);
+      });
+
+      Object.entries(flagsByMonth).forEach(([monthLabel, flags]) => {
+        if (!monthMap.has(monthLabel)) {
+          monthMap.set(monthLabel, {
+            month: monthLabel,
+            totalFlags: 0,
+            propertyCount: 0,
+            properties: [],
+          });
+        }
+        const entry = monthMap.get(monthLabel);
+        entry.totalFlags += flags.length;
+        entry.propertyCount += 1;
+        entry.properties.push({
+          name: prop.name,
+          purchasePrice: prop.purchasePrice,
+          eaResult: prop.eaResult,
+          flags,
+        });
+      });
+    });
+
+    // Sort by totalFlags descending
+    state.eaMonthMap = new Map(
+      [...monthMap.entries()].sort((a, b) => b[1].totalFlags - a[1].totalFlags)
+    );
   }
 
   // ── Get combined OA metric list ───────────────────────────────────────────
