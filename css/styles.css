@@ -2254,6 +2254,6 @@ input[type="file"] { display: none; }
   flex-direction: column;
   gap: 8px;
   flex-shrink: 0;
-  width: 200px;
+  width: calc(20% - 8px);
   position: relative;
 }
