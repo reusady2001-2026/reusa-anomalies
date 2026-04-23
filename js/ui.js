@@ -875,23 +875,42 @@ const UI = (() => {
     if (!container) return;
     const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
-    const { flags, threshold } = executiveResult;
+    const { flags } = executiveResult;
     if (!flags || flags.length === 0) {
       container.innerHTML = `<div style="padding:24px;color:${textColor};">No category anomalies detected.</div>`;
       return;
     }
 
-    const filterOptions = [10, 25, 50, 100];
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const years = [...new Set(flags.map(f => f.monthLabel.split(' ').pop()))].sort();
+    const categories = [...new Set(flags.map(f => f.categoryName))].sort();
+
+    const filters = { year: '', month: '', category: '', sort: 'desc', limit: 50 };
 
     function fmtCard(n) {
       if (n == null) return '—';
       return '$' + Math.round(Math.abs(n)).toLocaleString();
     }
 
-    function renderCards(limit) {
-      const shown = flags.slice(0, limit);
-      const incomeCount  = shown.filter(f => f.section === 'INCOME').length;
-      const expenseCount = shown.filter(f => f.section === 'EXPENSES').length;
+    function applyFilters() {
+      let shown = flags.map((f, i) => ({ flag: f, idx: i }));
+
+      if (filters.year)
+        shown = shown.filter(({ flag }) => flag.monthLabel.split(' ').pop() === filters.year);
+      if (filters.month)
+        shown = shown.filter(({ flag }) => flag.monthLabel.startsWith(filters.month));
+      if (filters.category)
+        shown = shown.filter(({ flag }) => flag.categoryName === filters.category);
+
+      shown = shown.slice().sort((a, b) => {
+        const d = Math.abs(b.flag.maxMovement) - Math.abs(a.flag.maxMovement);
+        return filters.sort === 'asc' ? -d : d;
+      });
+
+      shown = shown.slice(0, filters.limit);
+
+      const incomeCount  = shown.filter(({ flag }) => flag.section === 'INCOME').length;
+      const expenseCount = shown.filter(({ flag }) => flag.section === 'EXPENSES').length;
 
       const badges = `
         <div class="summary-badges" id="ea-summary-badges">
@@ -900,23 +919,12 @@ const UI = (() => {
         </div>
       `;
 
-      const filterHtml = `
-        <div class="ea-filter-row">
-          <span class="ea-label">Show top:</span>
-          ${filterOptions.map(n => `
-            <button class="ea-filter-btn ${n === limit ? 'active' : ''}"
-              onclick="window._setEALimit(${n})">${n}</button>
-          `).join('')}
-          <span class="ea-label" style="margin-left:12px;">of ${flags.length} anomalies detected</span>
-        </div>
-      `;
-
-      const cardsHtml = shown.map((flag, idx) => {
+      const cardsHtml = shown.map(({ flag, idx }) => {
         const isIncome = flag.section === 'INCOME';
         const isUp = flag.direction === 'up';
         const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
-        const borderColor = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
-        const movementColor = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+        const borderColor    = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
+        const movementColor  = flag.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
         const arrow = isUp ? '▲' : '▼';
 
         let triggerLabel = '';
@@ -936,20 +944,71 @@ const UI = (() => {
         `;
       }).join('');
 
-      container.innerHTML = badges + filterHtml + `<div class="ea-cards-grid">${cardsHtml}</div>`;
+      document.getElementById('ea-cards-body').innerHTML =
+        badges + `<div class="ea-cards-grid">${cardsHtml}</div>`;
 
       const detailEl = document.getElementById('detail-card-ea');
       if (detailEl) detailEl.classList.remove('open');
     }
 
+    // Render filter bar once; only ea-cards-body is re-rendered on filter changes
+    container.innerHTML =
+      `<div class="pea-filter-bar" id="ea-filter-bar">` +
+        `<select class="pea-filter-select" id="ea-filter-year">` +
+          `<option value="">All Years</option>` +
+          years.map(y => `<option value="${escHtml(y)}">${escHtml(y)}</option>`).join('') +
+        `</select>` +
+        `<select class="pea-filter-select" id="ea-filter-month">` +
+          `<option value="">All Months</option>` +
+          MONTHS.map(m => `<option value="${m}">${m}</option>`).join('') +
+        `</select>` +
+        `<select class="pea-filter-select" id="ea-filter-category">` +
+          `<option value="">All Categories</option>` +
+          categories.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('') +
+        `</select>` +
+        `<select class="pea-filter-select" id="ea-filter-sort">` +
+          `<option value="desc">High to Low</option>` +
+          `<option value="asc">Low to High</option>` +
+        `</select>` +
+        `<div class="pea-limit-btns">` +
+          [10, 25, 50, 100, 250, 500].map(n =>
+            `<button class="pea-limit-btn${n === 50 ? ' active' : ''}" data-limit="${n}">${n}</button>`
+          ).join('') +
+        `</div>` +
+      `</div>` +
+      `<div id="ea-cards-body"></div>`;
+
+    container.querySelector('#ea-filter-year').addEventListener('change', e => {
+      filters.year = e.target.value; applyFilters();
+    });
+    container.querySelector('#ea-filter-month').addEventListener('change', e => {
+      filters.month = e.target.value; applyFilters();
+    });
+    container.querySelector('#ea-filter-category').addEventListener('change', e => {
+      filters.category = e.target.value; applyFilters();
+    });
+    container.querySelector('#ea-filter-sort').addEventListener('change', e => {
+      filters.sort = e.target.value; applyFilters();
+    });
+    container.querySelectorAll('.pea-limit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.pea-limit-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filters.limit = parseInt(btn.dataset.limit, 10);
+        applyFilters();
+      });
+    });
+
     window._eaCategoryResult = executiveResult;
-    window._eaCurrentLimit = filterOptions[0];
     window._setEALimit = function(n) {
-      window._eaCurrentLimit = n;
-      renderCards(n);
+      filters.limit = n;
+      container.querySelectorAll('.pea-limit-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.limit, 10) === n);
+      });
+      applyFilters();
     };
 
-    renderCards(window._eaCurrentLimit);
+    applyFilters();
   }
 
   function setEALimit(n) {
