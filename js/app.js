@@ -174,24 +174,63 @@ const App = (() => {
     console.log('[FileHistory] dropdown opened, files in storage:', localFiles.length, localFiles.map(f => f.name));
     const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
+    let sortOrder      = 'newest';
+    let cloudFilesList = null;
+
+    function sorted(files, isCloud) {
+      const s = [...files];
+      if (sortOrder === 'newest')
+        isCloud ? s.sort((a,b) => (b.updated_at||'').localeCompare(a.updated_at||''))
+                : s.sort((a,b) => b.savedAt - a.savedAt);
+      else if (sortOrder === 'oldest')
+        isCloud ? s.sort((a,b) => (a.updated_at||'').localeCompare(b.updated_at||''))
+                : s.sort((a,b) => a.savedAt - b.savedAt);
+      else if (sortOrder === 'high') s.sort((a,b) => (b.name||'').localeCompare(a.name||''));
+      else if (sortOrder === 'low')  s.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      return s;
+    }
+
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
-    drop.style.minWidth  = '260px';
-    drop.style.position  = 'fixed';
-    drop.style.zIndex    = '9999';
+    drop.style.minWidth = '260px';
+    drop.style.position = 'fixed';
+    drop.style.zIndex   = '9999';
 
-    // ── Local section ──────────────────────────────────
-    if (!localFiles.length) {
-      drop.innerHTML = `<div class="history-item" style="color:${textColor};cursor:default">No recent files — upload a file first</div>`;
-    } else {
-      drop.innerHTML = localFiles.map((f, i) => {
+    // ── Sort control ───────────────────────────────────
+    const sortRow = document.createElement('div');
+    sortRow.style.cssText = `padding:6px 10px;border-bottom:1px solid rgba(128,128,128,0.2);`;
+    sortRow.innerHTML =
+      `<select class="hist-sort-select" style="width:100%;font-size:0.72rem;background:transparent;color:${textColor};border:1px solid rgba(128,128,128,0.4);border-radius:4px;padding:2px 4px;">` +
+        `<option value="newest">Newest First</option>` +
+        `<option value="oldest">Oldest First</option>` +
+        `<option value="high">High to Low</option>` +
+        `<option value="low">Low to High</option>` +
+      `</select>`;
+    drop.appendChild(sortRow);
+
+    // ── Local section container ────────────────────────
+    const localSection = document.createElement('div');
+    drop.appendChild(localSection);
+
+    // ── Cloud section container ────────────────────────
+    const cloudSection = document.createElement('div');
+    drop.appendChild(cloudSection);
+
+    function renderLocalSection() {
+      if (!localFiles.length) {
+        localSection.innerHTML = `<div class="history-item" style="color:${textColor};cursor:default">No recent files — upload a file first</div>`;
+        return;
+      }
+      const s = sorted(localFiles, false);
+      localSection.innerHTML = s.map(f => {
+        const origIdx = localFiles.indexOf(f);
         const d = new Date(f.savedAt).toLocaleDateString();
-        return `<div class="history-item history-item--local" data-idx="${i}">
+        return `<div class="history-item history-item--local" data-idx="${origIdx}">
           <div style="font-weight:600">${f.name}</div>
           <div style="font-size:0.72rem;color:${textColor}">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
         </div>`;
       }).join('');
-      drop.querySelectorAll('.history-item--local').forEach(item => {
+      localSection.querySelectorAll('.history-item--local').forEach(item => {
         item.addEventListener('click', e => {
           e.stopPropagation();
           const rec = localFiles[parseInt(item.dataset.idx)];
@@ -201,43 +240,17 @@ const App = (() => {
       });
     }
 
-    // Position using fixed coords so no parent overflow can clip it
-    document.body.appendChild(drop);
-    const rect = btnEl.getBoundingClientRect();
-    drop.style.top  = (rect.bottom + 4) + 'px';
-    drop.style.left = rect.left + 'px';
-
-    // Close on outside click
-    setTimeout(() => {
-      function closeHandler(e) {
-        if (!drop.contains(e.target) && e.target !== btnEl) {
-          drop.remove();
-          document.removeEventListener('click', closeHandler);
-        }
-      }
-      document.addEventListener('click', closeHandler);
-    }, 50);
-
-    // ── Cloud section (async) ──────────────────────────
-    try {
-      const cloudRes = await fetch('/api/list-files');
-      if (!cloudRes.ok || !drop.isConnected) return;
-      const { properties } = await cloudRes.json();
-
-      const cloudFiles = [];
-      Object.entries(properties || {}).forEach(([propName, files]) => {
-        files.forEach(f => cloudFiles.push({ propertyName: propName, ...f }));
-      });
-      if (!cloudFiles.length || !drop.isConnected) return;
-
-      const section = document.createElement('div');
+    function renderCloudSection() {
+      if (!cloudFilesList) return;
+      cloudSection.innerHTML = '';
+      if (!cloudFilesList.length) return;
 
       const sep = document.createElement('div');
       sep.style.cssText = `border-top:1px solid rgba(128,128,128,0.3);margin:4px 0;padding:4px 12px 2px;font-size:0.68rem;color:${textColor};opacity:0.6;`;
       sep.textContent = 'Cloud storage';
-      section.appendChild(sep);
+      cloudSection.appendChild(sep);
 
-      cloudFiles.forEach(cf => {
+      sorted(cloudFilesList, true).forEach(cf => {
         const item = document.createElement('div');
         item.className = 'history-item history-item--cloud';
         const d    = cf.updated_at ? new Date(cf.updated_at).toLocaleDateString() : '';
@@ -265,10 +278,49 @@ const App = (() => {
           }
         });
 
-        section.appendChild(item);
+        cloudSection.appendChild(item);
       });
+    }
 
-      drop.appendChild(section);
+    sortRow.querySelector('.hist-sort-select').addEventListener('change', e => {
+      e.stopPropagation();
+      sortOrder = e.target.value;
+      renderLocalSection();
+      renderCloudSection();
+    });
+
+    renderLocalSection();
+
+    // Position using fixed coords so no parent overflow can clip it
+    document.body.appendChild(drop);
+    const rect = btnEl.getBoundingClientRect();
+    drop.style.top  = (rect.bottom + 4) + 'px';
+    drop.style.left = rect.left + 'px';
+
+    // Close on outside click
+    setTimeout(() => {
+      function closeHandler(e) {
+        if (!drop.contains(e.target) && e.target !== btnEl) {
+          drop.remove();
+          document.removeEventListener('click', closeHandler);
+        }
+      }
+      document.addEventListener('click', closeHandler);
+    }, 50);
+
+    // ── Cloud section (async) ──────────────────────────
+    try {
+      const cloudRes = await fetch('/api/list-files');
+      if (!cloudRes.ok || !drop.isConnected) return;
+      const { properties } = await cloudRes.json();
+
+      const files = [];
+      Object.entries(properties || {}).forEach(([propName, pFiles]) => {
+        pFiles.forEach(f => files.push({ propertyName: propName, ...f }));
+      });
+      if (!drop.isConnected) return;
+      cloudFilesList = files;
+      renderCloudSection();
     } catch (_) {}
   }
 
