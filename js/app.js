@@ -174,39 +174,13 @@ const App = (() => {
     console.log('[FileHistory] dropdown opened, files in storage:', localFiles.length, localFiles.map(f => f.name));
     const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
-    let sortOrder      = 'newest';
     let cloudFilesList = null;
-
-    function sorted(files, isCloud) {
-      const s = [...files];
-      if (sortOrder === 'newest')
-        isCloud ? s.sort((a,b) => (b.updated_at||'').localeCompare(a.updated_at||''))
-                : s.sort((a,b) => b.savedAt - a.savedAt);
-      else if (sortOrder === 'oldest')
-        isCloud ? s.sort((a,b) => (a.updated_at||'').localeCompare(b.updated_at||''))
-                : s.sort((a,b) => a.savedAt - b.savedAt);
-      else if (sortOrder === 'high') s.sort((a,b) => (b.name||'').localeCompare(a.name||''));
-      else if (sortOrder === 'low')  s.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-      return s;
-    }
 
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
     drop.style.minWidth = '260px';
     drop.style.position = 'fixed';
     drop.style.zIndex   = '9999';
-
-    // ── Sort control ───────────────────────────────────
-    const sortRow = document.createElement('div');
-    sortRow.style.cssText = `padding:6px 10px;border-bottom:1px solid rgba(128,128,128,0.2);`;
-    sortRow.innerHTML =
-      `<select class="hist-sort-select" style="width:100%;font-size:0.72rem;background:transparent;color:${textColor};border:1px solid rgba(128,128,128,0.4);border-radius:4px;padding:2px 4px;">` +
-        `<option value="newest">Newest First</option>` +
-        `<option value="oldest">Oldest First</option>` +
-        `<option value="high">High to Low</option>` +
-        `<option value="low">Low to High</option>` +
-      `</select>`;
-    drop.appendChild(sortRow);
 
     // ── Local section container ────────────────────────
     const localSection = document.createElement('div');
@@ -221,11 +195,9 @@ const App = (() => {
         localSection.innerHTML = `<div class="history-item" style="color:${textColor};cursor:default">No recent files — upload a file first</div>`;
         return;
       }
-      const s = sorted(localFiles, false);
-      localSection.innerHTML = s.map(f => {
-        const origIdx = localFiles.indexOf(f);
+      localSection.innerHTML = localFiles.map((f, i) => {
         const d = new Date(f.savedAt).toLocaleDateString();
-        return `<div class="history-item history-item--local" data-idx="${origIdx}">
+        return `<div class="history-item history-item--local" data-idx="${i}">
           <div style="font-weight:600">${f.name}</div>
           <div style="font-size:0.72rem;color:${textColor}">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
         </div>`;
@@ -250,7 +222,7 @@ const App = (() => {
       sep.textContent = 'Cloud storage';
       cloudSection.appendChild(sep);
 
-      sorted(cloudFilesList, true).forEach(cf => {
+      cloudFilesList.forEach(cf => {
         const item = document.createElement('div');
         item.className = 'history-item history-item--cloud';
         const d    = cf.updated_at ? new Date(cf.updated_at).toLocaleDateString() : '';
@@ -281,13 +253,6 @@ const App = (() => {
         cloudSection.appendChild(item);
       });
     }
-
-    sortRow.querySelector('.hist-sort-select').addEventListener('change', e => {
-      e.stopPropagation();
-      sortOrder = e.target.value;
-      renderLocalSection();
-      renderCloudSection();
-    });
 
     renderLocalSection();
 
