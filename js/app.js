@@ -893,6 +893,7 @@ const App = (() => {
       });
     });
   }
+  window._runNarratorPipeline = _runNarratorPipeline;
 
   function _runAnalysisCore() {
     state.propertyNameA = document.getElementById('analyzer-property-name')?.value.trim() || 'Unknown Property';
