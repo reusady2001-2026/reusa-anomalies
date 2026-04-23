@@ -166,34 +166,35 @@ const App = (() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FILES) || '[]'); } catch { return []; }
   }
 
-  function showFileHistoryDropdown(btnEl, onSelect) {
+  async function showFileHistoryDropdown(btnEl, onSelect) {
     // Close any existing dropdown
     document.querySelectorAll('.history-dropdown').forEach(d => d.remove());
 
-    const files = loadFileHistory();
-    console.log('[FileHistory] dropdown opened, files in storage:', files.length, files.map(f => f.name));
+    const localFiles = loadFileHistory();
+    console.log('[FileHistory] dropdown opened, files in storage:', localFiles.length, localFiles.map(f => f.name));
     const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
     const drop = document.createElement('div');
     drop.className = 'history-dropdown';
-    drop.style.minWidth = '260px';
-    drop.style.position = 'fixed';
-    drop.style.zIndex = '9999';
+    drop.style.minWidth  = '260px';
+    drop.style.position  = 'fixed';
+    drop.style.zIndex    = '9999';
 
-    if (!files.length) {
+    // ── Local section ──────────────────────────────────
+    if (!localFiles.length) {
       drop.innerHTML = `<div class="history-item" style="color:${textColor};cursor:default">No recent files — upload a file first</div>`;
     } else {
-      drop.innerHTML = files.map((f, i) => {
+      drop.innerHTML = localFiles.map((f, i) => {
         const d = new Date(f.savedAt).toLocaleDateString();
-        return `<div class="history-item" data-idx="${i}">
+        return `<div class="history-item history-item--local" data-idx="${i}">
           <div style="font-weight:600">${f.name}</div>
           <div style="font-size:0.72rem;color:${textColor}">${d} · ${f.data.months?.length || 0} months · ${f.data.metrics?.length || 0} metrics</div>
         </div>`;
       }).join('');
-      drop.querySelectorAll('.history-item').forEach(item => {
+      drop.querySelectorAll('.history-item--local').forEach(item => {
         item.addEventListener('click', e => {
           e.stopPropagation();
-          const rec = files[parseInt(item.dataset.idx)];
+          const rec = localFiles[parseInt(item.dataset.idx)];
           if (rec) onSelect(rec.name, rec.data);
           drop.remove();
         });
@@ -216,6 +217,59 @@ const App = (() => {
       }
       document.addEventListener('click', closeHandler);
     }, 50);
+
+    // ── Cloud section (async) ──────────────────────────
+    try {
+      const cloudRes = await fetch('/api/list-files');
+      if (!cloudRes.ok || !drop.isConnected) return;
+      const { properties } = await cloudRes.json();
+
+      const cloudFiles = [];
+      Object.entries(properties || {}).forEach(([propName, files]) => {
+        files.forEach(f => cloudFiles.push({ propertyName: propName, ...f }));
+      });
+      if (!cloudFiles.length || !drop.isConnected) return;
+
+      const section = document.createElement('div');
+
+      const sep = document.createElement('div');
+      sep.style.cssText = `border-top:1px solid rgba(128,128,128,0.3);margin:4px 0;padding:4px 12px 2px;font-size:0.68rem;color:${textColor};opacity:0.6;`;
+      sep.textContent = 'Cloud storage';
+      section.appendChild(sep);
+
+      cloudFiles.forEach(cf => {
+        const item = document.createElement('div');
+        item.className = 'history-item history-item--cloud';
+        const d    = cf.updated_at ? new Date(cf.updated_at).toLocaleDateString() : '';
+        const size = cf.size ? Math.round(cf.size / 1024) + ' KB' : '';
+        item.innerHTML =
+          `<div style="font-weight:600">☁ ${cf.name}</div>` +
+          `<div style="font-size:0.72rem;color:${textColor}">${cf.propertyName}${d ? ' · ' + d : ''}${size ? ' · ' + size : ''}</div>`;
+
+        item.addEventListener('click', async e => {
+          e.stopPropagation();
+          item.innerHTML = `<div style="font-size:0.72rem;color:${textColor};padding:4px 0;">Downloading…</div>`;
+          try {
+            const fileRes = await fetch(`/api/get-file?path=${encodeURIComponent(cf.path)}`);
+            if (!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+            const buffer  = await fileRes.arrayBuffer();
+            const fileObj = new File([buffer], cf.name, {
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const rows   = await readFileAsRows(fileObj);
+            const parsed = Engine.parseSheet(rows);
+            onSelect(cf.name, parsed);
+            drop.remove();
+          } catch (err) {
+            item.innerHTML = `<div style="font-size:0.72rem;color:#f87171;padding:4px 0;">Failed: ${err.message}</div>`;
+          }
+        });
+
+        section.appendChild(item);
+      });
+
+      drop.appendChild(section);
+    } catch (_) {}
   }
 
   // ── ELEMENT RESOLUTION (mode-aware) ──────────────────
