@@ -1076,7 +1076,7 @@ const UI = (() => {
     const content = `
       <div style="padding:16px">
         <div style="font-size:14px;font-weight:600;color:${textColor};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(Math.abs(flag.maxMovement))} movement</div>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
@@ -1215,7 +1215,7 @@ const UI = (() => {
     const content = `
       <div style="padding:16px">
         <div style="font-size:14px;font-weight:600;color:${textColor};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
-        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+        <div style="font-size:12px;color:${textColor};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(Math.abs(flag.maxMovement))} movement</div>
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
@@ -1756,7 +1756,7 @@ const UI = (() => {
       const content = `
         <div style="padding:16px">
           <div style="font-size:14px;font-weight:600;color:${tc};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)} · ${escHtml(propName)}</div>
-          <div style="font-size:12px;color:${tc};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+          <div style="font-size:12px;color:${tc};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(Math.abs(flag.maxMovement))} movement</div>
           <table style="width:100%;border-collapse:collapse;">
             <thead>
               <tr>
@@ -1868,10 +1868,10 @@ const UI = (() => {
         const key = entry.key;
         const firstFlag = entry.properties[0]?.flag;
         const isIncome = firstFlag?.isIncome ?? (firstFlag?.section === 'INCOME');
-        const isUp = firstFlag?.direction === 'up';
+        const isUp = entry.totalMovement >= 0;
         const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
         const color = firstFlag?.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
-        const arrow = firstFlag?.direction === 'up' ? '▲' : '▼';
+        const arrow = entry.totalMovement >= 0 ? '▲' : '▼';
 
         let triggerType = '';
         if (firstFlag) {
@@ -1922,10 +1922,10 @@ const UI = (() => {
           entry.properties.forEach(propEntry => {
             const pFlag = propEntry.flag;
             const pIsIncome = pFlag?.isIncome ?? (pFlag?.section === 'INCOME');
-            const pIsUp = pFlag?.direction === 'up';
+            const pIsUp = pFlag?.maxMovement >= 0;
             const pIsPositive = (pIsIncome && pIsUp) || (!pIsIncome && !pIsUp);
             const pColor = pFlag?.conflicting ? '#eab308' : (pIsPositive ? '#22c55e' : '#f87171');
-            const pArrow = pFlag?.direction === 'up' ? '▲' : '▼';
+            const pArrow = pFlag?.maxMovement >= 0 ? '▲' : '▼';
 
             let pTrigger = '';
             if (pFlag) {

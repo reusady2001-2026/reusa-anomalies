@@ -313,6 +313,7 @@ function analyseCategories(metrics, months, purchasePrice) {
           displayDirection = T3_current > T12 ? 'up' : 'down';
         }
 
+        const magnitude = Math.max(movementFromPrior, movementFromT12);
         flags[i] = {
           monthLabel,
           T3_current,
@@ -326,13 +327,13 @@ function analyseCategories(metrics, months, purchasePrice) {
           direction: displayDirection,
           displayAmount,
           conflicting,
-          maxMovement: Math.max(movementFromPrior, movementFromT12),
+          maxMovement: displayDirection === 'up' ? magnitude : -magnitude,
         };
       }
     });
 
     if (Object.keys(flags).length > 0) {
-      const worstFlag = Object.values(flags).sort((a,b) => b.maxMovement - a.maxMovement)[0];
+      const worstFlag = Object.values(flags).sort((a,b) => Math.abs(b.maxMovement) - Math.abs(a.maxMovement))[0];
       results.push({
         name: category.name,
         section: category.section,
@@ -370,7 +371,7 @@ function analyseCategories(metrics, months, purchasePrice) {
     });
   });
 
-  allFlags.sort((a, b) => b.maxMovement - a.maxMovement);
+  allFlags.sort((a, b) => Math.abs(b.maxMovement) - Math.abs(a.maxMovement));
 
   return { flags: allFlags, threshold, months };
 }
