@@ -152,6 +152,16 @@ const App = (() => {
     }
   }
 
+  function uploadFileToCloud(file, propertyName) {
+    file.arrayBuffer().then(buffer =>
+      fetch(`/api/upload-file?${new URLSearchParams({ propertyName, filename: file.name })}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: buffer,
+      })
+    ).catch(() => {});
+  }
+
   function loadFileHistory() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY_FILES) || '[]'); } catch { return []; }
   }
@@ -1338,6 +1348,7 @@ const App = (() => {
         populatePeriodSelects(state.parsedA.months);
         showMsg(`Loaded: ${state.parsedA.months.length} months · ${state.parsedA.metrics.length} metrics`);
         saveFileToHistory(file.name, state.parsedA);
+        uploadFileToCloud(file, (file.name.match(/Cash_Flow_(.+?)_Accrual/i)?.[1] || file.name).replace(/_/g, ' ').trim());
         state.isSaved = false;
         document.getElementById('save-analysis-btn')?.classList.add('hidden');
         // Auto-fetch context if location already selected
@@ -1389,6 +1400,7 @@ const App = (() => {
         state.parsedA = Engine.parseSheet(rows);
         showMsg('Asset A loaded: ' + state.parsedA.months.length + ' months', 'status-msg-comp');
         saveFileToHistory(file.name, state.parsedA);
+        uploadFileToCloud(file, (file.name.match(/Cash_Flow_(.+?)_Accrual/i)?.[1] || file.name).replace(/_/g, ' ').trim());
         if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       } catch (err) { alert('Error reading File A: ' + err.message); }
     });
@@ -1403,6 +1415,7 @@ const App = (() => {
         state.parsedB = Engine.parseSheet(rows);
         showMsg('Asset B loaded: ' + state.parsedB.months.length + ' months', 'status-msg-comp');
         saveFileToHistory(file.name, state.parsedB);
+        uploadFileToCloud(file, (file.name.match(/Cash_Flow_(.+?)_Accrual/i)?.[1] || file.name).replace(/_/g, ' ').trim());
         if (state.selectedState && state.selectedCity) fetchContextIfReady('status-msg-comp');
       } catch (err) { alert('Error reading File B: ' + err.message); }
     });
@@ -1456,6 +1469,7 @@ const App = (() => {
           });
         }
         saveFileToHistory(file.name, state.resultEA);
+        uploadFileToCloud(file, (file.name.match(/Cash_Flow_(.+?)_Accrual/i)?.[1] || file.name).replace(/_/g, ' ').trim());
         const runExecBtn = document.getElementById('btn-run-executive');
         if (runExecBtn) runExecBtn.disabled = false;
       } catch (err) { console.error(err); alert('Error reading file: ' + err.message); }
@@ -1701,6 +1715,8 @@ const App = (() => {
             console.warn('[Portfolio]', result.error);
             continue;
           }
+
+          uploadFileToCloud(file, propertyName);
 
           // Update UI
           UI.renderPortfolioPropertyList(Portfolio.state.properties);
