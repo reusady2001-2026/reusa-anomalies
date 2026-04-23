@@ -2167,13 +2167,27 @@ input[type="file"] { display: none; }
   gap: 10px;
   padding: 12px 0;
 }
+.pea-expansion-panel {
+  display: none;
+  border: 2px solid #7c3aed;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+  background: rgba(255,255,255,0.02);
+}
+[data-theme="light"] .pea-expansion-panel { background: rgba(0,0,0,0.02); }
+.pea-details-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
 .pea-inline-detail {
-  max-width: 100%;
-  box-sizing: border-box;
+  flex: 1 1 400px;
+  min-width: 300px;
   background: #0c1322;
   border-radius: 8px;
   padding: 16px;
-  margin-top: 8px;
   border: 1px solid rgba(255,255,255,0.08);
   position: relative;
 }

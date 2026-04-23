@@ -1613,10 +1613,18 @@ const UI = (() => {
     grid.className = 'pea-grid';
     container.appendChild(grid);
 
-    const subPanel = document.createElement('div');
-    subPanel.className = 'pea-sub-panel';
-    subPanel.style.display = 'none';
-    container.appendChild(subPanel);
+    // Single expansion panel — persists across card clicks, hidden by default
+    const expansionPanel = document.createElement('div');
+    expansionPanel.className = 'pea-expansion-panel';
+    container.appendChild(expansionPanel);
+
+    const propGrid = document.createElement('div');
+    propGrid.className = 'pea-prop-grid';
+    expansionPanel.appendChild(propGrid);
+
+    const detailsRow = document.createElement('div');
+    detailsRow.className = 'pea-details-row';
+    expansionPanel.appendChild(detailsRow);
 
     // ── Open an inline detail panel for a property card
     function openInlineDetail(propEntry) {
@@ -1625,14 +1633,13 @@ const UI = (() => {
       const detailKey = `${propName}||${flag.monthLabel}`;
 
       // Already open — scroll to it
-      const existing = Array.from(subPanel.querySelectorAll('.pea-inline-detail'))
+      const existing = Array.from(detailsRow.querySelectorAll('.pea-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
         existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
 
-      // Max 5 open
       if (openDetailKeys.length >= 5) {
         alert('You have 5 cards open. Please close one before opening another.');
         return;
@@ -1675,7 +1682,6 @@ const UI = (() => {
         </tr>
       `).join('');
 
-      const isIncome = flag.section === 'INCOME';
       const arrow = flag.direction === 'up' ? '▲' : '▼';
 
       const conflictNote = flag.conflicting ? `
@@ -1722,7 +1728,7 @@ const UI = (() => {
       detail.className = 'pea-inline-detail';
       detail.dataset.key = detailKey;
       detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
-      subPanel.appendChild(detail);
+      detailsRow.appendChild(detail);
 
       detail.querySelector('.close-card').addEventListener('click', () => {
         const idx = openDetailKeys.indexOf(detailKey);
@@ -1792,8 +1798,11 @@ const UI = (() => {
       entries = entries.slice(0, filters.limit);
 
       activeKey = null;
-      subPanel.style.display = 'none';
-      subPanel.innerHTML = '';
+      openDetailKeys.length = 0;
+      window._peaInlineResults = {};
+      expansionPanel.style.display = 'none';
+      propGrid.innerHTML = '';
+      detailsRow.innerHTML = '';
       grid.innerHTML = '';
 
       entries.forEach(entry => {
@@ -1830,10 +1839,14 @@ const UI = (() => {
 
         card.addEventListener('click', () => {
           if (activeKey === key) {
+            // Collapse
             activeKey = null;
             card.classList.remove('pea-month-card--active');
-            subPanel.style.display = 'none';
-            subPanel.innerHTML = '';
+            expansionPanel.style.display = 'none';
+            propGrid.innerHTML = '';
+            detailsRow.innerHTML = '';
+            openDetailKeys.length = 0;
+            window._peaInlineResults = {};
             return;
           }
 
@@ -1841,9 +1854,12 @@ const UI = (() => {
           activeKey = key;
           card.classList.add('pea-month-card--active');
 
-          subPanel.innerHTML = '';
-          const propGrid = document.createElement('div');
-          propGrid.className = 'pea-prop-grid';
+          // Repopulate prop grid, clear details
+          propGrid.innerHTML = '';
+          detailsRow.innerHTML = '';
+          openDetailKeys.length = 0;
+          window._peaInlineResults = {};
+
           entry.properties.forEach(propEntry => {
             const pFlag = propEntry.flag;
             const pIsIncome = pFlag?.isIncome ?? (pFlag?.section === 'INCOME');
@@ -1876,8 +1892,7 @@ const UI = (() => {
             propGrid.appendChild(propCard);
           });
 
-          subPanel.appendChild(propGrid);
-          subPanel.style.display = 'block';
+          expansionPanel.style.display = 'block';
         });
 
         grid.appendChild(card);
