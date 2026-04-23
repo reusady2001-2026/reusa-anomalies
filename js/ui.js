@@ -903,6 +903,11 @@ const UI = (() => {
         shown = shown.filter(({ flag }) => flag.categoryName === filters.category);
 
       shown = shown.slice().sort((a, b) => {
+        if (filters.sort === 'date-desc' || filters.sort === 'date-asc') {
+          const parse = lbl => { const [m, y] = lbl.split(' '); return new Date(+y, ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(m)); };
+          const diff = parse(b.flag.monthLabel) - parse(a.flag.monthLabel);
+          return filters.sort === 'date-asc' ? -diff : diff;
+        }
         const d = Math.abs(b.flag.maxMovement) - Math.abs(a.flag.maxMovement);
         return filters.sort === 'asc' ? -d : d;
       });
@@ -970,6 +975,8 @@ const UI = (() => {
         `<select class="pea-filter-select" id="ea-filter-sort">` +
           `<option value="desc">High to Low</option>` +
           `<option value="asc">Low to High</option>` +
+          `<option value="date-desc">Newest First</option>` +
+          `<option value="date-asc">Oldest First</option>` +
         `</select>` +
         `<div class="pea-limit-btns">` +
           [10, 25, 50, 100, 250, 500].map(n =>
@@ -1683,6 +1690,8 @@ const UI = (() => {
       `<select class="pea-filter-select" id="pea-filter-sort">` +
         `<option value="desc">High to Low</option>` +
         `<option value="asc">Low to High</option>` +
+        `<option value="date-desc">Newest First</option>` +
+        `<option value="date-asc">Oldest First</option>` +
       `</select>` +
       `<div class="pea-limit-btns">` +
         [10, 25, 50, 100, 250, 500].map(n =>
@@ -2129,6 +2138,11 @@ const UI = (() => {
         entries = entries.filter(e => e.categoryName === filters.category);
 
       entries = entries.slice().sort((a, b) => {
+        if (filters.sort === 'date-desc' || filters.sort === 'date-asc') {
+          const parse = lbl => { const [m, y] = lbl.split(' '); return new Date(+y, ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(m)); };
+          const diff = parse(b.monthLabel) - parse(a.monthLabel);
+          return filters.sort === 'date-asc' ? -diff : diff;
+        }
         const d = Math.abs(b.totalMovement) - Math.abs(a.totalMovement);
         return filters.sort === 'asc' ? -d : d;
       });
