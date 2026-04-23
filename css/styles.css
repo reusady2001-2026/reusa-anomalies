@@ -2006,6 +2006,8 @@ input[type="file"] { display: none; }
   padding-right: 22px;
 }
 .pea-filter-select:focus { outline: none; border-color: rgba(255,255,255,0.3); color: #ffffff; }
+.pea-filter-select option { background: #1e293b; color: #ffffff; }
+[data-theme="light"] .pea-filter-select option { background: #ffffff; color: #000000; }
 .pea-limit-btns {
   display: flex;
   gap: 4px;
