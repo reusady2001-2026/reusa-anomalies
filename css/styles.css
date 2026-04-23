@@ -2219,3 +2219,41 @@ input[type="file"] { display: none; }
   background: #ffffff;
   border: 1px solid rgba(0,0,0,0.08);
 }
+.pea-cat-inline-detail {
+  grid-column: 1 / -1;
+  width: 100%;
+  background: #0c1322;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  margin-top: 4px;
+}
+[data-theme="light"] .pea-cat-inline-detail {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.pea-prop-cards-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+.pea-prop-details-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  overflow-x: auto;
+}
+[data-theme="light"] .pea-prop-details-row {
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+.pea-prop-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 200px;
+  position: relative;
+}

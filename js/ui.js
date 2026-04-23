@@ -1853,23 +1853,23 @@ const UI = (() => {
       });
     }
 
-    // ── Open category-level inline detail (contains prop grid)
-    function openCatDetail(entry, clickedCard) {
+    // ── Open category-level inline detail (prop cards row + detail columns)
+    function openCatDetail(entry, catCard) {
       const detailKey = entry.key;
 
-      // Toggle: already open → close (cleaning up any nested prop details)
-      const existing = Array.from(grid.querySelectorAll('.pea-inline-detail'))
+      // Toggle: already open → close
+      const existing = Array.from(grid.querySelectorAll('.pea-cat-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
-        existing.querySelectorAll('.pea-prop-inline-detail').forEach(nested => {
-          const ki = openDetailKeys.indexOf(nested.dataset.key);
+        existing.querySelectorAll('.pea-prop-detail-col').forEach(col => {
+          const ki = openDetailKeys.indexOf(col.dataset.key);
           if (ki !== -1) openDetailKeys.splice(ki, 1);
-          const cid = nested.dataset.cardId;
+          const cid = col.dataset.cardId;
           if (cid != null) delete window._peaInlineResults[+cid];
         });
         const ki = openDetailKeys.indexOf(detailKey);
         if (ki !== -1) openDetailKeys.splice(ki, 1);
-        clickedCard.classList.remove('pea-month-card--active');
+        catCard.classList.remove('pea-month-card--active');
         existing.remove();
         return;
       }
@@ -1880,11 +1880,35 @@ const UI = (() => {
       }
 
       openDetailKeys.push(detailKey);
-      clickedCard.classList.add('pea-month-card--active');
+      catCard.classList.add('pea-month-card--active');
 
-      // Build prop grid
-      const propGridEl = document.createElement('div');
-      propGridEl.className = 'pea-prop-grid';
+      const catDetail = document.createElement('div');
+      catDetail.className = 'pea-cat-inline-detail';
+      catDetail.dataset.key = detailKey;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'close-card';
+      closeBtn.title = 'Close';
+      closeBtn.textContent = '✕';
+      closeBtn.addEventListener('click', () => {
+        catDetail.querySelectorAll('.pea-prop-detail-col').forEach(col => {
+          const ki = openDetailKeys.indexOf(col.dataset.key);
+          if (ki !== -1) openDetailKeys.splice(ki, 1);
+          const cid = col.dataset.cardId;
+          if (cid != null) delete window._peaInlineResults[+cid];
+        });
+        const ki = openDetailKeys.indexOf(detailKey);
+        if (ki !== -1) openDetailKeys.splice(ki, 1);
+        catCard.classList.remove('pea-month-card--active');
+        catDetail.remove();
+      });
+
+      const propCardsRow = document.createElement('div');
+      propCardsRow.className = 'pea-prop-cards-row';
+
+      const propDetailsRow = document.createElement('div');
+      propDetailsRow.className = 'pea-prop-details-row';
+      propDetailsRow.style.display = 'none';
 
       entry.properties.forEach(propEntry => {
         const pFlag = propEntry.flag;
@@ -1902,10 +1926,7 @@ const UI = (() => {
           else pTrigger = 'T12 drift';
         }
 
-        const propCard = document.createElement('div');
-        propCard.className = 'pea-prop-card';
-        propCard.style.borderLeft = `4px solid ${pColor}`;
-        propCard.innerHTML =
+        const cardInnerHtml =
           `<div class="pea-card-category">${escHtml(propEntry.name)}</div>` +
           `<div class="pea-card-month">${escHtml(pFlag?.monthLabel || entry.monthLabel)}</div>` +
           `<div class="pea-card-movement">` +
@@ -1914,36 +1935,186 @@ const UI = (() => {
           `</div>` +
           (pTrigger ? `<div class="pea-card-meta">${escHtml(pTrigger)}</div>` : '');
 
-        propCard.addEventListener('click', () => openPropDetail(propEntry, propCard));
-        propGridEl.appendChild(propCard);
-      });
+        const propCard = document.createElement('div');
+        propCard.className = 'pea-prop-card';
+        propCard.style.borderLeft = `4px solid ${pColor}`;
+        propCard.innerHTML = cardInnerHtml;
 
-      const detail = document.createElement('div');
-      detail.className = 'pea-inline-detail';
-      detail.dataset.key = detailKey;
+        propCard.addEventListener('click', () => {
+          const propKey = `prop||${propEntry.name}||${pFlag?.monthLabel || entry.monthLabel}`;
 
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'close-card';
-      closeBtn.title = 'Close';
-      closeBtn.textContent = '✕';
-      closeBtn.addEventListener('click', () => {
-        detail.querySelectorAll('.pea-prop-inline-detail').forEach(nested => {
-          const ki = openDetailKeys.indexOf(nested.dataset.key);
-          if (ki !== -1) openDetailKeys.splice(ki, 1);
-          const cid = nested.dataset.cardId;
-          if (cid != null) delete window._peaInlineResults[+cid];
+          // Toggle: already open → close
+          const existingCol = Array.from(catDetail.querySelectorAll('.pea-prop-detail-col'))
+            .find(col => col.dataset.key === propKey);
+          if (existingCol) {
+            const ki = openDetailKeys.indexOf(propKey);
+            if (ki !== -1) openDetailKeys.splice(ki, 1);
+            const cid = existingCol.dataset.cardId;
+            if (cid != null) delete window._peaInlineResults[+cid];
+            existingCol.remove();
+            if (propDetailsRow.children.length === 0) propDetailsRow.style.display = 'none';
+            return;
+          }
+
+          if (openDetailKeys.length >= 5) {
+            alert('You have 5 cards open. Please close one before opening another.');
+            return;
+          }
+
+          const cardId = cardIdCounter++;
+          const eaResult = propEntry.eaResult;
+          window._peaInlineResults[cardId] = eaResult;
+          openDetailKeys.push(propKey);
+
+          const tc = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
+          const metrics = eaResult?.metrics || [];
+          const monthIdx = pFlag?.monthIdx;
+          const categoryMetricNames = Executive.CATEGORY_MAP?.[pFlag?.categoryName] || [];
+          const categoryMetrics = metrics.filter(m => categoryMetricNames.includes(m.name));
+
+          let totalT3 = 0, totalT3Prior = 0, totalT12 = 0;
+          const rows = categoryMetrics.map(metric => {
+            const t = Executive.computeMetricT3T12(metric, monthIdx);
+            if (!t) return null;
+            totalT3      += t.T3_current;
+            totalT3Prior += t.T3_prior;
+            totalT12     += t.T12;
+            return { name: metric.name, ...t };
+          }).filter(Boolean);
+
+          const rowsHtml = rows.map((r, rowIdx) => `
+            <tr class="ea-metric-row" id="ea-metric-row-${cardId}-${rowIdx}"
+              onclick="window._eaCategoryResult = window._peaInlineResults[${cardId}]; UI.toggleMetricDetail(${cardId}, ${rowIdx}, '${escHtml(r.name).replace(/'/g, "\\'")}')"
+              style="cursor:pointer;">
+              <td class="ea-detail-td">${escHtml(r.name)}</td>
+              <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_current)}</td>
+              <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_prior)}</td>
+              <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T12)}</td>
+            </tr>
+            <tr id="ea-metric-detail-${cardId}-${rowIdx}" style="display:none;">
+              <td colspan="4" style="padding:0;">
+                <div id="ea-metric-detail-content-${cardId}-${rowIdx}" class="ea-metric-expand"></div>
+              </td>
+            </tr>
+          `).join('');
+
+          const conflictNote = pFlag?.conflicting ? `
+            <div style="margin-top:12px;padding:10px;font-size:11px;color:${tc};font-family:'JetBrains Mono',monospace;line-height:1.6;border-top:1px solid rgba(255,255,255,0.06);">
+              T3 and T12 pointing in opposite directions — possible recent reversal.
+            </div>
+          ` : '';
+
+          const reasoningId = `pea-reasoning-${cardId}`;
+          const detailContent = document.createElement('div');
+          detailContent.style.paddingTop = '8px';
+          detailContent.innerHTML = `
+            <div style="font-size:11px;color:${tc};margin-bottom:10px;font-family:'JetBrains Mono',monospace;">
+              ${pArrow} ${fmtDetail(Math.abs(pFlag?.maxMovement ?? 0))} · ${escHtml(pFlag?.monthLabel || entry.monthLabel)}
+            </div>
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th class="ea-detail-th">Metric</th>
+                  <th class="ea-detail-th ea-detail-num">T3</th>
+                  <th class="ea-detail-th ea-detail-num">Prior</th>
+                  <th class="ea-detail-th ea-detail-num">T12</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+                <tr class="ea-detail-total-row">
+                  <td class="ea-detail-td" style="font-weight:700">Total</td>
+                  <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3)}</td>
+                  <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3Prior)}</td>
+                  <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT12)}</td>
+                </tr>
+              </tbody>
+            </table>
+            ${conflictNote}
+            <div id="${reasoningId}" style="padding-top:10px;font-size:11px;color:${tc};font-family:'JetBrains Mono',monospace;line-height:1.6;border-top:1px solid rgba(255,255,255,0.06);margin-top:10px;">
+              Loading analysis…
+            </div>
+          `;
+
+          const propDetailCol = document.createElement('div');
+          propDetailCol.className = 'pea-prop-detail-col';
+          propDetailCol.dataset.key = propKey;
+          propDetailCol.dataset.cardId = String(cardId);
+
+          const colCloseBtn = document.createElement('button');
+          colCloseBtn.className = 'close-card';
+          colCloseBtn.title = 'Close';
+          colCloseBtn.textContent = '✕';
+          colCloseBtn.addEventListener('click', () => {
+            const ki = openDetailKeys.indexOf(propKey);
+            if (ki !== -1) openDetailKeys.splice(ki, 1);
+            delete window._peaInlineResults[cardId];
+            propDetailCol.remove();
+            if (propDetailsRow.children.length === 0) propDetailsRow.style.display = 'none';
+          });
+
+          const miniCard = document.createElement('div');
+          miniCard.className = 'pea-prop-card';
+          miniCard.style.borderLeft = `4px solid ${pColor}`;
+          miniCard.innerHTML = cardInnerHtml;
+
+          propDetailCol.appendChild(colCloseBtn);
+          propDetailCol.appendChild(miniCard);
+          propDetailCol.appendChild(detailContent);
+
+          propDetailsRow.appendChild(propDetailCol);
+          propDetailsRow.style.display = '';
+          propDetailCol.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+          // Reasoning fetch
+          const allFlags = eaResult?.flags || [];
+          const categoryFlags = allFlags
+            .filter(f => f.categoryName === pFlag?.categoryName && f.monthIdx < pFlag?.monthIdx)
+            .sort((a, b) => b.monthIdx - a.monthIdx)
+            .slice(0, 3)
+            .reverse()
+            .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current, T3_prior: f.T3_prior }));
+
+          fetch('/api/ea-reasoning', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              categoryName: pFlag?.categoryName,
+              section: pFlag?.section,
+              monthLabel: pFlag?.monthLabel || entry.monthLabel,
+              metricBreakdown: rows.map(r => ({
+                name: r.name, T3_current: r.T3_current, T3_prior: r.T3_prior, T12: r.T12,
+              })),
+              flag: pFlag,
+              stateAbbr: eaResult?.stateAbbr || '',
+              city: eaResult?.city || '',
+              propertyName: eaResult?.propertyName || '',
+              purchasePrice: eaResult?.purchasePrice || 0,
+              fema: eaResult?.fema || [],
+              recentCategoryT3: categoryFlags,
+            }),
+          })
+          .then(r => r.json())
+          .then(data => {
+            const el = document.getElementById(reasoningId);
+            if (el && data.reasoning) el.textContent = data.reasoning;
+            else if (el) el.textContent = 'No reasoning available.';
+          })
+          .catch(() => {
+            const el = document.getElementById(reasoningId);
+            if (el) el.textContent = 'Could not load analysis.';
+          });
         });
-        const ki = openDetailKeys.indexOf(detailKey);
-        if (ki !== -1) openDetailKeys.splice(ki, 1);
-        clickedCard.classList.remove('pea-month-card--active');
-        detail.remove();
+
+        propCardsRow.appendChild(propCard);
       });
 
-      detail.appendChild(closeBtn);
-      detail.appendChild(propGridEl);
+      catDetail.appendChild(closeBtn);
+      catDetail.appendChild(propCardsRow);
+      catDetail.appendChild(propDetailsRow);
 
-      clickedCard.insertAdjacentElement('afterend', detail);
-      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      catCard.insertAdjacentElement('afterend', catDetail);
+      catDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // ── Grid render (called on every filter change)
