@@ -1871,7 +1871,7 @@ const UI = (() => {
         const isUp = firstFlag?.direction === 'up';
         const isPositive = (isIncome && isUp) || (!isIncome && !isUp);
         const color = firstFlag?.conflicting ? '#eab308' : (isPositive ? '#22c55e' : '#f87171');
-        const arrow = entry.totalMovement >= 0 ? '▲' : '▼';
+        const arrow = firstFlag?.direction === 'up' ? '▲' : '▼';
 
         let triggerType = '';
         if (firstFlag) {
@@ -1925,7 +1925,7 @@ const UI = (() => {
             const pIsUp = pFlag?.direction === 'up';
             const pIsPositive = (pIsIncome && pIsUp) || (!pIsIncome && !pIsUp);
             const pColor = pFlag?.conflicting ? '#eab308' : (pIsPositive ? '#22c55e' : '#f87171');
-            const pArrow = (pFlag?.maxMovement ?? 0) >= 0 ? '▲' : '▼';
+            const pArrow = pFlag?.direction === 'up' ? '▲' : '▼';
 
             let pTrigger = '';
             if (pFlag) {

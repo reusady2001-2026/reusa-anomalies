@@ -137,7 +137,6 @@ const Portfolio = (() => {
           eaResult: prop.eaResult,
           flag,
         });
-        console.log('[EA flag]', prop.name, '|', flag.categoryName, '|', flag.monthLabel, '| maxMovement:', flag.maxMovement, '| direction:', flag.direction);
       });
     });
 
