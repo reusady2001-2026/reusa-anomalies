@@ -2029,8 +2029,8 @@ input[type="file"] { display: none; }
   border-color: rgba(255,255,255,0.3);
 }
 [data-theme="light"] .pea-filter-select {
-  background: rgba(0,0,0,0.05);
-  border-color: rgba(0,0,0,0.12);
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.2);
   color: #000000;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2394a3b8'/%3E%3C/svg%3E");
 }
