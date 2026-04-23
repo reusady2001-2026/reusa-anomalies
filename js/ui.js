@@ -1702,7 +1702,7 @@ const UI = (() => {
       const detailKey = `prop||${propName}||${flag.monthLabel}`;
 
       // Toggle: already open → close
-      const existing = Array.from(document.querySelectorAll('.pea-inline-detail'))
+      const existing = Array.from(document.querySelectorAll('.pea-prop-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
         const ki = openDetailKeys.indexOf(detailKey);
@@ -1798,7 +1798,7 @@ const UI = (() => {
       `;
 
       const detail = document.createElement('div');
-      detail.className = 'pea-inline-detail';
+      detail.className = 'pea-prop-inline-detail';
       detail.dataset.key = detailKey;
       detail.dataset.cardId = String(cardId);
       detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
@@ -1861,7 +1861,7 @@ const UI = (() => {
       const existing = Array.from(grid.querySelectorAll('.pea-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
-        existing.querySelectorAll('.pea-inline-detail').forEach(nested => {
+        existing.querySelectorAll('.pea-prop-inline-detail').forEach(nested => {
           const ki = openDetailKeys.indexOf(nested.dataset.key);
           if (ki !== -1) openDetailKeys.splice(ki, 1);
           const cid = nested.dataset.cardId;
@@ -1927,7 +1927,7 @@ const UI = (() => {
       closeBtn.title = 'Close';
       closeBtn.textContent = '✕';
       closeBtn.addEventListener('click', () => {
-        detail.querySelectorAll('.pea-inline-detail').forEach(nested => {
+        detail.querySelectorAll('.pea-prop-inline-detail').forEach(nested => {
           const ki = openDetailKeys.indexOf(nested.dataset.key);
           if (ki !== -1) openDetailKeys.splice(ki, 1);
           const cid = nested.dataset.cardId;

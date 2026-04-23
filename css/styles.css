@@ -2206,3 +2206,16 @@ input[type="file"] { display: none; }
   background: #ffffff;
   border: 1px solid rgba(0,0,0,0.08);
 }
+.pea-prop-inline-detail {
+  grid-column: 1 / -1;
+  width: 100%;
+  background: #0c1322;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+[data-theme="light"] .pea-prop-inline-detail {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+}
