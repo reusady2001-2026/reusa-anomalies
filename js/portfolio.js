@@ -130,6 +130,7 @@ const Portfolio = (() => {
         }
         const entry = monthMap.get(key);
         entry.totalMovement += flag.maxMovement;
+        console.log('[EA debug]', prop.name, flag.categoryName, flag.monthLabel, 'maxMovement:', flag.maxMovement, 'direction:', flag.direction, 'running totalMovement:', entry.totalMovement);
         entry.propertyCount += 1;
         entry.properties.push({
           name: prop.name,
