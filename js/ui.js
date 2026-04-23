@@ -1705,18 +1705,14 @@ const UI = (() => {
     propGrid.className = 'pea-prop-grid';
     expansionPanel.appendChild(propGrid);
 
-    const detailsRow = document.createElement('div');
-    detailsRow.className = 'pea-details-row';
-    expansionPanel.appendChild(detailsRow);
-
     // ── Open an inline detail panel for a property card
-    function openInlineDetail(propEntry) {
+    function openInlineDetail(propEntry, clickedCard) {
       const propName = propEntry.name;
       const flag = propEntry.flag;
       const detailKey = `${propName}||${flag.monthLabel}`;
 
       // Already open — scroll to it
-      const existing = Array.from(detailsRow.querySelectorAll('.pea-inline-detail'))
+      const existing = Array.from(propGrid.querySelectorAll('.pea-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
         existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1811,7 +1807,11 @@ const UI = (() => {
       detail.className = 'pea-inline-detail';
       detail.dataset.key = detailKey;
       detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
-      detailsRow.appendChild(detail);
+      if (clickedCard) {
+        clickedCard.insertAdjacentElement('afterend', detail);
+      } else {
+        propGrid.appendChild(detail);
+      }
 
       detail.querySelector('.close-card').addEventListener('click', () => {
         const idx = openDetailKeys.indexOf(detailKey);
@@ -1939,7 +1939,6 @@ const UI = (() => {
 
           // Repopulate prop grid, clear details
           propGrid.innerHTML = '';
-          detailsRow.innerHTML = '';
           openDetailKeys.length = 0;
           window._peaInlineResults = {};
 
@@ -1971,7 +1970,7 @@ const UI = (() => {
               `</div>` +
               (pTrigger ? `<div class="pea-card-meta">${escHtml(pTrigger)}</div>` : '');
 
-            propCard.addEventListener('click', () => openInlineDetail(propEntry));
+            propCard.addEventListener('click', () => openInlineDetail(propEntry, propCard));
             propGrid.appendChild(propCard);
           });
 

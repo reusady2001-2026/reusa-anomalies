@@ -2193,15 +2193,9 @@ input[type="file"] { display: none; }
   background: rgba(255,255,255,0.02);
 }
 [data-theme="light"] .pea-expansion-panel { background: rgba(0,0,0,0.02); }
-.pea-details-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-}
 .pea-inline-detail {
-  flex: 1 1 400px;
-  min-width: 300px;
+  grid-column: 1 / -1;
+  width: 100%;
   background: #0c1322;
   border-radius: 8px;
   padding: 16px;
