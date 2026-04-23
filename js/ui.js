@@ -947,6 +947,7 @@ const UI = (() => {
       document.getElementById('ea-cards-body').innerHTML =
         badges + `<div class="ea-cards-grid">${cardsHtml}</div>`;
 
+      window._eaOpenDetailKeys = [];
       const detailEl = document.getElementById('detail-card-ea');
       if (detailEl) detailEl.classList.remove('open');
     }
@@ -1019,13 +1020,29 @@ const UI = (() => {
     if (event) event.stopPropagation();
     const flag = window._eaCategoryResult?.flags?.[idx];
     if (!flag) return;
-    const cardEl = document.getElementById('detail-card-ea');
-    if (!cardEl) return;
-    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
 
+    const detailKey = `${flag.categoryName}||${flag.monthLabel}`;
+    window._eaOpenDetailKeys = window._eaOpenDetailKeys || [];
+
+    // Toggle: already open → close it
+    const existingDetail = Array.from(document.querySelectorAll('.ea-inline-detail'))
+      .find(el => el.dataset.key === detailKey);
+    if (existingDetail) {
+      const ki = window._eaOpenDetailKeys.indexOf(detailKey);
+      if (ki !== -1) window._eaOpenDetailKeys.splice(ki, 1);
+      existingDetail.remove();
+      return;
+    }
+
+    if (window._eaOpenDetailKeys.length >= 5) {
+      alert('You have 5 cards open. Please close one before opening another.');
+      return;
+    }
+
+    const cardEl = event?.target?.closest?.('.ea-card');
+    const textColor = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
     const metrics  = window._eaCategoryResult?.metrics || [];
     const monthIdx = flag.monthIdx;
-
     const categoryMetricNames = Executive.CATEGORY_MAP?.[flag.categoryName] || [];
     const categoryMetrics = metrics.filter(m => categoryMetricNames.includes(m.name));
 
@@ -1060,8 +1077,6 @@ const UI = (() => {
       </tr>
     `).join('');
 
-    const isIncome  = flag.section === 'INCOME';
-    const isPositive = (isIncome && flag.direction === 'up') || (!isIncome && flag.direction === 'down');
     const arrow = flag.direction === 'up' ? '▲' : '▼';
 
     const conflictNote = flag.conflicting ? `
@@ -1073,6 +1088,7 @@ const UI = (() => {
       </div>
     ` : '';
 
+    const reasoningId = `ea-reasoning-${idx}`;
     const content = `
       <div style="padding:16px">
         <div style="font-size:14px;font-weight:600;color:${textColor};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)}</div>
@@ -1097,15 +1113,31 @@ const UI = (() => {
           </tbody>
         </table>
         ${conflictNote}
-        <div id="ea-reasoning-${idx}" style="padding:12px 16px 16px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+        <div id="${reasoningId}" style="padding:12px 16px 16px;font-size:12px;color:${textColor};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
           Loading analysis…
         </div>
       </div>
     `;
 
-    cardEl.innerHTML = '<button class="close-card" title="Close">✕</button>' + content;
-    cardEl.classList.add('open');
-    cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const detail = document.createElement('div');
+    detail.className = 'ea-inline-detail';
+    detail.dataset.key = detailKey;
+    detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
+
+    detail.querySelector('.close-card').addEventListener('click', () => {
+      const ki = window._eaOpenDetailKeys.indexOf(detailKey);
+      if (ki !== -1) window._eaOpenDetailKeys.splice(ki, 1);
+      detail.remove();
+    });
+
+    if (cardEl) {
+      cardEl.insertAdjacentElement('afterend', detail);
+    } else {
+      document.getElementById('ea-cards-body')?.appendChild(detail);
+    }
+
+    window._eaOpenDetailKeys.push(detailKey);
+    detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     // Build recentCategoryT3 — last 3 months of category T3 before this month
     const allFlags = window._eaCategoryResult?.flags || [];
@@ -1116,41 +1148,33 @@ const UI = (() => {
       .reverse()
       .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current, T3_prior: f.T3_prior }));
 
-    const reasoningPayload = {
-      categoryName: flag.categoryName,
-      section: flag.section,
-      monthLabel: flag.monthLabel,
-      metricBreakdown: rows.map(r => ({
-        name: r.name,
-        T3_current: r.T3_current,
-        T3_prior: r.T3_prior,
-        T12: r.T12,
-      })),
-      flag,
-      stateAbbr: window._eaCategoryResult?.stateAbbr || '',
-      city: window._eaCategoryResult?.city || '',
-      propertyName: window._eaCategoryResult?.propertyName || '',
-      purchasePrice: window._eaCategoryResult?.purchasePrice || 0,
-      fema: window._eaCategoryResult?.fema || [],
-      recentCategoryT3: categoryFlags,
-    };
-
     fetch('/api/ea-reasoning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reasoningPayload),
+      body: JSON.stringify({
+        categoryName: flag.categoryName,
+        section: flag.section,
+        monthLabel: flag.monthLabel,
+        metricBreakdown: rows.map(r => ({
+          name: r.name, T3_current: r.T3_current, T3_prior: r.T3_prior, T12: r.T12,
+        })),
+        flag,
+        stateAbbr: window._eaCategoryResult?.stateAbbr || '',
+        city: window._eaCategoryResult?.city || '',
+        propertyName: window._eaCategoryResult?.propertyName || '',
+        purchasePrice: window._eaCategoryResult?.purchasePrice || 0,
+        fema: window._eaCategoryResult?.fema || [],
+        recentCategoryT3: categoryFlags,
+      }),
     })
     .then(r => r.json())
     .then(data => {
-      const el = document.getElementById(`ea-reasoning-${idx}`);
-      if (el && data.reasoning) {
-        el.textContent = data.reasoning;
-      } else if (el) {
-        el.textContent = 'No reasoning available.';
-      }
+      const el = document.getElementById(reasoningId);
+      if (el && data.reasoning) el.textContent = data.reasoning;
+      else if (el) el.textContent = 'No reasoning available.';
     })
     .catch(() => {
-      const el = document.getElementById(`ea-reasoning-${idx}`);
+      const el = document.getElementById(reasoningId);
       if (el) el.textContent = 'Could not load analysis.';
     });
   }
