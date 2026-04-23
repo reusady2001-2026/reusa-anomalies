@@ -1625,7 +1625,7 @@ const UI = (() => {
       const detailKey = `${propName}||${flag.monthLabel}`;
 
       // Already open — scroll to it
-      const existing = Array.from(container.querySelectorAll('.pea-inline-detail'))
+      const existing = Array.from(subPanel.querySelectorAll('.pea-inline-detail'))
         .find(el => el.dataset.key === detailKey);
       if (existing) {
         existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1722,7 +1722,7 @@ const UI = (() => {
       detail.className = 'pea-inline-detail';
       detail.dataset.key = detailKey;
       detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
-      subPanel.insertAdjacentElement('afterend', detail);
+      subPanel.appendChild(detail);
 
       detail.querySelector('.close-card').addEventListener('click', () => {
         const idx = openDetailKeys.indexOf(detailKey);
@@ -1842,6 +1842,8 @@ const UI = (() => {
           card.classList.add('pea-month-card--active');
 
           subPanel.innerHTML = '';
+          const propGrid = document.createElement('div');
+          propGrid.className = 'pea-prop-grid';
           entry.properties.forEach(propEntry => {
             const pFlag = propEntry.flag;
             const pIsIncome = pFlag?.isIncome ?? (pFlag?.section === 'INCOME');
@@ -1871,12 +1873,11 @@ const UI = (() => {
               (pTrigger ? `<div class="pea-card-meta">${escHtml(pTrigger)}</div>` : '');
 
             propCard.addEventListener('click', () => openInlineDetail(propEntry));
-            subPanel.appendChild(propCard);
+            propGrid.appendChild(propCard);
           });
 
-          subPanel.style.display = 'flex';
-          subPanel.style.flexWrap = 'wrap';
-          subPanel.style.gap = '12px';
+          subPanel.appendChild(propGrid);
+          subPanel.style.display = 'block';
         });
 
         grid.appendChild(card);
