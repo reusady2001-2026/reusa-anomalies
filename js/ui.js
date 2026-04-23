@@ -1696,7 +1696,7 @@ const UI = (() => {
     container.appendChild(grid);
 
     // ── Open property-level EA detail inside a category panel
-    function openPropDetail(propEntry, clickedPropCard) {
+    function openPropDetail(propEntry, propCard) {
       const propName = propEntry.name;
       const flag = propEntry.flag;
       const detailKey = `prop||${propName}||${flag.monthLabel}`;
@@ -1797,21 +1797,21 @@ const UI = (() => {
         </div>
       `;
 
-      const detail = document.createElement('div');
-      detail.className = 'pea-prop-inline-detail';
-      detail.dataset.key = detailKey;
-      detail.dataset.cardId = String(cardId);
-      detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
+      const propDetail = document.createElement('div');
+      propDetail.className = 'pea-prop-inline-detail';
+      propDetail.dataset.key = detailKey;
+      propDetail.dataset.cardId = String(cardId);
+      propDetail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
 
-      detail.querySelector('.close-card').addEventListener('click', () => {
+      propDetail.querySelector('.close-card').addEventListener('click', () => {
         const ki = openDetailKeys.indexOf(detailKey);
         if (ki !== -1) openDetailKeys.splice(ki, 1);
         delete window._peaInlineResults[cardId];
-        detail.remove();
+        propDetail.remove();
       });
 
-      clickedPropCard.insertAdjacentElement('afterend', detail);
-      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      propCard.insertAdjacentElement('afterend', propDetail);
+      propDetail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       // Reasoning fetch
       const allFlags = eaResult?.flags || [];
