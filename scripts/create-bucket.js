@@ -42,7 +42,8 @@ const req = https.request(options, res => {
   let data = '';
   res.on('data', chunk => { data += chunk; });
   res.on('end', () => {
-    const parsed = JSON.parse(data);
+    let parsed = null;
+    try { parsed = JSON.parse(data); } catch (_) {}
     if (res.statusCode === 200 || res.statusCode === 201) {
       console.log(`✓ Bucket '${BUCKET_NAME}' created successfully.`);
     } else if (res.statusCode === 409 || parsed?.error === 'Duplicate') {
