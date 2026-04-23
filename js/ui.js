@@ -1565,6 +1565,10 @@ const UI = (() => {
     function fmtMovement(val) {
       return '$' + Math.round(Math.abs(val)).toLocaleString('en-US');
     }
+    function fmtDetail(n) {
+      if (n == null) return '—';
+      return (n < 0 ? '-' : '') + '$' + Math.round(Math.abs(n)).toLocaleString();
+    }
 
     const allEntries = [...eaMonthMap.values()];
     const years = [...new Set(allEntries.map(e => e.monthLabel.split(' ').pop()))].sort();
@@ -1572,6 +1576,9 @@ const UI = (() => {
 
     const filters = { year: '', month: '', category: '', sort: 'desc', limit: 50 };
     let activeKey = null;
+    const openDetailKeys = [];
+    let cardIdCounter = 0;
+    window._peaInlineResults = {};
 
     container.innerHTML = '';
 
@@ -1610,6 +1617,161 @@ const UI = (() => {
     subPanel.className = 'pea-sub-panel';
     subPanel.style.display = 'none';
     container.appendChild(subPanel);
+
+    // ── Open an inline detail panel for a property card
+    function openInlineDetail(propEntry) {
+      const propName = propEntry.name;
+      const flag = propEntry.flag;
+      const detailKey = `${propName}||${flag.monthLabel}`;
+
+      // Already open — scroll to it
+      const existing = Array.from(container.querySelectorAll('.pea-inline-detail'))
+        .find(el => el.dataset.key === detailKey);
+      if (existing) {
+        existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+
+      // Max 5 open
+      if (openDetailKeys.length >= 5) {
+        alert('You have 5 cards open. Please close one before opening another.');
+        return;
+      }
+
+      const cardId = cardIdCounter++;
+      const eaResult = propEntry.eaResult;
+      window._peaInlineResults[cardId] = eaResult;
+      openDetailKeys.push(detailKey);
+
+      const tc = document.documentElement.dataset.theme === 'light' ? '#000000' : '#ffffff';
+      const metrics = eaResult?.metrics || [];
+      const monthIdx = flag.monthIdx;
+      const categoryMetricNames = Executive.CATEGORY_MAP?.[flag.categoryName] || [];
+      const categoryMetrics = metrics.filter(m => categoryMetricNames.includes(m.name));
+
+      let totalT3 = 0, totalT3Prior = 0, totalT12 = 0;
+      const rows = categoryMetrics.map(metric => {
+        const t = Executive.computeMetricT3T12(metric, monthIdx);
+        if (!t) return null;
+        totalT3      += t.T3_current;
+        totalT3Prior += t.T3_prior;
+        totalT12     += t.T12;
+        return { name: metric.name, ...t };
+      }).filter(Boolean);
+
+      const rowsHtml = rows.map((r, rowIdx) => `
+        <tr class="ea-metric-row" id="ea-metric-row-${cardId}-${rowIdx}"
+          onclick="window._eaCategoryResult = window._peaInlineResults[${cardId}]; UI.toggleMetricDetail(${cardId}, ${rowIdx}, '${escHtml(r.name).replace(/'/g, "\\'")}')"
+          style="cursor:pointer;">
+          <td class="ea-detail-td">${escHtml(r.name)}</td>
+          <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_current)}</td>
+          <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T3_prior)}</td>
+          <td class="ea-detail-td ea-detail-num">${fmtDetail(r.T12)}</td>
+        </tr>
+        <tr id="ea-metric-detail-${cardId}-${rowIdx}" style="display:none;">
+          <td colspan="4" style="padding:0;">
+            <div id="ea-metric-detail-content-${cardId}-${rowIdx}" class="ea-metric-expand"></div>
+          </td>
+        </tr>
+      `).join('');
+
+      const isIncome = flag.section === 'INCOME';
+      const arrow = flag.direction === 'up' ? '▲' : '▼';
+
+      const conflictNote = flag.conflicting ? `
+        <div style="margin-top:16px;padding:12px;font-size:12px;color:${tc};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+          T3 momentum and T12 drift are pointing in opposite directions.
+          The trailing 3-month run rate ${flag.T3_current > flag.T3_prior ? 'increased' : 'decreased'} $${Math.round(flag.movementFromPrior).toLocaleString()} vs the prior quarter,
+          while the annualized run rate is ${flag.T3_current > flag.T12 ? 'above' : 'below'} the trailing 12-month baseline by $${Math.round(flag.movementFromT12).toLocaleString()}.
+          This may indicate a recent reversal of a longer trend — review both timeframes before drawing conclusions.
+        </div>
+      ` : '';
+
+      const reasoningId = `pea-reasoning-${cardId}`;
+      const content = `
+        <div style="padding:16px">
+          <div style="font-size:14px;font-weight:600;color:${tc};margin-bottom:4px;font-family:'JetBrains Mono',monospace;">${escHtml(flag.categoryName)} · ${escHtml(propName)}</div>
+          <div style="font-size:12px;color:${tc};margin-bottom:16px;">${escHtml(flag.monthLabel)} · ${arrow} ${fmtDetail(flag.maxMovement)} movement</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th class="ea-detail-th">Metric</th>
+                <th class="ea-detail-th ea-detail-num">T3 Current</th>
+                <th class="ea-detail-th ea-detail-num">T3 Prior</th>
+                <th class="ea-detail-th ea-detail-num">T12</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+              <tr class="ea-detail-total-row">
+                <td class="ea-detail-td" style="font-weight:700">Total</td>
+                <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3)}</td>
+                <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT3Prior)}</td>
+                <td class="ea-detail-td ea-detail-num" style="font-weight:700">${fmtDetail(totalT12)}</td>
+              </tr>
+            </tbody>
+          </table>
+          ${conflictNote}
+          <div id="${reasoningId}" style="padding:12px 16px 16px;font-size:12px;color:${tc};font-family:'JetBrains Mono',monospace;line-height:1.7;border-top:1px solid rgba(255,255,255,0.06);">
+            Loading analysis…
+          </div>
+        </div>
+      `;
+
+      const detail = document.createElement('div');
+      detail.className = 'pea-inline-detail';
+      detail.dataset.key = detailKey;
+      detail.innerHTML = `<button class="close-card" title="Close">✕</button>` + content;
+      subPanel.insertAdjacentElement('afterend', detail);
+
+      detail.querySelector('.close-card').addEventListener('click', () => {
+        const idx = openDetailKeys.indexOf(detailKey);
+        if (idx !== -1) openDetailKeys.splice(idx, 1);
+        delete window._peaInlineResults[cardId];
+        detail.remove();
+      });
+
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Reasoning fetch
+      const allFlags = eaResult?.flags || [];
+      const categoryFlags = allFlags
+        .filter(f => f.categoryName === flag.categoryName && f.monthIdx < flag.monthIdx)
+        .sort((a, b) => b.monthIdx - a.monthIdx)
+        .slice(0, 3)
+        .reverse()
+        .map(f => ({ monthLabel: f.monthLabel, T3: f.T3_current, T3_prior: f.T3_prior }));
+
+      fetch('/api/ea-reasoning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryName: flag.categoryName,
+          section: flag.section,
+          monthLabel: flag.monthLabel,
+          metricBreakdown: rows.map(r => ({
+            name: r.name, T3_current: r.T3_current, T3_prior: r.T3_prior, T12: r.T12,
+          })),
+          flag,
+          stateAbbr: eaResult?.stateAbbr || '',
+          city: eaResult?.city || '',
+          propertyName: eaResult?.propertyName || '',
+          purchasePrice: eaResult?.purchasePrice || 0,
+          fema: eaResult?.fema || [],
+          recentCategoryT3: categoryFlags,
+        }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        const el = document.getElementById(reasoningId);
+        if (el && data.reasoning) el.textContent = data.reasoning;
+        else if (el) el.textContent = 'No reasoning available.';
+      })
+      .catch(() => {
+        const el = document.getElementById(reasoningId);
+        if (el) el.textContent = 'Could not load analysis.';
+      });
+    }
 
     // ── Grid render (called on every filter change)
     function applyFilters() {
@@ -1681,20 +1843,40 @@ const UI = (() => {
 
           subPanel.innerHTML = '';
           entry.properties.forEach(propEntry => {
-            const row = document.createElement('div');
-            row.className = 'pea-property-row';
-            row.innerHTML =
-              `<span class="pea-prop-name">${escHtml(propEntry.name)}</span>` +
-              `<span class="pea-prop-flagcount">${fmtMovement(Math.abs(propEntry.flag.maxMovement))}</span>`;
-            row.addEventListener('click', () => {
-              window._eaCategoryResult = propEntry.eaResult;
-              const flagIdx = propEntry.eaResult.flags.indexOf(propEntry.flag);
-              if (flagIdx !== -1) openPortfolioEACard(flagIdx);
-            });
-            subPanel.appendChild(row);
+            const pFlag = propEntry.flag;
+            const pIsIncome = pFlag?.isIncome ?? (pFlag?.section === 'INCOME');
+            const pIsUp = pFlag?.direction === 'up';
+            const pIsPositive = (pIsIncome && pIsUp) || (!pIsIncome && !pIsUp);
+            const pColor = pFlag?.conflicting ? '#eab308' : (pIsPositive ? '#22c55e' : '#f87171');
+            const pArrow = (pFlag?.maxMovement ?? 0) >= 0 ? '▲' : '▼';
+
+            let pTrigger = '';
+            if (pFlag) {
+              if (pFlag.flaggedByPrior && pFlag.flaggedByT12)
+                pTrigger = pFlag.conflicting ? 'T3 + T12 · conflicting' : 'T3 + T12';
+              else if (pFlag.flaggedByPrior) pTrigger = 'T3 momentum';
+              else pTrigger = 'T12 drift';
+            }
+
+            const propCard = document.createElement('div');
+            propCard.className = 'pea-prop-card';
+            propCard.style.borderLeft = `4px solid ${pColor}`;
+            propCard.innerHTML =
+              `<div class="pea-card-category">${escHtml(propEntry.name)}</div>` +
+              `<div class="pea-card-month">${escHtml(pFlag?.monthLabel || entry.monthLabel)}</div>` +
+              `<div class="pea-card-movement">` +
+                `<span class="pea-card-arrow" style="color:${pColor}">${pArrow}</span>` +
+                `<span class="pea-card-amount" style="color:${pColor}">${fmtMovement(pFlag?.maxMovement ?? 0)}</span>` +
+              `</div>` +
+              (pTrigger ? `<div class="pea-card-meta">${escHtml(pTrigger)}</div>` : '');
+
+            propCard.addEventListener('click', () => openInlineDetail(propEntry));
+            subPanel.appendChild(propCard);
           });
 
           subPanel.style.display = 'flex';
+          subPanel.style.flexWrap = 'wrap';
+          subPanel.style.gap = '12px';
         });
 
         grid.appendChild(card);

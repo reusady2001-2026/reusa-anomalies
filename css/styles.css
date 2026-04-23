@@ -2143,3 +2143,34 @@ input[type="file"] { display: none; }
 [data-theme="light"] .pea-property-row:hover { background: rgba(0,0,0,0.05); }
 [data-theme="light"] .pea-prop-name { color: #1e293b; }
 [data-theme="light"] .pea-prop-flagcount { color: #000000; }
+.pea-prop-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 100px;
+  transition: background 0.15s;
+}
+.pea-prop-card:hover { background: rgba(255,255,255,0.06); }
+[data-theme="light"] .pea-prop-card {
+  background: rgba(0,0,0,0.02);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+[data-theme="light"] .pea-prop-card:hover { background: rgba(0,0,0,0.04); }
+.pea-inline-detail {
+  width: 100%;
+  background: #0c1322;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+[data-theme="light"] .pea-inline-detail {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+}
