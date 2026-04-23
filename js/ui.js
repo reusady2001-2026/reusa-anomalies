@@ -1885,7 +1885,6 @@ const UI = (() => {
       window._peaInlineResults = {};
       expansionPanel.style.display = 'none';
       propGrid.innerHTML = '';
-      detailsRow.innerHTML = '';
       grid.innerHTML = '';
 
       entries.forEach(entry => {
@@ -1927,7 +1926,6 @@ const UI = (() => {
             card.classList.remove('pea-month-card--active');
             expansionPanel.style.display = 'none';
             propGrid.innerHTML = '';
-            detailsRow.innerHTML = '';
             openDetailKeys.length = 0;
             window._peaInlineResults = {};
             return;
